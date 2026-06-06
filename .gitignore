@@ -1,0 +1,26 @@
+# Operating system
+Thumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Frontend
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+

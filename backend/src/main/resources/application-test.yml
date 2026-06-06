@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:14:///seasonplan_test
+    username: seasonplan
+    password: seasonplan_test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+

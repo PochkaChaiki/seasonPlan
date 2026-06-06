@@ -1,0 +1,27 @@
+:root {
+  color: #1f2933;
+  background: #f7f9fc;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #2452a3;
+}
+
+.app-shell {
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 2rem;
+}
+
+.app-shell nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+

@@ -36,9 +36,14 @@ Install and configure these tools on the Windows development host.
   * Required for frontend development and tests.
   * Prefer an active LTS version for day-to-day development unless the project explicitly pins another version.
   * On this Windows host, use `npm.cmd` from PowerShell if `npm` fails because `npm.ps1` is blocked by execution policy.
+  * Commit `package-lock.json` so CI and local installs use the same resolved dependency graph.
 
 * ripgrep (`rg`)
   * Required for fast code and file searches by coding agents.
+
+* GitHub Actions-compatible command-line tools
+  * Local commands should mirror CI commands where possible.
+  * Required checks are expected to include backend tests, frontend tests, frontend linting, frontend build, and frontend audit.
 
 ### Recommended
 
@@ -133,7 +138,9 @@ Expected frontend dependencies:
   * Browser rendering.
 
 * Frontend build tool
-  * Vite is recommended for a new React 18 JavaScript project because it is lightweight and widely supported.
+  * Vite is used for the React 18 JavaScript project because it is lightweight and widely supported.
+  * The scaffold currently uses Vite 8 because npm audit reported unresolved advisories in older Vite lines.
+  * Keep `@vitejs/plugin-react` and its peer dependencies aligned with the selected Vite major version.
   * If another build tool is selected, document the reason.
 
 * React Router
@@ -173,6 +180,10 @@ Expected test dependencies:
 
 * ESLint
   * JavaScript linting.
+
+* npm audit
+  * Dependency vulnerability checks.
+  * Use `npm.cmd audit --audit-level=moderate` from PowerShell.
 
 Frontend tests should cover:
 
@@ -214,6 +225,37 @@ docker --version
 rg --version
 ```
 
+Install frontend dependencies:
+
+```powershell
+Set-Location X:\projects\seasonPlan\frontend
+npm.cmd install
+```
+
+Run frontend checks:
+
+```powershell
+Set-Location X:\projects\seasonPlan\frontend
+npm.cmd test -- --run
+npm.cmd run lint
+npm.cmd run build
+npm.cmd audit --audit-level=moderate
+```
+
+Run backend checks:
+
+```powershell
+Set-Location X:\projects\seasonPlan\backend
+mvn test
+```
+
+Start local PostgreSQL:
+
+```powershell
+Set-Location X:\projects\seasonPlan
+docker compose up -d postgres
+```
+
 If npm scripts are needed from PowerShell, prefer:
 
 ```powershell
@@ -231,6 +273,9 @@ The repository may be organized as a client-server monorepo:
 ```text
 seasonPlan/
   AGENTS.md
+  .editorconfig
+  .env.example
+  .gitignore
   ENVIRONMENT_SETUP.md
   TASK.md
   docker-compose.yml
