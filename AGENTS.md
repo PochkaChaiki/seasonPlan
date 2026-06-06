@@ -142,6 +142,31 @@ Supported browsers:
 * amd64
 * OpenJDK 17.0.12
 
+## Development Host Environment
+
+The current development host is Windows 10 Pro.
+
+Agents working in this repository MUST account for the following local environment:
+
+* Workspace path: `X:\projects\seasonPlan`.
+* Primary shell: Windows PowerShell 5.1 Desktop.
+* Primary scripting language for local automation: PowerShell.
+* Prefer PowerShell cmdlets and Windows-compatible commands in examples, scripts, and troubleshooting steps.
+* Use Windows path syntax in local instructions unless documenting target-runtime behavior.
+* Avoid assuming Bash, GNU coreutils, or Unix shell semantics are available on the development host.
+* PowerShell script execution is restricted by policy on this host; direct `npm` invocation may fail because `npm.ps1` cannot be loaded.
+* Use `npm.cmd` from PowerShell when invoking npm commands unless the execution policy is intentionally changed.
+* Active Java on PATH at the time this file was updated: Oracle JDK 24.0.2.
+* `JAVA_HOME` is not set at the time this file was updated.
+* Maven is available as Apache Maven 3.9.11 and currently runs with Java 24.0.2.
+* The project target remains Java 17; configure builds, toolchains, CI, and documentation so production code is compiled and tested against Java 17 despite the local PATH Java version.
+* Node.js is available as v24.12.0.
+* npm is available as 11.6.2 through `npm.cmd`.
+* Git is available as 2.51.0.windows.1.
+* Docker CLI is available as 28.4.0, but Docker configuration access may be restricted for `C:\Users\pochk\.docker\config.json`.
+* ripgrep is available as `rg` 15.1.0 and should be preferred for text/file searches.
+* Some Windows system inventory commands may be denied by local permissions; do not require WMI/CIM access for normal project workflows.
+
 Agents MUST NOT introduce technologies outside this stack without explicit justification.
 
 
