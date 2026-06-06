@@ -2,5 +2,45 @@ openapi: 3.0.3
 info:
   title: SeasonPlan API
   version: 0.1.0
-paths: {}
-
+paths:
+  /season-plans:
+    post:
+      summary: Create a draft season plan
+  /season-plans/{id}:
+    get:
+      summary: Read season plan details
+    patch:
+      summary: Update a draft season plan
+  /season-plans/{id}/submit:
+    post:
+      summary: Submit a draft season plan for approval
+  /season-plans/{id}/approve:
+    post:
+      summary: Approve a submitted season plan
+  /season-plans/{id}/return:
+    post:
+      summary: Return a submitted season plan for revision
+  /season-plans/{id}/readiness:
+    get:
+      summary: Read readiness validation status
+  /season-plans/{id}/pollen-reservations:
+    post:
+      summary: Request a pollen reservation
+  /pollen-reservations/{id}/confirm:
+    post:
+      summary: Confirm a pollen reservation
+  /pollen-reservations/{id}/reject:
+    post:
+      summary: Reject a pollen reservation
+  /season-plans/{id}/tasks:
+    post:
+      summary: Create a magic task
+  /tasks/{id}:
+    patch:
+      summary: Update a magic task
+  /tasks/{id}/assignments:
+    post:
+      summary: Assign a fairy to a task
+  /season-plans/{id}/mark-ritual-ready:
+    post:
+      summary: Mark an approved season plan ritual ready

@@ -59,6 +59,47 @@ Backend dependencies should be declared in `backend/pom.xml`.
 
 Use Java 17, Spring Boot 3.2, and Spring Framework 6. Do not add alternative backend frameworks without explicit justification.
 
+Current backend dependency baseline:
+
+* Parent BOM: `org.springframework.boot:spring-boot-starter-parent:3.2.12`
+  * Provides managed Spring Boot 3.2 dependency versions.
+
+* Java compiler target: `17`
+  * `maven.compiler.release` is set to `17`.
+
+* `org.springframework.boot:spring-boot-starter-web`
+  * Spring MVC REST APIs, embedded servlet runtime, and JSON HTTP handling.
+
+* `org.springframework.boot:spring-boot-starter-validation`
+  * Jakarta Bean Validation support for request DTOs and configuration validation.
+
+* `org.springframework.boot:spring-boot-starter-security`
+  * Authentication and RBAC authorization support at API boundaries.
+
+* `org.springframework.boot:spring-boot-starter-data-jpa`
+  * JPA repositories, entity mapping, and transaction integration for PostgreSQL persistence.
+
+* `org.springframework.boot:spring-boot-starter-actuator`
+  * Health and operational endpoints.
+
+* `org.flywaydb:flyway-core`
+  * Versioned database migrations under `backend/src/main/resources/db/migration`.
+
+* `org.postgresql:postgresql`
+  * Runtime PostgreSQL JDBC driver.
+
+* `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0`
+  * OpenAPI 3 documentation and Swagger UI for Spring MVC APIs.
+
+* `org.testcontainers:testcontainers-bom:1.20.4`
+  * Manages Testcontainers dependency versions.
+
+* `org.apache.maven.plugins:maven-enforcer-plugin:3.5.0`
+  * Enforces a minimum Java version of 17 during Maven builds.
+
+* `org.springframework.boot:spring-boot-maven-plugin`
+  * Spring Boot packaging and run support.
+
 Expected backend dependencies:
 
 * `spring-boot-starter-web`
@@ -92,6 +133,23 @@ Expected backend dependencies:
 ### Backend Test Dependencies
 
 Backend tests must support Red-Green-Refactor TDD.
+
+Current backend test dependency baseline:
+
+* `org.springframework.boot:spring-boot-starter-test`
+  * Includes JUnit Jupiter, Spring Test, AssertJ, Mockito, Hamcrest, JSONassert, and related test utilities managed by Spring Boot.
+
+* `org.springframework.security:spring-security-test`
+  * Security test helpers for authentication, authorization, and secured controller tests.
+
+* `org.testcontainers:junit-jupiter`
+  * JUnit 5 integration for container-based integration tests.
+
+* `org.testcontainers:postgresql`
+  * PostgreSQL containers for persistence integration tests.
+
+* `io.rest-assured:rest-assured:5.5.0`
+  * REST API integration and contract-style assertions.
 
 Expected test dependencies:
 
@@ -129,6 +187,29 @@ Frontend dependencies should be declared in `frontend/package.json`.
 
 Use React 18, JavaScript ES6+, HTML5, and CSS3. Do not introduce TypeScript or a different frontend framework without explicit justification.
 
+Current frontend runtime dependency baseline:
+
+* `react:18.3.1`
+  * React component model.
+
+* `react-dom:18.3.1`
+  * Browser DOM rendering for React.
+
+* `react-router-dom:6.30.4`
+  * Client-side routing for page navigation.
+
+* `vite:^8.0.16`
+  * Frontend dev server, build tool, and test transform foundation.
+
+* `@vitejs/plugin-react:^6.0.2`
+  * Vite integration for React.
+
+* `@rolldown/plugin-babel:^0.2.2`
+  * Peer dependency required by the Vite 8 React plugin.
+
+* `babel-plugin-react-compiler:^1.0.0`
+  * Peer dependency required by the Vite 8 React plugin.
+
 Expected frontend dependencies:
 
 * React 18
@@ -163,6 +244,44 @@ Expected frontend dependencies:
   * Select the implementation when the report export slice is implemented.
 
 ### Frontend Test Dependencies
+
+Current frontend development and test dependency baseline:
+
+* `vitest:4.1.8`
+  * JavaScript unit and component test runner.
+
+* `jsdom:25.0.1`
+  * Browser-like DOM environment for component tests.
+
+* `@testing-library/react:16.1.0`
+  * React component tests from the user's perspective.
+
+* `@testing-library/jest-dom:6.6.3`
+  * DOM-specific test matchers.
+
+* `@testing-library/user-event:14.5.2`
+  * User interaction simulation for tests.
+
+* `msw:2.6.6`
+  * API mocking for frontend tests.
+
+* `eslint:9.39.4`
+  * JavaScript linting engine.
+
+* `@eslint/js:9.39.4`
+  * ESLint JavaScript recommended rules.
+
+* `eslint-plugin-react:7.37.2`
+  * React lint rules.
+
+* `eslint-plugin-react-hooks:5.0.0`
+  * React Hooks lint rules.
+
+* `eslint-plugin-react-refresh:0.4.14`
+  * React Fast Refresh export safety rules.
+
+* `globals:15.12.0`
+  * Browser, Node, and Vitest global definitions for ESLint flat config.
 
 Expected test dependencies:
 
