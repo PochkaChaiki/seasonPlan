@@ -1,6 +1,7 @@
-package com.seasonplan.lifecycle.service;
+package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.FairyAssignment;
+import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
 
 import java.util.List;
 import java.util.Map;

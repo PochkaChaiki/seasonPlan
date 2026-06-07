@@ -1,6 +1,7 @@
-package com.seasonplan.lifecycle.service;
+package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.AuditLogEntry;
+import com.seasonplan.lifecycle.service.AuditLogRepository;
 
 import java.util.ArrayList;
 import java.util.List;

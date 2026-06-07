@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.api;
 
 import com.seasonplan.lifecycle.service.AccessDeniedForRoleException;
-import com.seasonplan.lifecycle.service.DomainValidationException;
+import com.seasonplan.lifecycle.domain.DomainValidationException;
 import com.seasonplan.lifecycle.service.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

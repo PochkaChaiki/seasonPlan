@@ -8,27 +8,31 @@ import com.seasonplan.lifecycle.domain.MagicTaskStatus;
 import com.seasonplan.lifecycle.domain.PollenReservationStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
 
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public class ReadinessChecklistService {
-    private SeasonPlanRepository plans;
-    private PollenReservationRepository pollenReservations;
-    private MagicTaskRepository magicTasks;
-    private FairyAssignmentRepository fairyAssignments;
+    private final SeasonPlanRepository plans;
+    private final PollenReservationRepository pollenReservations;
+    private final MagicTaskRepository magicTasks;
+    private final FairyAssignmentRepository fairyAssignments;
+    private final Clock clock;
 
-    public void configure(
+    public ReadinessChecklistService(
             SeasonPlanRepository plans,
             PollenReservationRepository pollenReservations,
             MagicTaskRepository magicTasks,
-            FairyAssignmentRepository fairyAssignments
+            FairyAssignmentRepository fairyAssignments,
+            Clock clock
     ) {
         this.plans = plans;
         this.pollenReservations = pollenReservations;
         this.magicTasks = magicTasks;
         this.fairyAssignments = fairyAssignments;
+        this.clock = clock;
     }
 
     public Map<String, List<String>> calculateChecklist(UUID seasonPlanId) {
@@ -72,16 +76,7 @@ public class ReadinessChecklistService {
     public void completeItem(UUID seasonPlanId, String key, ActorRole actorRole, String actorId) {
         ValidationSupport.requireAnyRole(actorRole, ActorRole.TALENT_COORDINATOR, ActorRole.POLLEN_GUARDIAN);
         SeasonPlan plan = plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
-        plan.readinessChecklist().stream()
-                .filter(item -> item.key().equals(key))
-                .findFirst()
-                .orElseGet(() -> {
-                    ChecklistItem item = new ChecklistItem(key, false);
-                    plan.readinessChecklist().add(item);
-                    return item;
-                })
-                .markComplete();
-        plan.setUpdatedBy(actorId);
+        plan.completeReadinessChecklistItem(key, actorId, clock.instant());
         plans.save(plan);
     }
 }

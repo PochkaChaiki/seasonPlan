@@ -1,10 +1,7 @@
 package com.seasonplan.lifecycle.domain;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-
 import java.util.UUID;
 
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class MagicTask {
     private UUID id;
     private UUID seasonPlanId;

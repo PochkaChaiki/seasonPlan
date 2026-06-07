@@ -231,24 +231,6 @@ Missing tests that matter:
 
 Passing tests are good. Passing tests around a compromised design do not make the design clean.
 
-## Frontend Review
-
-The frontend is currently a placeholder shell. That is acceptable for a first slice only if everyone admits it is a placeholder.
-
-Issues:
-
-* No feature structure.
-* No API client boundary.
-* No state/data loading pattern.
-* No validation UX beyond future intent.
-* Tests only assert that links exist.
-
-Required direction when real UI starts:
-
-* Organize by feature or route, not by dumping everything into `App.jsx`.
-* Introduce an API client module and typed-ish DTO boundaries even in JavaScript.
-* Keep component tests focused on user-visible behavior.
-
 ## What Is Good
 
 There are a few decisions worth keeping:

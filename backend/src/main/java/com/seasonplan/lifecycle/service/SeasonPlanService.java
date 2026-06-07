@@ -3,6 +3,7 @@ package com.seasonplan.lifecycle.service;
 import com.seasonplan.lifecycle.domain.ActorRole;
 import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.ChecklistItem;
+import com.seasonplan.lifecycle.domain.DomainValidationException;
 import com.seasonplan.lifecycle.domain.PollenReservationStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
@@ -46,29 +47,28 @@ public class SeasonPlanService {
         ValidationSupport.requireRole(actorRole, ActorRole.FAIRY_PLANNER);
         validatePlan(draft);
         Instant now = clock.instant();
-        draft.setId(UUID.randomUUID());
-        draft.setStatus(SeasonPlanStatus.DRAFT);
-        draft.setCreatedBy(actorId);
-        draft.setUpdatedBy(actorId);
-        draft.setCreatedAt(now);
-        draft.setUpdatedAt(now);
-        draft.setReadinessChecklist(List.of(
+        SeasonPlan created = SeasonPlan.createDraft(
+                UUID.randomUUID(),
+                draft.seasonType(),
+                draft.targetTerritories(),
+                draft.timeWindows(),
+                draft.naturalPhenomenonParameters(),
+                draft.targetClimateMetrics(),
+                List.of(
                 new ChecklistItem("calendar-reviewed", false),
                 new ChecklistItem("roles-reviewed", false)
-        ));
-        plans.save(draft);
-        auditLogService.append(draft.id(), AuditAction.SEASON_PLAN_CREATED, actorId, null);
-        return draft;
+                ),
+                actorId,
+                now
+        );
+        plans.save(created);
+        auditLogService.append(created.id(), AuditAction.SEASON_PLAN_CREATED, actorId, null);
+        return created;
     }
 
     public SeasonPlan updateDraft(UUID id, SeasonPlan draft, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.FAIRY_PLANNER);
         SeasonPlan existing = get(id);
-        if (existing.status() != SeasonPlanStatus.DRAFT && existing.status() != SeasonPlanStatus.VERIFIED) {
-            throw new DomainValidationException(new LinkedHashMap<>() {{
-                put("status", List.of("only DRAFT or VERIFIED plans can be updated"));
-            }});
-        }
         validatePlan(draft);
         existing.updateDraftFieldsFrom(draft, actorId, clock.instant());
         auditLogService.append(existing.id(), AuditAction.SEASON_PLAN_UPDATED, actorId, null);
@@ -84,15 +84,8 @@ public class SeasonPlanService {
     public SeasonPlan submitForApproval(UUID id, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.FAIRY_PLANNER);
         SeasonPlan plan = get(id);
-        if (plan.status() != SeasonPlanStatus.DRAFT) {
-            throw new DomainValidationException(new LinkedHashMap<>() {{
-                put("status", List.of("only DRAFT plans can be submitted"));
-            }});
-        }
         validatePlan(plan);
-        plan.setStatus(SeasonPlanStatus.SUBMITTED);
-        plan.setUpdatedBy(actorId);
-        plan.setUpdatedAt(clock.instant());
+        plan.submit(actorId, clock.instant());
         auditLogService.append(plan.id(), AuditAction.SEASON_PLAN_SUBMITTED, actorId, null);
         return plans.save(plan);
     }
@@ -107,10 +100,7 @@ public class SeasonPlanService {
                         put("pollenReservation", List.of("rejected pollen reservation blocks approval"));
                     }});
                 });
-        plan.setStatus(SeasonPlanStatus.APPROVED);
-        plan.setApprovalComment(comment);
-        plan.setUpdatedBy(actorId);
-        plan.setUpdatedAt(clock.instant());
+        plan.approve(comment, actorId, clock.instant());
         auditLogService.append(id, AuditAction.SEASON_PLAN_APPROVED, actorId, comment);
         notificationService.notifyPlannerApprovalResult(plan.createdBy(), "APPROVED", comment);
         return plans.save(plan);
@@ -119,15 +109,7 @@ public class SeasonPlanService {
     public SeasonPlan returnForRevision(UUID id, String comment, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.CHIEF_GUARDIAN);
         SeasonPlan plan = requireSubmitted(id);
-        if (comment == null || comment.isBlank()) {
-            throw new DomainValidationException(new LinkedHashMap<>() {{
-                put("comment", List.of("comment is required when returning a plan"));
-            }});
-        }
-        plan.setStatus(SeasonPlanStatus.DRAFT);
-        plan.setApprovalComment(comment);
-        plan.setUpdatedBy(actorId);
-        plan.setUpdatedAt(clock.instant());
+        plan.returnForRevision(comment, actorId, clock.instant());
         auditLogService.append(id, AuditAction.SEASON_PLAN_RETURNED, actorId, comment);
         notificationService.notifyPlannerApprovalResult(plan.createdBy(), "RETURNED", comment);
         return plans.save(plan);
@@ -136,15 +118,8 @@ public class SeasonPlanService {
     public SeasonPlan markRitualReady(UUID id, ActorRole actorRole, String actorId) {
         ValidationSupport.requireAnyRole(actorRole, ActorRole.TALENT_COORDINATOR, ActorRole.POLLEN_GUARDIAN);
         SeasonPlan plan = get(id);
-        if (plan.status() != SeasonPlanStatus.APPROVED) {
-            throw new DomainValidationException(new LinkedHashMap<>() {{
-                put("status", List.of("only APPROVED plans can be marked RITUAL_READY"));
-            }});
-        }
         readinessChecklistService.assertReadyForRitual(id);
-        plan.setStatus(SeasonPlanStatus.RITUAL_READY);
-        plan.setUpdatedBy(actorId);
-        plan.setUpdatedAt(clock.instant());
+        plan.markRitualReady(actorId, clock.instant());
         auditLogService.append(id, AuditAction.SEASON_MARKED_RITUAL_READY, actorId, null);
         return plans.save(plan);
     }

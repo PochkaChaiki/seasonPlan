@@ -2,10 +2,14 @@ package com.seasonplan.lifecycle.api;
 
 import com.seasonplan.lifecycle.domain.ActorRole;
 import com.seasonplan.lifecycle.domain.AssignmentStatus;
+import com.seasonplan.lifecycle.domain.ChecklistItem;
 import com.seasonplan.lifecycle.domain.FairyAssignment;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.PollenReservation;
+import com.seasonplan.lifecycle.domain.PollenReservationStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
+import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
+import com.seasonplan.lifecycle.domain.TimeWindow;
 import com.seasonplan.lifecycle.service.FairyAssignmentService;
 import com.seasonplan.lifecycle.service.MagicTaskService;
 import com.seasonplan.lifecycle.service.PollenReservationService;
@@ -46,33 +50,33 @@ public class LifecycleController {
     }
 
     @PostMapping("/season-plans")
-    public SeasonPlan createPlan(@RequestBody SeasonPlan draft, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.createDraft(draft, role, actorId);
+    public SeasonPlanResponse createPlan(@RequestBody SeasonPlanRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.createDraft(request.toDraft(), role, actorId));
     }
 
     @PatchMapping("/season-plans/{id}")
-    public SeasonPlan updatePlan(@PathVariable UUID id, @RequestBody SeasonPlan draft, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.updateDraft(id, draft, role, actorId);
+    public SeasonPlanResponse updatePlan(@PathVariable UUID id, @RequestBody SeasonPlanRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.updateDraft(id, request.toDraft(), role, actorId));
     }
 
     @PostMapping("/season-plans/{id}/submit")
-    public SeasonPlan submit(@PathVariable UUID id, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.submitForApproval(id, role, actorId);
+    public SeasonPlanResponse submit(@PathVariable UUID id, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.submitForApproval(id, role, actorId));
     }
 
     @PostMapping("/season-plans/{id}/approve")
-    public SeasonPlan approve(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.approve(id, request.comment(), role, actorId);
+    public SeasonPlanResponse approve(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.approve(id, request.comment(), role, actorId));
     }
 
     @PostMapping("/season-plans/{id}/return")
-    public SeasonPlan returnForRevision(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.returnForRevision(id, request.comment(), role, actorId);
+    public SeasonPlanResponse returnForRevision(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.returnForRevision(id, request.comment(), role, actorId));
     }
 
     @GetMapping("/season-plans/{id}")
-    public SeasonPlan getPlan(@PathVariable UUID id) {
-        return seasonPlanService.get(id);
+    public SeasonPlanResponse getPlan(@PathVariable UUID id) {
+        return SeasonPlanResponse.from(seasonPlanService.get(id));
     }
 
     @GetMapping("/season-plans/{id}/readiness")
@@ -82,38 +86,108 @@ public class LifecycleController {
     }
 
     @PostMapping("/season-plans/{id}/pollen-reservations")
-    public PollenReservation requestReservation(@PathVariable UUID id, @RequestBody ReservationRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return pollenReservationService.requestReservation(id, request.requestedAmount(), role, actorId);
+    public PollenReservationResponse requestReservation(@PathVariable UUID id, @RequestBody ReservationRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return PollenReservationResponse.from(pollenReservationService.requestReservation(id, request.requestedAmount(), role, actorId));
     }
 
     @PostMapping("/pollen-reservations/{id}/confirm")
-    public PollenReservation confirmReservation(@PathVariable UUID id, @RequestBody ReservationDecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return pollenReservationService.confirmReservation(id, request.confirmedAmount(), request.comment(), role, actorId);
+    public PollenReservationResponse confirmReservation(@PathVariable UUID id, @RequestBody ReservationDecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return PollenReservationResponse.from(pollenReservationService.confirmReservation(id, request.confirmedAmount(), request.comment(), role, actorId));
     }
 
     @PostMapping("/pollen-reservations/{id}/reject")
-    public PollenReservation rejectReservation(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return pollenReservationService.rejectReservation(id, request.comment(), role, actorId);
+    public PollenReservationResponse rejectReservation(@PathVariable UUID id, @RequestBody DecisionRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return PollenReservationResponse.from(pollenReservationService.rejectReservation(id, request.comment(), role, actorId));
     }
 
     @PostMapping("/season-plans/{id}/tasks")
-    public MagicTask createTask(@PathVariable UUID id, @RequestBody MagicTask draft, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return magicTaskService.createTask(id, draft, role, actorId);
+    public MagicTaskResponse createTask(@PathVariable UUID id, @RequestBody MagicTaskRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return MagicTaskResponse.from(magicTaskService.createTask(id, request.toDraft(), role, actorId));
     }
 
     @PatchMapping("/tasks/{id}")
-    public MagicTask updateTask(@PathVariable UUID id, @RequestBody MagicTask draft, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return magicTaskService.updateTask(id, draft, role, actorId);
+    public MagicTaskResponse updateTask(@PathVariable UUID id, @RequestBody MagicTaskRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return MagicTaskResponse.from(magicTaskService.updateTask(id, request.toDraft(), role, actorId));
     }
 
     @PostMapping("/tasks/{id}/assignments")
-    public FairyAssignment assignFairy(@PathVariable UUID id, @RequestBody AssignmentRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return fairyAssignmentService.assignFairy(id, request.fairyId(), request.role(), request.talent(), request.status(), role, actorId);
+    public FairyAssignmentResponse assignFairy(@PathVariable UUID id, @RequestBody AssignmentRequest request, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return FairyAssignmentResponse.from(fairyAssignmentService.assignFairy(id, request.fairyId(), request.role(), request.talent(), request.status(), role, actorId));
     }
 
     @PostMapping("/season-plans/{id}/mark-ritual-ready")
-    public SeasonPlan markRitualReady(@PathVariable UUID id, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
-        return seasonPlanService.markRitualReady(id, role, actorId);
+    public SeasonPlanResponse markRitualReady(@PathVariable UUID id, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        return SeasonPlanResponse.from(seasonPlanService.markRitualReady(id, role, actorId));
+    }
+
+    public record SeasonPlanRequest(
+            String seasonType,
+            List<String> targetTerritories,
+            List<TimeWindow> timeWindows,
+            Map<String, String> naturalPhenomenonParameters,
+            Map<String, Double> targetClimateMetrics
+    ) {
+        SeasonPlan toDraft() {
+            SeasonPlan draft = new SeasonPlan();
+            draft.setSeasonType(seasonType);
+            draft.setTargetTerritories(targetTerritories);
+            draft.setTimeWindows(timeWindows);
+            draft.setNaturalPhenomenonParameters(naturalPhenomenonParameters);
+            draft.setTargetClimateMetrics(targetClimateMetrics);
+            return draft;
+        }
+    }
+
+    public record SeasonPlanResponse(
+            UUID id,
+            String seasonType,
+            List<String> targetTerritories,
+            List<TimeWindow> timeWindows,
+            Map<String, String> naturalPhenomenonParameters,
+            Map<String, Double> targetClimateMetrics,
+            SeasonPlanStatus status,
+            String approvalComment,
+            List<ChecklistItemResponse> readinessChecklist,
+            String createdBy,
+            String updatedBy
+    ) {
+        static SeasonPlanResponse from(SeasonPlan plan) {
+            return new SeasonPlanResponse(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(),
+                    plan.naturalPhenomenonParameters(), plan.targetClimateMetrics(), plan.status(),
+                    plan.approvalComment(), plan.readinessChecklist().stream().map(ChecklistItemResponse::from).toList(),
+                    plan.createdBy(), plan.updatedBy());
+        }
+    }
+
+    public record ChecklistItemResponse(String key, boolean complete) {
+        static ChecklistItemResponse from(ChecklistItem item) {
+            return new ChecklistItemResponse(item.key(), item.complete());
+        }
+    }
+
+    public record MagicTaskRequest(String title, String description, String requiredTalent, TimeWindow timeWindow, com.seasonplan.lifecycle.domain.MagicTaskStatus status) {
+        MagicTask toDraft() {
+            return new MagicTask(title, description, requiredTalent, timeWindow, status);
+        }
+    }
+
+    public record MagicTaskResponse(UUID id, UUID seasonPlanId, String title, String description, String requiredTalent, TimeWindow timeWindow, com.seasonplan.lifecycle.domain.MagicTaskStatus status) {
+        static MagicTaskResponse from(MagicTask task) {
+            return new MagicTaskResponse(task.id(), task.seasonPlanId(), task.title(), task.description(), task.requiredTalent(), task.timeWindow(), task.status());
+        }
+    }
+
+    public record PollenReservationResponse(UUID id, UUID seasonPlanId, int requestedAmount, Integer confirmedAmount, PollenReservationStatus status, String comment, String confirmedBy) {
+        static PollenReservationResponse from(PollenReservation reservation) {
+            return new PollenReservationResponse(reservation.id(), reservation.seasonPlanId(), reservation.requestedAmount(),
+                    reservation.confirmedAmount(), reservation.status(), reservation.comment(), reservation.confirmedBy());
+        }
+    }
+
+    public record FairyAssignmentResponse(UUID id, UUID magicTaskId, String fairyId, String role, String talent, AssignmentStatus status) {
+        static FairyAssignmentResponse from(FairyAssignment assignment) {
+            return new FairyAssignmentResponse(assignment.id(), assignment.magicTaskId(), assignment.fairyId(), assignment.role(), assignment.talent(), assignment.status());
+        }
     }
 
     public record DecisionRequest(String comment) {

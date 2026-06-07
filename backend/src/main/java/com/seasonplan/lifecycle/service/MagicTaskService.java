@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.service;
 
 import com.seasonplan.lifecycle.domain.ActorRole;
+import com.seasonplan.lifecycle.domain.DomainValidationException;
 import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;

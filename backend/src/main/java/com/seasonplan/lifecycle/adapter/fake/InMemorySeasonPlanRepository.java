@@ -1,6 +1,7 @@
-package com.seasonplan.lifecycle.service;
+package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.SeasonPlan;
+import com.seasonplan.lifecycle.service.SeasonPlanRepository;
 
 import java.util.Map;
 import java.util.Optional;

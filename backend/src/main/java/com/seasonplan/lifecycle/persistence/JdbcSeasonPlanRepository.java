@@ -123,18 +123,21 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
     }
 
     private SeasonPlan mapPlan(ResultSet rs, int rowNum) throws SQLException {
-        SeasonPlan plan = new SeasonPlan();
-        plan.setId(rs.getObject("id", UUID.class));
-        plan.setSeasonType(rs.getString("season_type"));
-        plan.setStatus(SeasonPlanStatus.valueOf(rs.getString("status")));
-        plan.setApprovalComment(rs.getString("approval_comment"));
-        plan.setNaturalPhenomenonParameters(JdbcJson.readStringMap(objectMapper, rs.getString("natural_phenomenon_parameters")));
-        plan.setTargetClimateMetrics(JdbcJson.readDoubleMap(objectMapper, rs.getString("target_climate_metrics")));
-        plan.setCreatedBy(rs.getString("created_by"));
-        plan.setUpdatedBy(rs.getString("updated_by"));
-        plan.setCreatedAt(rs.getTimestamp("created_at").toInstant());
-        plan.setUpdatedAt(rs.getTimestamp("updated_at").toInstant());
-        return plan;
+        return SeasonPlan.rehydrate(
+                rs.getObject("id", UUID.class),
+                rs.getString("season_type"),
+                List.of(),
+                List.of(),
+                JdbcJson.readStringMap(objectMapper, rs.getString("natural_phenomenon_parameters")),
+                JdbcJson.readDoubleMap(objectMapper, rs.getString("target_climate_metrics")),
+                SeasonPlanStatus.valueOf(rs.getString("status")),
+                rs.getString("approval_comment"),
+                List.of(),
+                rs.getString("created_by"),
+                rs.getString("updated_by"),
+                rs.getTimestamp("created_at").toInstant(),
+                rs.getTimestamp("updated_at").toInstant()
+        );
     }
 
     private LocalDateTime toLocalDateTime(ResultSet rs, String column) throws SQLException {

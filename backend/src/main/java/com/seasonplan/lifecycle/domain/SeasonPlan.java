@@ -1,15 +1,14 @@
 package com.seasonplan.lifecycle.domain;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class SeasonPlan {
     private UUID id;
     private String seasonType;
@@ -24,6 +23,65 @@ public class SeasonPlan {
     private String updatedBy;
     private Instant createdAt;
     private Instant updatedAt;
+
+    public static SeasonPlan createDraft(
+            UUID id,
+            String seasonType,
+            List<String> targetTerritories,
+            List<TimeWindow> timeWindows,
+            Map<String, String> naturalPhenomenonParameters,
+            Map<String, Double> targetClimateMetrics,
+            List<ChecklistItem> readinessChecklist,
+            String actorId,
+            Instant now
+    ) {
+        SeasonPlan plan = new SeasonPlan();
+        plan.id = id;
+        plan.seasonType = seasonType;
+        plan.setTargetTerritories(targetTerritories);
+        plan.setTimeWindows(timeWindows);
+        plan.setNaturalPhenomenonParameters(naturalPhenomenonParameters);
+        plan.setTargetClimateMetrics(targetClimateMetrics);
+        plan.status = SeasonPlanStatus.DRAFT;
+        plan.setReadinessChecklist(readinessChecklist);
+        plan.createdBy = actorId;
+        plan.updatedBy = actorId;
+        plan.createdAt = now;
+        plan.updatedAt = now;
+        return plan;
+    }
+
+    public static SeasonPlan rehydrate(
+            UUID id,
+            String seasonType,
+            List<String> targetTerritories,
+            List<TimeWindow> timeWindows,
+            Map<String, String> naturalPhenomenonParameters,
+            Map<String, Double> targetClimateMetrics,
+            SeasonPlanStatus status,
+            String approvalComment,
+            List<ChecklistItem> readinessChecklist,
+            String createdBy,
+            String updatedBy,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        SeasonPlan plan = new SeasonPlan();
+        plan.id = id;
+        plan.seasonType = seasonType;
+        plan.setTargetTerritories(targetTerritories);
+        plan.setTimeWindows(timeWindows);
+        plan.setNaturalPhenomenonParameters(naturalPhenomenonParameters);
+        plan.setTargetClimateMetrics(targetClimateMetrics);
+        plan.status = status;
+        plan.approvalComment = approvalComment;
+        plan.setReadinessChecklist(readinessChecklist);
+        plan.createdBy = createdBy;
+        plan.updatedBy = updatedBy;
+        plan.createdAt = createdAt;
+        plan.updatedAt = updatedAt;
+        return plan;
+    }
 
     public UUID id() {
         return id;
@@ -42,7 +100,7 @@ public class SeasonPlan {
     }
 
     public List<String> targetTerritories() {
-        return targetTerritories;
+        return Collections.unmodifiableList(targetTerritories);
     }
 
     public void setTargetTerritories(List<String> targetTerritories) {
@@ -50,7 +108,7 @@ public class SeasonPlan {
     }
 
     public List<TimeWindow> timeWindows() {
-        return timeWindows;
+        return Collections.unmodifiableList(timeWindows);
     }
 
     public void setTimeWindows(List<TimeWindow> timeWindows) {
@@ -58,7 +116,7 @@ public class SeasonPlan {
     }
 
     public Map<String, String> naturalPhenomenonParameters() {
-        return naturalPhenomenonParameters;
+        return Collections.unmodifiableMap(naturalPhenomenonParameters);
     }
 
     public void setNaturalPhenomenonParameters(Map<String, String> naturalPhenomenonParameters) {
@@ -66,7 +124,7 @@ public class SeasonPlan {
     }
 
     public Map<String, Double> targetClimateMetrics() {
-        return targetClimateMetrics;
+        return Collections.unmodifiableMap(targetClimateMetrics);
     }
 
     public void setTargetClimateMetrics(Map<String, Double> targetClimateMetrics) {
@@ -75,10 +133,6 @@ public class SeasonPlan {
 
     public SeasonPlanStatus status() {
         return status;
-    }
-
-    public void setStatus(SeasonPlanStatus status) {
-        this.status = status;
     }
 
     public String approvalComment() {
@@ -90,7 +144,7 @@ public class SeasonPlan {
     }
 
     public List<ChecklistItem> readinessChecklist() {
-        return readinessChecklist;
+        return Collections.unmodifiableList(readinessChecklist);
     }
 
     public void setReadinessChecklist(List<ChecklistItem> readinessChecklist) {
@@ -130,6 +184,7 @@ public class SeasonPlan {
     }
 
     public void updateDraftFieldsFrom(SeasonPlan draft, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.DRAFT, SeasonPlanStatus.VERIFIED, "only DRAFT or VERIFIED plans can be updated");
         this.seasonType = draft.seasonType;
         setTargetTerritories(draft.targetTerritories);
         setTimeWindows(draft.timeWindows);
@@ -137,5 +192,70 @@ public class SeasonPlan {
         setTargetClimateMetrics(draft.targetClimateMetrics);
         this.updatedBy = actorId;
         this.updatedAt = now;
+    }
+
+    public void submit(String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.DRAFT, "only DRAFT plans can be submitted");
+        this.status = SeasonPlanStatus.SUBMITTED;
+        touch(actorId, now);
+    }
+
+    public void approve(String comment, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.SUBMITTED, "only SUBMITTED plans can be reviewed");
+        this.status = SeasonPlanStatus.APPROVED;
+        this.approvalComment = comment;
+        touch(actorId, now);
+    }
+
+    public void returnForRevision(String comment, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.SUBMITTED, "only SUBMITTED plans can be reviewed");
+        if (comment == null || comment.isBlank()) {
+            throw new DomainValidationException(new LinkedHashMap<>() {{
+                put("comment", List.of("comment is required when returning a plan"));
+            }});
+        }
+        this.status = SeasonPlanStatus.DRAFT;
+        this.approvalComment = comment;
+        touch(actorId, now);
+    }
+
+    public void markRitualReady(String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.APPROVED, "only APPROVED plans can be marked RITUAL_READY");
+        this.status = SeasonPlanStatus.RITUAL_READY;
+        touch(actorId, now);
+    }
+
+    public void completeReadinessChecklistItem(String key, String actorId, Instant now) {
+        readinessChecklist.stream()
+                .filter(item -> item.key().equals(key))
+                .findFirst()
+                .orElseGet(() -> {
+                    ChecklistItem item = new ChecklistItem(key, false);
+                    readinessChecklist.add(item);
+                    return item;
+                })
+                .markComplete();
+        touch(actorId, now);
+    }
+
+    private void touch(String actorId, Instant now) {
+        this.updatedBy = actorId;
+        this.updatedAt = now;
+    }
+
+    private void requireStatus(SeasonPlanStatus requiredStatus, String message) {
+        if (status != requiredStatus) {
+            throw new DomainValidationException(new LinkedHashMap<>() {{
+                put("status", List.of(message));
+            }});
+        }
+    }
+
+    private void requireStatus(SeasonPlanStatus firstAllowed, SeasonPlanStatus secondAllowed, String message) {
+        if (status != firstAllowed && status != secondAllowed) {
+            throw new DomainValidationException(new LinkedHashMap<>() {{
+                put("status", List.of(message));
+            }});
+        }
     }
 }

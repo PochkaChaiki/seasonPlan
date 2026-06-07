@@ -1,8 +1,5 @@
 package com.seasonplan.lifecycle.domain;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class ChecklistItem {
     private String key;
     private boolean complete;

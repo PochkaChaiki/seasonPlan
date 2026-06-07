@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.service;
 
 import com.seasonplan.lifecycle.domain.ActorRole;
+import com.seasonplan.lifecycle.domain.DomainValidationException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

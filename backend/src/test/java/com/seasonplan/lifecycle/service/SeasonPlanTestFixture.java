@@ -1,5 +1,10 @@
 package com.seasonplan.lifecycle.service;
 
+import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
+import com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository;
+import com.seasonplan.lifecycle.adapter.fake.InMemoryMagicTaskRepository;
+import com.seasonplan.lifecycle.adapter.fake.InMemoryPollenReservationRepository;
+import com.seasonplan.lifecycle.adapter.fake.InMemorySeasonPlanRepository;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
@@ -47,8 +52,8 @@ public class SeasonPlanTestFixture {
         InMemoryFairyAssignmentRepository fairyAssignments = new InMemoryFairyAssignmentRepository();
         AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
         NotificationService notificationService = new NotificationService();
-        ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService();
-        readinessChecklistService.configure(plans, pollenReservations, magicTasks, fairyAssignments);
+        ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService(plans, pollenReservations,
+                magicTasks, fairyAssignments, clock);
         SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenReservations, auditLogService,
                 notificationService, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
         PollenReservationService pollenReservationService = new PollenReservationService(pollenReservations, seasonPlanService, auditLogService);

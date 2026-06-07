@@ -1,4 +1,4 @@
-package com.seasonplan.lifecycle.service;
+package com.seasonplan.lifecycle.domain;
 
 import java.util.List;
 import java.util.Map;

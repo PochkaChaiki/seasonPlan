@@ -46,11 +46,10 @@ public class LifecycleConfiguration {
             SeasonPlanRepository plans,
             PollenReservationRepository pollenReservations,
             MagicTaskRepository magicTasks,
-            FairyAssignmentRepository fairyAssignments
+            FairyAssignmentRepository fairyAssignments,
+            Clock clock
     ) {
-        ReadinessChecklistService service = new ReadinessChecklistService();
-        service.configure(plans, pollenReservations, magicTasks, fairyAssignments);
-        return service;
+        return new ReadinessChecklistService(plans, pollenReservations, magicTasks, fairyAssignments, clock);
     }
 
     @Bean

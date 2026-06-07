@@ -39,9 +39,10 @@ class LifecycleControllerTest {
                         .header("X-Actor-Role", "FAIRY_PLANNER")
                         .header("X-Actor-Id", "planner-1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(SeasonPlanTestFixture.validPlanDraft("planner-1"))))
+                        .content(validPlanRequestWithServerOwnedFields()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(SeasonPlanStatus.DRAFT.name()))
+                .andExpect(jsonPath("$.createdBy").value("planner-1"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -76,8 +77,32 @@ class LifecycleControllerTest {
                         .header("X-Actor-Role", "CHIEF_GUARDIAN")
                         .header("X-Actor-Id", "guardian-1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(SeasonPlanTestFixture.validPlanDraft("guardian-1"))))
+                        .content(validPlanRequestWithServerOwnedFields()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("role is not allowed for this command: CHIEF_GUARDIAN"));
+    }
+
+    private String validPlanRequestWithServerOwnedFields() {
+        return """
+                {
+                  "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                  "status": "APPROVED",
+                  "createdBy": "attacker",
+                  "seasonType": "SPRING",
+                  "targetTerritories": ["north-grove"],
+                  "timeWindows": [
+                    {
+                      "start": "2026-03-01T09:00:00",
+                      "end": "2026-03-01T12:00:00"
+                    }
+                  ],
+                  "naturalPhenomenonParameters": {
+                    "bloom": "early"
+                  },
+                  "targetClimateMetrics": {
+                    "temperature": 17.5
+                  }
+                }
+                """;
     }
 }
