@@ -14,16 +14,16 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ReadinessChecklistService {
-    private InMemorySeasonPlanRepository plans;
-    private InMemoryPollenReservationRepository pollenReservations;
-    private InMemoryMagicTaskRepository magicTasks;
-    private InMemoryFairyAssignmentRepository fairyAssignments;
+    private SeasonPlanRepository plans;
+    private PollenReservationRepository pollenReservations;
+    private MagicTaskRepository magicTasks;
+    private FairyAssignmentRepository fairyAssignments;
 
     public void configure(
-            InMemorySeasonPlanRepository plans,
-            InMemoryPollenReservationRepository pollenReservations,
-            InMemoryMagicTaskRepository magicTasks,
-            InMemoryFairyAssignmentRepository fairyAssignments
+            SeasonPlanRepository plans,
+            PollenReservationRepository pollenReservations,
+            MagicTaskRepository magicTasks,
+            FairyAssignmentRepository fairyAssignments
     ) {
         this.plans = plans;
         this.pollenReservations = pollenReservations;
@@ -82,5 +82,6 @@ public class ReadinessChecklistService {
                 })
                 .markComplete();
         plan.setUpdatedBy(actorId);
+        plans.save(plan);
     }
 }

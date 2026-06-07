@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.UUID;
 
 public class MagicTaskService {
-    private final InMemoryMagicTaskRepository tasks;
+    private final MagicTaskRepository tasks;
     private final SeasonPlanService seasonPlanService;
     private final AuditLogService auditLogService;
 
-    public MagicTaskService(InMemoryMagicTaskRepository tasks, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
+    public MagicTaskService(MagicTaskRepository tasks, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
         this.tasks = tasks;
         this.seasonPlanService = seasonPlanService;
         this.auditLogService = auditLogService;
@@ -34,7 +34,7 @@ public class MagicTaskService {
         if (draft.status() == null) {
             draft.updateFrom(new MagicTask(draft.title(), draft.description(), draft.requiredTalent(), draft.timeWindow(), MagicTaskStatus.READY));
         }
-        tasks.save(draft);
+        tasks.save(draft, actorId);
         auditLogService.append(seasonPlanId, AuditAction.MAGIC_TASK_CREATED, actorId, draft.title());
         return draft;
     }
@@ -44,7 +44,7 @@ public class MagicTaskService {
         MagicTask existing = get(taskId);
         validateTask(draft);
         existing.updateFrom(draft);
-        return tasks.save(existing);
+        return tasks.save(existing, actorId);
     }
 
     public List<MagicTask> listTasksBySeasonPlan(UUID seasonPlanId) {

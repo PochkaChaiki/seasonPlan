@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.UUID;
 
 public class FairyAssignmentService {
-    private final InMemoryFairyAssignmentRepository assignments;
+    private final FairyAssignmentRepository assignments;
     private final MagicTaskService magicTaskService;
     private final AuditLogService auditLogService;
 
-    public FairyAssignmentService(InMemoryFairyAssignmentRepository assignments, MagicTaskService magicTaskService, AuditLogService auditLogService) {
+    public FairyAssignmentService(FairyAssignmentRepository assignments, MagicTaskService magicTaskService, AuditLogService auditLogService) {
         this.assignments = assignments;
         this.magicTaskService = magicTaskService;
         this.auditLogService = auditLogService;
@@ -39,7 +39,7 @@ public class FairyAssignmentService {
         }
         ValidationSupport.throwIfAny(errors);
         FairyAssignment assignment = new FairyAssignment(UUID.randomUUID(), magicTaskId, fairyId, role, talent, status);
-        assignments.save(assignment);
+        assignments.save(assignment, actorId);
         auditLogService.append(task.seasonPlanId(), AuditAction.FAIRY_ASSIGNED, actorId, fairyId);
         return assignment;
     }

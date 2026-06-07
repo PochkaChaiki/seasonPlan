@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class SeasonPlanService {
-    private final InMemorySeasonPlanRepository plans;
-    private final InMemoryPollenReservationRepository pollenReservations;
+    private final SeasonPlanRepository plans;
+    private final PollenReservationRepository pollenReservations;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
     private final NaturalCalendarService naturalCalendarService;
@@ -25,8 +25,8 @@ public class SeasonPlanService {
     private final Clock clock;
 
     public SeasonPlanService(
-            InMemorySeasonPlanRepository plans,
-            InMemoryPollenReservationRepository pollenReservations,
+            SeasonPlanRepository plans,
+            PollenReservationRepository pollenReservations,
             AuditLogService auditLogService,
             NotificationService notificationService,
             NaturalCalendarService naturalCalendarService,

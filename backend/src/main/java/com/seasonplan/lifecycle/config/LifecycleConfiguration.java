@@ -1,17 +1,18 @@
 package com.seasonplan.lifecycle.config;
 
 import com.seasonplan.lifecycle.service.AllowingNaturalCalendarService;
+import com.seasonplan.lifecycle.service.AuditLogRepository;
 import com.seasonplan.lifecycle.service.AuditLogService;
 import com.seasonplan.lifecycle.service.FairyAssignmentService;
-import com.seasonplan.lifecycle.service.InMemoryFairyAssignmentRepository;
-import com.seasonplan.lifecycle.service.InMemoryMagicTaskRepository;
-import com.seasonplan.lifecycle.service.InMemoryPollenReservationRepository;
-import com.seasonplan.lifecycle.service.InMemorySeasonPlanRepository;
+import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
 import com.seasonplan.lifecycle.service.MagicTaskService;
+import com.seasonplan.lifecycle.service.MagicTaskRepository;
 import com.seasonplan.lifecycle.service.NaturalCalendarService;
 import com.seasonplan.lifecycle.service.NotificationService;
+import com.seasonplan.lifecycle.service.PollenReservationRepository;
 import com.seasonplan.lifecycle.service.PollenReservationService;
 import com.seasonplan.lifecycle.service.ReadinessChecklistService;
+import com.seasonplan.lifecycle.service.SeasonPlanRepository;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,28 +27,8 @@ public class LifecycleConfiguration {
     }
 
     @Bean
-    InMemorySeasonPlanRepository seasonPlanRepository() {
-        return new InMemorySeasonPlanRepository();
-    }
-
-    @Bean
-    InMemoryPollenReservationRepository pollenReservationRepository() {
-        return new InMemoryPollenReservationRepository();
-    }
-
-    @Bean
-    InMemoryMagicTaskRepository magicTaskRepository() {
-        return new InMemoryMagicTaskRepository();
-    }
-
-    @Bean
-    InMemoryFairyAssignmentRepository fairyAssignmentRepository() {
-        return new InMemoryFairyAssignmentRepository();
-    }
-
-    @Bean
-    AuditLogService auditLogService(Clock clock) {
-        return new AuditLogService(clock);
+    AuditLogService auditLogService(AuditLogRepository auditLogRepository, Clock clock) {
+        return new AuditLogService(auditLogRepository, clock);
     }
 
     @Bean
@@ -62,10 +43,10 @@ public class LifecycleConfiguration {
 
     @Bean
     ReadinessChecklistService readinessChecklistService(
-            InMemorySeasonPlanRepository plans,
-            InMemoryPollenReservationRepository pollenReservations,
-            InMemoryMagicTaskRepository magicTasks,
-            InMemoryFairyAssignmentRepository fairyAssignments
+            SeasonPlanRepository plans,
+            PollenReservationRepository pollenReservations,
+            MagicTaskRepository magicTasks,
+            FairyAssignmentRepository fairyAssignments
     ) {
         ReadinessChecklistService service = new ReadinessChecklistService();
         service.configure(plans, pollenReservations, magicTasks, fairyAssignments);
@@ -74,8 +55,8 @@ public class LifecycleConfiguration {
 
     @Bean
     SeasonPlanService seasonPlanService(
-            InMemorySeasonPlanRepository plans,
-            InMemoryPollenReservationRepository pollenReservations,
+            SeasonPlanRepository plans,
+            PollenReservationRepository pollenReservations,
             AuditLogService auditLogService,
             NotificationService notificationService,
             NaturalCalendarService naturalCalendarService,
@@ -88,7 +69,7 @@ public class LifecycleConfiguration {
 
     @Bean
     PollenReservationService pollenReservationService(
-            InMemoryPollenReservationRepository reservations,
+            PollenReservationRepository reservations,
             SeasonPlanService seasonPlanService,
             AuditLogService auditLogService
     ) {
@@ -97,7 +78,7 @@ public class LifecycleConfiguration {
 
     @Bean
     MagicTaskService magicTaskService(
-            InMemoryMagicTaskRepository tasks,
+            MagicTaskRepository tasks,
             SeasonPlanService seasonPlanService,
             AuditLogService auditLogService
     ) {
@@ -106,7 +87,7 @@ public class LifecycleConfiguration {
 
     @Bean
     FairyAssignmentService fairyAssignmentService(
-            InMemoryFairyAssignmentRepository assignments,
+            FairyAssignmentRepository assignments,
             MagicTaskService magicTaskService,
             AuditLogService auditLogService
     ) {

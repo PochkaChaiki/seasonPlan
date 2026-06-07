@@ -1,0 +1,120 @@
+package com.seasonplan.lifecycle.persistence;
+
+import com.seasonplan.lifecycle.domain.ActorRole;
+import com.seasonplan.lifecycle.domain.AssignmentStatus;
+import com.seasonplan.lifecycle.domain.MagicTask;
+import com.seasonplan.lifecycle.domain.PollenReservation;
+import com.seasonplan.lifecycle.domain.SeasonPlan;
+import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
+import com.seasonplan.lifecycle.service.FairyAssignmentService;
+import com.seasonplan.lifecycle.service.MagicTaskService;
+import com.seasonplan.lifecycle.service.PollenReservationService;
+import com.seasonplan.lifecycle.service.ReadinessChecklistService;
+import com.seasonplan.lifecycle.service.SeasonPlanService;
+import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@Testcontainers
+class PostgresLifecyclePersistenceTest {
+    @Container
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14")
+            .withDatabaseName("seasonplan_test")
+            .withUsername("seasonplan")
+            .withPassword("seasonplan_test");
+
+    @DynamicPropertySource
+    static void postgresProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private SeasonPlanService seasonPlanService;
+
+    @Autowired
+    private PollenReservationService pollenReservationService;
+
+    @Autowired
+    private MagicTaskService magicTaskService;
+
+    @Autowired
+    private FairyAssignmentService fairyAssignmentService;
+
+    @Autowired
+    private ReadinessChecklistService readinessChecklistService;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @Test
+    void lifecycleServicesPersistSeasonPlanAndAuditLogToPostgres() {
+        SeasonPlan draft = seasonPlanService.createDraft(
+                SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER,
+                "planner-1"
+        );
+
+        assertThat(jdbc.queryForObject("select count(*) from season_plans where id = ?", Integer.class, draft.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from season_plan_time_windows where season_plan_id = ?", Integer.class, draft.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from season_plan_target_territories where season_plan_id = ?", Integer.class, draft.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from readiness_checklist_items where season_plan_id = ?", Integer.class, draft.id()))
+                .isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from audit_log_entries where season_plan_id = ?", Integer.class, draft.id()))
+                .isEqualTo(1);
+
+        SeasonPlan submitted = seasonPlanService.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+
+        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+        assertThat(jdbc.queryForObject("select status from season_plans where id = ?", String.class, draft.id()))
+                .isEqualTo("SUBMITTED");
+        assertThat(jdbc.queryForObject("select count(*) from audit_log_entries where season_plan_id = ?", Integer.class, draft.id()))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void preparationDataIsPersistedAndLoadedFromPostgres() {
+        SeasonPlan draft = seasonPlanService.createDraft(
+                SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER,
+                "planner-1"
+        );
+        seasonPlanService.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        SeasonPlan approved = seasonPlanService.approve(draft.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+
+        PollenReservation reservation = pollenReservationService.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenReservationService.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        MagicTask task = magicTaskService.createTask(approved.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        fairyAssignmentService.assignFairy(task.id(), "fairy-1", "LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        readinessChecklistService.completeItem(approved.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        readinessChecklistService.completeItem(approved.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
+
+        SeasonPlan ready = seasonPlanService.markRitualReady(approved.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+
+        assertThat(ready.status()).isEqualTo(SeasonPlanStatus.RITUAL_READY);
+        assertThat(jdbc.queryForObject("select status from pollen_reservations where id = ?", String.class, reservation.id()))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("select count(*) from magic_tasks where season_plan_id = ?", Integer.class, approved.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from fairy_assignments where magic_task_id = ?", Integer.class, task.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from readiness_checklist_items where season_plan_id = ? and complete = true", Integer.class, approved.id()))
+                .isEqualTo(2);
+        assertThat(jdbc.queryForObject("select status from season_plans where id = ?", String.class, approved.id()))
+                .isEqualTo("RITUAL_READY");
+    }
+}

@@ -368,11 +368,11 @@ Set-Location X:\projects\seasonPlan\backend
 mvn test
 ```
 
-Start local PostgreSQL:
+Start local PostgreSQL and apply Flyway migrations:
 
 ```powershell
 Set-Location X:\projects\seasonPlan
-docker compose up -d postgres
+docker compose up -d postgres flyway
 ```
 
 If npm scripts are needed from PowerShell, prefer:
@@ -385,121 +385,6 @@ npm.cmd run dev
 
 Avoid assuming Bash syntax such as `export VAR=value`, `VAR=value command`, `&&`-chained examples, or Unix-only utilities in setup instructions.
 
-## Possible Project Directory Structure
-
-The repository may be organized as a client-server monorepo:
-
-```text
-seasonPlan/
-  AGENTS.md
-  .editorconfig
-  .env.example
-  .gitignore
-  ENVIRONMENT_SETUP.md
-  TASK.md
-  docker-compose.yml
-  .github/
-    workflows/
-      ci.yml
-  backend/
-    pom.xml
-    mvnw
-    mvnw.cmd
-    src/
-      main/
-        java/
-          com/
-            seasonplan/
-              SeasonPlanApplication.java
-              seasonplan/
-                domain/
-                application/
-                adapter/
-                  in/
-                    rest/
-                  out/
-                    persistence/
-              pollenreservation/
-                domain/
-                application/
-                adapter/
-              magictask/
-                domain/
-                application/
-                adapter/
-              fairyassignment/
-                domain/
-                application/
-                adapter/
-              ritualsession/
-                domain/
-                application/
-                adapter/
-              climatemetric/
-                domain/
-                application/
-                adapter/
-              magicincident/
-                domain/
-                application/
-                adapter/
-              correctionaction/
-                domain/
-                application/
-                adapter/
-              seasonreport/
-                domain/
-                application/
-                adapter/
-              auditlog/
-                domain/
-                application/
-                adapter/
-              shared/
-                domain/
-                security/
-                validation/
-        resources/
-          application.yml
-          application-test.yml
-          db/
-            migration/
-      test/
-        java/
-          com/
-            seasonplan/
-              seasonplan/
-              pollenreservation/
-              magictask/
-              fairyassignment/
-              auditlog/
-              shared/
-  frontend/
-    package.json
-    index.html
-    src/
-      main.jsx
-      App.jsx
-      api/
-      routes/
-      components/
-      features/
-        dashboard/
-        season-plans/
-        tasks/
-        incidents/
-        climate-metrics/
-        audit-log/
-        reports/
-      test/
-      styles/
-    public/
-  docs/
-    api/
-      openapi.yaml
-    architecture/
-    decisions/
-```
 
 ## Backend Package Guidance
 

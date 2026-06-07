@@ -1,131 +1,113 @@
-# Environment Setup Report
+# Persistence Layer Implementation Report
 
-Date: 2026-06-06
+Date: 2026-06-07
 
 ## Summary
 
-The project environment was set up as a client-server monorepo with a Spring Boot backend, React frontend, local PostgreSQL service definition, CI workflow, and supporting documentation.
+The lifecycle application was changed from production in-memory storage to PostgreSQL-backed persistence.
 
-No business use cases were implemented. The added code is limited to application/bootstrap scaffolding and smoke tests required to verify the environment.
+The service layer now depends on repository interfaces. Spring production wiring uses JDBC repositories that read and write the PostgreSQL schema from Flyway migrations. The existing in-memory repositories remain as deterministic test doubles for unit tests.
 
-## Files Added
+## Main Changes
 
-Repository-level setup:
+### Repository Abstractions
 
-* `.editorconfig`
-* `.gitignore`
-* `.env.example`
-* `docker-compose.yml`
-* `.github/workflows/ci.yml`
-* `REPORT.md`
+Added repository interfaces under `backend/src/main/java/com/seasonplan/lifecycle/service`:
 
-Backend setup:
+* `SeasonPlanRepository`
+* `PollenReservationRepository`
+* `MagicTaskRepository`
+* `FairyAssignmentRepository`
+* `AuditLogRepository`
 
-* `backend/pom.xml`
-* `backend/src/main/java/com/seasonplan/SeasonPlanApplication.java`
-* `backend/src/main/resources/application.yml`
-* `backend/src/main/resources/application-test.yml`
-* `backend/src/main/resources/db/migration/V1__initial_schema.sql`
-* `backend/src/test/java/com/seasonplan/SeasonPlanApplicationTest.java`
+Updated lifecycle services to depend on these interfaces instead of concrete in-memory classes.
 
-Frontend setup:
+### PostgreSQL JDBC Persistence
 
-* `frontend/package.json`
-* `frontend/package-lock.json`
-* `frontend/index.html`
-* `frontend/vite.config.js`
-* `frontend/eslint.config.js`
-* `frontend/src/main.jsx`
-* `frontend/src/App.jsx`
-* `frontend/src/App.test.jsx`
-* `frontend/src/styles/global.css`
+Added JDBC repository implementations under `backend/src/main/java/com/seasonplan/lifecycle/persistence`:
 
-Documentation structure:
+* `JdbcSeasonPlanRepository`
+* `JdbcPollenReservationRepository`
+* `JdbcMagicTaskRepository`
+* `JdbcFairyAssignmentRepository`
+* `JdbcAuditLogRepository`
+* `JdbcJson`
 
-* `docs/api/openapi.yaml`
-* `docs/architecture/README.md`
-* `docs/decisions/README.md`
+Persisted data includes:
 
-## Files Updated
+* Season plans
+* Season plan target territories
+* Season plan time windows
+* Readiness checklist items
+* Pollen reservations
+* Magic tasks
+* Fairy assignments
+* Audit log entries
 
-* `ENVIRONMENT_SETUP.md`
-  * Added lockfile, CI/check, npm audit, PowerShell command, Docker Compose, and Vite 8 notes discovered during setup.
+`SeasonPlan` structured fields are stored in PostgreSQL `jsonb` columns:
 
-## Backend Setup
+* `natural_phenomenon_parameters`
+* `target_climate_metrics`
 
-The backend is configured as a Maven Spring Boot 3.2 project targeting Java 17 bytecode.
+### Spring Configuration
 
-Included dependencies:
+Updated `LifecycleConfiguration` so application services are wired with repository interfaces.
 
-* Spring Boot web, validation, security, data JPA, actuator
-* PostgreSQL JDBC driver
-* Flyway
-* Springdoc OpenAPI
-* Spring Boot test
-* Spring Security test
-* Testcontainers for PostgreSQL
-* REST Assured
-* Maven Enforcer minimum Java check
+Spring now discovers the JDBC repository implementations via component scanning and uses them for normal application runtime.
 
-The current smoke test verifies that the application bootstrap class is available.
+### In-Memory Test Doubles
 
-## Frontend Setup
+Updated existing in-memory repositories to implement the new repository interfaces.
 
-The frontend is configured as a React 18 JavaScript project using Vite.
+Added:
 
-Included dependencies:
+* `InMemoryAuditLogRepository`
 
-* React 18
-* React DOM
-* React Router
-* Vite
-* Vite React plugin
-* Vitest
-* React Testing Library
-* Testing Library user-event
-* Mock Service Worker
-* ESLint
+This keeps fast domain/service tests isolated from PostgreSQL while production uses JDBC persistence.
 
-Vite was upgraded to version 8 during setup because npm audit reported unresolved moderate advisories for the older Vite line. The Vite React plugin and required peer dependencies were aligned with Vite 8.
+### Tests
 
-## Local Services
+Added PostgreSQL integration coverage:
 
-`docker-compose.yml` defines PostgreSQL 14 with:
+* `PostgresLifecyclePersistenceTest`
 
-* Configurable database, user, password, and port through environment variables
-* Persistent Docker volume
-* Health check using `pg_isready`
+This test starts PostgreSQL through Testcontainers, applies Flyway migrations, executes lifecycle services, and verifies rows are written to the database.
 
-`.env.example` documents expected local environment variables.
+Covered persistence paths:
+
+* Draft creation
+* Submit transition
+* Audit log append
+* Pollen reservation confirmation
+* Magic task creation
+* Fairy assignment creation
+* Readiness checklist completion
+* `RITUAL_READY` transition
 
 ## Verification
 
-The following checks were run successfully:
+Ran:
 
 ```powershell
 Set-Location X:\projects\seasonPlan\backend
-mvn test
+mvn.cmd test
 ```
 
-Result: 1 backend test passed.
+Result:
+
+* 15 tests passed
+* 0 failures
+* 0 errors
+
+## Operational Notes
+
+Flyway remains responsible for schema creation.
+
+For local Docker startup with migrations:
 
 ```powershell
-Set-Location X:\projects\seasonPlan\frontend
-npm.cmd test -- --run
-npm.cmd run lint
-npm.cmd run build
-npm.cmd audit --audit-level=moderate
+Set-Location X:\projects\seasonPlan
+docker compose up -d postgres flyway
 ```
 
-Results:
-
-* 1 frontend test passed.
-* ESLint completed with no errors.
-* Production build completed successfully.
-* npm audit reported 0 vulnerabilities.
-
-## Notes
-
-The first Maven and npm dependency resolution attempts failed or timed out under the sandbox because network access was restricted. The commands were rerun with approved network access and completed successfully.
-
-The local host still has Java 24 active on `PATH`. The Maven project is configured to compile with Java release 17, but installing OpenJDK 17 and setting `JAVA_HOME` remains required for a fully aligned local development host.
+After that, running the backend will use PostgreSQL through the configured datasource in `application.yml`.

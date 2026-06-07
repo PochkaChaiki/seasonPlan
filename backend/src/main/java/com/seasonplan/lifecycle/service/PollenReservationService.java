@@ -11,11 +11,11 @@ import java.util.UUID;
 public class PollenReservationService {
     private static final int MAX_CONFIRMABLE_AMOUNT = 1_000;
 
-    private final InMemoryPollenReservationRepository reservations;
+    private final PollenReservationRepository reservations;
     private final SeasonPlanService seasonPlanService;
     private final AuditLogService auditLogService;
 
-    public PollenReservationService(InMemoryPollenReservationRepository reservations, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
+    public PollenReservationService(PollenReservationRepository reservations, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
         this.reservations = reservations;
         this.seasonPlanService = seasonPlanService;
         this.auditLogService = auditLogService;

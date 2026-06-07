@@ -45,7 +45,7 @@ public class SeasonPlanTestFixture {
         InMemoryPollenReservationRepository pollenReservations = new InMemoryPollenReservationRepository();
         InMemoryMagicTaskRepository magicTasks = new InMemoryMagicTaskRepository();
         InMemoryFairyAssignmentRepository fairyAssignments = new InMemoryFairyAssignmentRepository();
-        AuditLogService auditLogService = new AuditLogService(clock);
+        AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
         NotificationService notificationService = new NotificationService();
         ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService();
         readinessChecklistService.configure(plans, pollenReservations, magicTasks, fairyAssignments);
