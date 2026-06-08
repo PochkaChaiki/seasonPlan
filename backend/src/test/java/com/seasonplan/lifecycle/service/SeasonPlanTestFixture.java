@@ -56,9 +56,11 @@ public class SeasonPlanTestFixture {
                 magicTasks, fairyAssignments, clock);
         SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenReservations, auditLogService,
                 notificationService, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
-        PollenReservationService pollenReservationService = new PollenReservationService(pollenReservations, seasonPlanService, auditLogService);
-        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, seasonPlanService, auditLogService);
-        FairyAssignmentService fairyAssignmentService = new FairyAssignmentService(fairyAssignments, magicTaskService, auditLogService);
+        PollenReservationService pollenReservationService = new PollenReservationService(pollenReservations, plans, auditLogService);
+        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, plans, auditLogService);
+        FairySchedulePolicy fairySchedulePolicy = new FairySchedulePolicy(fairyAssignments, magicTasks);
+        FairyAssignmentService fairyAssignmentService = new FairyAssignmentService(fairyAssignments, magicTasks,
+                fairySchedulePolicy, auditLogService);
         return new SeasonPlanTestFixture(seasonPlanService, pollenReservationService, magicTaskService,
                 fairyAssignmentService, readinessChecklistService, auditLogService, notificationService);
     }

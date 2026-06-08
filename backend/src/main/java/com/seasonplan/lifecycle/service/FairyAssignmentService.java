@@ -12,18 +12,25 @@ import java.util.UUID;
 
 public class FairyAssignmentService {
     private final FairyAssignmentRepository assignments;
-    private final MagicTaskService magicTaskService;
+    private final MagicTaskRepository magicTasks;
+    private final FairySchedulePolicy fairySchedulePolicy;
     private final AuditLogService auditLogService;
 
-    public FairyAssignmentService(FairyAssignmentRepository assignments, MagicTaskService magicTaskService, AuditLogService auditLogService) {
+    public FairyAssignmentService(
+            FairyAssignmentRepository assignments,
+            MagicTaskRepository magicTasks,
+            FairySchedulePolicy fairySchedulePolicy,
+            AuditLogService auditLogService
+    ) {
         this.assignments = assignments;
-        this.magicTaskService = magicTaskService;
+        this.magicTasks = magicTasks;
+        this.fairySchedulePolicy = fairySchedulePolicy;
         this.auditLogService = auditLogService;
     }
 
     public FairyAssignment assignFairy(UUID magicTaskId, String fairyId, String role, String talent, AssignmentStatus status, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.TALENT_COORDINATOR);
-        MagicTask task = magicTaskService.get(magicTaskId);
+        MagicTask task = magicTasks.findById(magicTaskId).orElseThrow(() -> new NotFoundException("magic task not found: " + magicTaskId));
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
         if (fairyId == null || fairyId.isBlank()) {
             ValidationSupport.add(errors, "fairyId", "fairy id is required");
@@ -34,7 +41,7 @@ public class FairyAssignmentService {
         if (!validateTalentCompatibility(task, talent)) {
             ValidationSupport.add(errors, "talent", "fairy talent must match required task talent");
         }
-        if (status == AssignmentStatus.CONFIRMED && hasScheduleConflict(task, fairyId)) {
+        if (status == AssignmentStatus.CONFIRMED && fairySchedulePolicy.hasScheduleConflict(task, fairyId)) {
             ValidationSupport.add(errors, "fairyId", "fairy has a schedule conflict");
         }
         ValidationSupport.throwIfAny(errors);
@@ -57,12 +64,4 @@ public class FairyAssignmentService {
         return assignments.findByMagicTaskId(taskId);
     }
 
-    private boolean hasScheduleConflict(MagicTask task, String fairyId) {
-        return assignments.all().stream()
-                .filter(assignment -> assignment.status() == AssignmentStatus.CONFIRMED)
-                .filter(assignment -> assignment.fairyId().equals(fairyId))
-                .map(assignment -> magicTaskService.get(assignment.magicTaskId()))
-                .filter(existingTask -> existingTask.seasonPlanId().equals(task.seasonPlanId()))
-                .anyMatch(existingTask -> existingTask.timeWindow().overlaps(task.timeWindow()));
-    }
 }

@@ -83,11 +83,22 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                     UUID.randomUUID(), plan.id(), Timestamp.valueOf(window.start()), Timestamp.valueOf(window.end()));
         }
 
-        jdbc.update("delete from readiness_checklist_items where season_plan_id = ?", plan.id());
         for (ChecklistItem item : plan.readinessChecklist()) {
             jdbc.update("""
                     insert into readiness_checklist_items (id, season_plan_id, item_key, complete, completed_by, completed_at)
                     values (?, ?, ?, ?, ?, ?)
+                    on conflict (season_plan_id, item_key) do update
+                       set complete = excluded.complete,
+                           completed_by = case
+                               when readiness_checklist_items.complete then readiness_checklist_items.completed_by
+                               when excluded.complete then excluded.completed_by
+                               else null
+                           end,
+                           completed_at = case
+                               when readiness_checklist_items.complete then readiness_checklist_items.completed_at
+                               when excluded.complete then excluded.completed_at
+                               else null
+                           end
                     """,
                     UUID.randomUUID(), plan.id(), item.key(), item.complete(),
                     item.complete() ? plan.updatedBy() : null,

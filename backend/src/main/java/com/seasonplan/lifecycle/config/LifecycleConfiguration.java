@@ -5,6 +5,7 @@ import com.seasonplan.lifecycle.service.AuditLogRepository;
 import com.seasonplan.lifecycle.service.AuditLogService;
 import com.seasonplan.lifecycle.service.FairyAssignmentService;
 import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
+import com.seasonplan.lifecycle.service.FairySchedulePolicy;
 import com.seasonplan.lifecycle.service.MagicTaskService;
 import com.seasonplan.lifecycle.service.MagicTaskRepository;
 import com.seasonplan.lifecycle.service.NaturalCalendarService;
@@ -69,27 +70,36 @@ public class LifecycleConfiguration {
     @Bean
     PollenReservationService pollenReservationService(
             PollenReservationRepository reservations,
-            SeasonPlanService seasonPlanService,
+            SeasonPlanRepository plans,
             AuditLogService auditLogService
     ) {
-        return new PollenReservationService(reservations, seasonPlanService, auditLogService);
+        return new PollenReservationService(reservations, plans, auditLogService);
     }
 
     @Bean
     MagicTaskService magicTaskService(
             MagicTaskRepository tasks,
-            SeasonPlanService seasonPlanService,
+            SeasonPlanRepository plans,
             AuditLogService auditLogService
     ) {
-        return new MagicTaskService(tasks, seasonPlanService, auditLogService);
+        return new MagicTaskService(tasks, plans, auditLogService);
+    }
+
+    @Bean
+    FairySchedulePolicy fairySchedulePolicy(
+            FairyAssignmentRepository assignments,
+            MagicTaskRepository magicTasks
+    ) {
+        return new FairySchedulePolicy(assignments, magicTasks);
     }
 
     @Bean
     FairyAssignmentService fairyAssignmentService(
             FairyAssignmentRepository assignments,
-            MagicTaskService magicTaskService,
+            MagicTaskRepository magicTasks,
+            FairySchedulePolicy fairySchedulePolicy,
             AuditLogService auditLogService
     ) {
-        return new FairyAssignmentService(assignments, magicTaskService, auditLogService);
+        return new FairyAssignmentService(assignments, magicTasks, fairySchedulePolicy, auditLogService);
     }
 }

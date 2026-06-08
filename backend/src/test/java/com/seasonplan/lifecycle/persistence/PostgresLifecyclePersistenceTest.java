@@ -22,6 +22,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Map;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -116,5 +119,32 @@ class PostgresLifecyclePersistenceTest {
                 .isEqualTo(2);
         assertThat(jdbc.queryForObject("select status from season_plans where id = ?", String.class, approved.id()))
                 .isEqualTo("RITUAL_READY");
+    }
+
+    @Test
+    void completingChecklistItemsPreservesExistingCompletionMetadata() {
+        SeasonPlan draft = seasonPlanService.createDraft(
+                SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER,
+                "planner-1"
+        );
+
+        readinessChecklistService.completeItem(draft.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        Map<String, Object> firstCompletion = checklistRow(draft.id(), "calendar-reviewed");
+
+        readinessChecklistService.completeItem(draft.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-2");
+        Map<String, Object> afterUnrelatedCompletion = checklistRow(draft.id(), "calendar-reviewed");
+
+        assertThat(afterUnrelatedCompletion.get("id")).isEqualTo(firstCompletion.get("id"));
+        assertThat(afterUnrelatedCompletion.get("completed_by")).isEqualTo("coordinator-1");
+        assertThat(afterUnrelatedCompletion.get("completed_at")).isEqualTo(firstCompletion.get("completed_at"));
+    }
+
+    private Map<String, Object> checklistRow(UUID seasonPlanId, String itemKey) {
+        return jdbc.queryForMap("""
+                select id, completed_by, completed_at
+                  from readiness_checklist_items
+                 where season_plan_id = ? and item_key = ?
+                """, seasonPlanId, itemKey);
     }
 }

@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.FairyAssignment;
+import com.seasonplan.lifecycle.domain.AssignmentStatus;
 import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
 
 import java.util.List;
@@ -25,7 +26,10 @@ public class InMemoryFairyAssignmentRepository implements FairyAssignmentReposit
     }
 
     @Override
-    public List<FairyAssignment> all() {
-        return List.copyOf(assignments.values());
+    public List<FairyAssignment> findConfirmedByFairyId(String fairyId) {
+        return assignments.values().stream()
+                .filter(assignment -> assignment.fairyId().equals(fairyId))
+                .filter(assignment -> assignment.status() == AssignmentStatus.CONFIRMED)
+                .toList();
     }
 }

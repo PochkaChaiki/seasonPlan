@@ -13,18 +13,18 @@ public class PollenReservationService {
     private static final int MAX_CONFIRMABLE_AMOUNT = 1_000;
 
     private final PollenReservationRepository reservations;
-    private final SeasonPlanService seasonPlanService;
+    private final SeasonPlanRepository plans;
     private final AuditLogService auditLogService;
 
-    public PollenReservationService(PollenReservationRepository reservations, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
+    public PollenReservationService(PollenReservationRepository reservations, SeasonPlanRepository plans, AuditLogService auditLogService) {
         this.reservations = reservations;
-        this.seasonPlanService = seasonPlanService;
+        this.plans = plans;
         this.auditLogService = auditLogService;
     }
 
     public PollenReservation requestReservation(UUID seasonPlanId, int requestedAmount, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.POLLEN_GUARDIAN);
-        seasonPlanService.get(seasonPlanId);
+        plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
         if (requestedAmount <= 0) {
             throw new DomainValidationException(new LinkedHashMap<>() {{
                 put("requestedAmount", List.of("requested amount must be positive"));

@@ -61,8 +61,13 @@ public class JdbcFairyAssignmentRepository implements FairyAssignmentRepository 
     }
 
     @Override
-    public List<FairyAssignment> all() {
-        return jdbc.query("select * from fairy_assignments", this::mapAssignment);
+    public List<FairyAssignment> findConfirmedByFairyId(String fairyId) {
+        return jdbc.query("""
+                select *
+                  from fairy_assignments
+                 where fairy_id = ? and status = 'CONFIRMED'
+                 order by created_at, id
+                """, this::mapAssignment, fairyId);
     }
 
     private FairyAssignment mapAssignment(ResultSet rs, int rowNum) throws SQLException {

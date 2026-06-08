@@ -10,5 +10,5 @@ public interface FairyAssignmentRepository {
 
     List<FairyAssignment> findByMagicTaskId(UUID magicTaskId);
 
-    List<FairyAssignment> all();
+    List<FairyAssignment> findConfirmedByFairyId(String fairyId);
 }

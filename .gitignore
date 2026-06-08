@@ -24,3 +24,5 @@ coverage/
 # Logs
 *.log
 
+application*.yml
+layout/

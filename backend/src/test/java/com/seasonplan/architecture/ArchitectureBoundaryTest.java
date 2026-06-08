@@ -27,6 +27,22 @@ class ArchitectureBoundaryTest {
         assertThat(violations).isEmpty();
     }
 
+    @Test
+    void applicationServicesDoNotDependOnPeerApplicationServicesForUseCaseData() throws IOException {
+        Path serviceRoot = Path.of("src/main/java/com/seasonplan/lifecycle/service");
+
+        var violations = Files.walk(serviceRoot)
+                .filter(path -> path.toString().endsWith("Service.java"))
+                .filter(path -> source(path).contains("private final SeasonPlanService")
+                        || source(path).contains("private final MagicTaskService"))
+                .map(serviceRoot::relativize)
+                .map(Path::toString)
+                .sorted()
+                .toList();
+
+        assertThat(violations).isEmpty();
+    }
+
     private String source(Path path) {
         try {
             return Files.readString(path);

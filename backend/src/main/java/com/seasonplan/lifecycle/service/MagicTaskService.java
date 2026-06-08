@@ -13,18 +13,20 @@ import java.util.UUID;
 
 public class MagicTaskService {
     private final MagicTaskRepository tasks;
-    private final SeasonPlanService seasonPlanService;
+    private final SeasonPlanRepository plans;
     private final AuditLogService auditLogService;
 
-    public MagicTaskService(MagicTaskRepository tasks, SeasonPlanService seasonPlanService, AuditLogService auditLogService) {
+    public MagicTaskService(MagicTaskRepository tasks, SeasonPlanRepository plans, AuditLogService auditLogService) {
         this.tasks = tasks;
-        this.seasonPlanService = seasonPlanService;
+        this.plans = plans;
         this.auditLogService = auditLogService;
     }
 
     public MagicTask createTask(UUID seasonPlanId, MagicTask draft, ActorRole actorRole, String actorId) {
         ValidationSupport.requireRole(actorRole, ActorRole.TALENT_COORDINATOR);
-        if (seasonPlanService.get(seasonPlanId).status() != SeasonPlanStatus.APPROVED) {
+        if (plans.findById(seasonPlanId)
+                .orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId))
+                .status() != SeasonPlanStatus.APPROVED) {
             throw new DomainValidationException(new LinkedHashMap<>() {{
                 put("seasonPlanStatus", List.of("tasks can only be created for APPROVED plans"));
             }});

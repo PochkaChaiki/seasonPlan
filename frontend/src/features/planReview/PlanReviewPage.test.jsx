@@ -1,0 +1,95 @@
+import '@testing-library/jest-dom/vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import PlanReviewPage from './PlanReviewPage.jsx';
+
+const plan = {
+  id: 'plan-1',
+  seasonType: 'SPRING',
+  targetTerritories: ['Northern Forest'],
+  timeWindows: [{ start: '2027-03-01T09:00:00', end: '2027-03-05T18:00:00' }],
+  targetClimateMetrics: { temperature: 12 },
+  naturalPhenomenonParameters: { blooming: 'early' },
+  status: 'SUBMITTED'
+};
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/season-plans/plan-1/review']}>
+      <Routes>
+        <Route path="/season-plans/:id/review" element={<PlanReviewPage />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+describe('PlanReviewPage', () => {
+  afterEach(() => cleanup());
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('loads and displays plan details and readiness', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: { pollenReservation: ['confirmed pollen reservation is required'] } }));
+
+    renderPage();
+
+    expect(await screen.findByText('Northern Forest')).toBeInTheDocument();
+    expect(screen.getByText('confirmed pollen reservation is required')).toBeInTheDocument();
+    expect(screen.getByText(/Audit history is not exposed/i)).toBeInTheDocument();
+  });
+
+  it('approves with a comment and displays APPROVED status', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: true, errors: {} }))
+      .mockResolvedValueOnce(Response.json({ ...plan, status: 'APPROVED', approvalComment: 'approved for launch' }));
+
+    renderPage();
+    await user.type(await screen.findByLabelText(/Decision comment/i), 'approved for launch');
+    await user.click(screen.getByRole('button', { name: 'Approve plan' }));
+
+    expect(await screen.findByText(/APPROVED/)).toBeInTheDocument();
+    expect(screen.getByText('approved for launch')).toBeInTheDocument();
+  });
+
+  it('returns with a comment and displays DRAFT status', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }))
+      .mockResolvedValueOnce(Response.json({ ...plan, status: 'DRAFT', approvalComment: 'revise windows' }));
+
+    renderPage();
+    await user.type(await screen.findByLabelText(/Decision comment/i), 'revise windows');
+    await user.click(screen.getByRole('button', { name: 'Return for revision' }));
+
+    expect(await screen.findByText(/Returned plan plan-1/i)).toBeInTheDocument();
+    expect(screen.getByText('DRAFT')).toBeInTheDocument();
+  });
+
+  it('shows backend approval blocking errors', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { message: 'validation failed', errors: { pollenReservation: ['rejected pollen reservation blocks approval'] } },
+          { status: 400 }
+        )
+      );
+
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Approve plan' }));
+
+    expect(await screen.findByText('rejected pollen reservation blocks approval')).toBeInTheDocument();
+  });
+});
