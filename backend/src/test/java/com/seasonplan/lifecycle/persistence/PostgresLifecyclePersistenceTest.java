@@ -10,6 +10,7 @@ import com.seasonplan.lifecycle.service.FairyAssignmentService;
 import com.seasonplan.lifecycle.service.MagicTaskService;
 import com.seasonplan.lifecycle.service.PollenReservationService;
 import com.seasonplan.lifecycle.service.ReadinessChecklistService;
+import com.seasonplan.lifecycle.service.SeasonPlanRepository;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,9 @@ class PostgresLifecyclePersistenceTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private SeasonPlanRepository seasonPlanRepository;
 
     @Test
     void lifecycleServicesPersistSeasonPlanAndAuditLogToPostgres() {
@@ -138,6 +142,22 @@ class PostgresLifecyclePersistenceTest {
         assertThat(afterUnrelatedCompletion.get("id")).isEqualTo(firstCompletion.get("id"));
         assertThat(afterUnrelatedCompletion.get("completed_by")).isEqualTo("coordinator-1");
         assertThat(afterUnrelatedCompletion.get("completed_at")).isEqualTo(firstCompletion.get("completed_at"));
+    }
+
+    @Test
+    void repositoryListsPersistedSeasonPlansForSelection() {
+        SeasonPlan spring = seasonPlanService.createDraft(
+                SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER,
+                "planner-1"
+        );
+        SeasonPlan summerDraft = SeasonPlanTestFixture.validPlanDraft("planner-1");
+        summerDraft.setSeasonType("SUMMER");
+        SeasonPlan summer = seasonPlanService.createDraft(summerDraft, ActorRole.FAIRY_PLANNER, "planner-1");
+
+        assertThat(seasonPlanRepository.findAll())
+                .extracting(SeasonPlan::id)
+                .contains(spring.id(), summer.id());
     }
 
     private Map<String, Object> checklistRow(UUID seasonPlanId, String itemKey) {

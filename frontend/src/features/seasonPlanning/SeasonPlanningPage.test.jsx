@@ -15,6 +15,10 @@ function renderPage() {
   );
 }
 
+function mockPlanList(plans = []) {
+  return vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(plans));
+}
+
 describe('SeasonPlanningPage', () => {
   afterEach(() => cleanup());
 
@@ -26,7 +30,7 @@ describe('SeasonPlanningPage', () => {
   it('saves a valid draft through POST with planner actor headers', async () => {
     const user = userEvent.setup();
     const requests = [];
-    vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) => {
+    mockPlanList().mockImplementation((url, options) => {
       requests.push({ url: String(url), options });
       return Promise.resolve(
         Response.json({ id: 'plan-1', seasonType: 'SPRING', targetTerritories: ['Northern Forest'], status: 'DRAFT' })
@@ -34,11 +38,11 @@ describe('SeasonPlanningPage', () => {
     });
 
     renderPage();
-    await user.clear(screen.getByLabelText(/Target territories/i));
-    await user.type(screen.getByLabelText(/Target territories/i), 'Northern Forest');
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await user.clear(screen.getByLabelText(/Целевые территории/i));
+    await user.type(screen.getByLabelText(/Целевые территории/i), 'Northern Forest');
+    await user.click(screen.getByRole('button', { name: 'Сохранить новый черновик' }));
 
-    expect(await screen.findByText(/Saved draft plan-1/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Сохранен черновик plan-1/i)).toBeInTheDocument();
     expect(requests[0].url).toBe('http://localhost:8080/season-plans');
     expect(requests[0].options.method).toBe('POST');
     expect(requests[0].options.headers['X-Actor-Role']).toBe('FAIRY_PLANNER');
@@ -47,12 +51,12 @@ describe('SeasonPlanningPage', () => {
 
   it('displays backend field errors', async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    mockPlanList().mockResolvedValueOnce(
       Response.json({ message: 'validation failed', errors: { seasonType: ['season type is required'] } }, { status: 400 })
     );
 
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить новый черновик' }));
 
     expect(await screen.findByText('validation failed')).toBeInTheDocument();
     expect(screen.getByText('season type is required')).toBeInTheDocument();
@@ -60,15 +64,73 @@ describe('SeasonPlanningPage', () => {
 
   it('submits a saved draft and displays SUBMITTED status', async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, 'fetch')
+    mockPlanList()
       .mockResolvedValueOnce(Response.json({ id: 'plan-1', seasonType: 'SPRING', status: 'DRAFT' }))
       .mockResolvedValueOnce(Response.json({ id: 'plan-1', seasonType: 'SPRING', status: 'SUBMITTED' }));
 
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    await user.click(await screen.findByRole('button', { name: 'Submit for approval' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить новый черновик' }));
+    await user.click(await screen.findByRole('button', { name: 'Отправить на согласование' }));
 
-    await waitFor(() => expect(screen.getByText(/Submitted plan plan-1/i)).toBeInTheDocument());
-    expect(screen.getByText('SUBMITTED')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/План plan-1 отправлен на согласование/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/SUBMITTED/).length).toBeGreaterThan(0);
+  });
+
+  it('allows creating a new draft while a cached plan is already in progress', async () => {
+    const user = userEvent.setup();
+    const requests = [];
+    sessionStorage.setItem(
+      'seasonPlan.workflow',
+      JSON.stringify({ latestPlanId: 'plan-active', latestPlan: { id: 'plan-active', status: 'APPROVED' } })
+    );
+    mockPlanList([{ id: 'plan-active', seasonType: 'SPRING', status: 'APPROVED', targetTerritories: [] }]).mockImplementation((url, options) => {
+      requests.push({ url: String(url), options });
+      return Promise.resolve(Response.json({ id: 'plan-next', seasonType: 'SPRING', status: 'DRAFT' }));
+    });
+
+    renderPage();
+    expect(screen.getByText(/Можно создать новый черновик/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Сохранить новый черновик' }));
+
+    expect(await screen.findByText(/Сохранен черновик plan-next/i)).toBeInTheDocument();
+    expect(requests[0].options.method).toBe('POST');
+    expect(requests[0].url).toBe('http://localhost:8080/season-plans');
+  });
+
+  it('requires choosing season type from available options', async () => {
+    mockPlanList();
+
+    renderPage();
+
+    const seasonType = await screen.findByLabelText('season-type');
+    expect(seasonType.tagName).toBe('SELECT');
+    expect(Array.from(seasonType.options).map((option) => option.value)).toEqual(['SPRING', 'SUMMER', 'AUTUMN', 'WINTER']);
+  });
+
+  it('loads a chosen existing draft into the planning form', async () => {
+    const user = userEvent.setup();
+    mockPlanList([
+      { id: 'plan-summer', seasonType: 'SUMMER', status: 'DRAFT', targetTerritories: ['South Field'] },
+      { id: 'plan-spring', seasonType: 'SPRING', status: 'DRAFT', targetTerritories: ['Northern Forest'] }
+    ]).mockResolvedValueOnce(
+      Response.json({
+        id: 'plan-spring',
+        seasonType: 'SPRING',
+        status: 'DRAFT',
+        targetTerritories: ['Northern Forest'],
+        timeWindows: [{ start: '2027-03-01T09:00:00', end: '2027-03-05T18:00:00' }],
+        naturalPhenomenonParameters: { blooming: 'late' },
+        targetClimateMetrics: { temperature: 10 }
+      })
+    );
+
+    renderPage();
+
+    await user.selectOptions(await screen.findByLabelText('existing-plan'), 'plan-spring');
+    await user.click(screen.getByRole('button', { name: 'Load selected plan' }));
+
+    expect(await screen.findByText('Loaded plan plan-spring')).toBeInTheDocument();
+    expect(screen.getByLabelText('season-type')).toHaveValue('SPRING');
+    expect(screen.getByDisplayValue('Northern Forest')).toBeInTheDocument();
   });
 });

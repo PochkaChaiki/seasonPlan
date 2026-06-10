@@ -1,7 +1,7 @@
 export default function ActorSelector({ actor, onChange, options }) {
   return (
     <label className="field compact">
-      <span>Actor context</span>
+      <span>Контекст пользователя</span>
       <select
         value={`${actor.role}|${actor.id}`}
         onChange={(event) => {

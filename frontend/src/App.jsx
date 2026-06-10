@@ -14,45 +14,45 @@ function Dashboard() {
       <header className="site-header">
         <div>
           <h1>SeasonPlan lifecycle</h1>
-          <p>Frontend workflow for the first three lifecycle use cases.</p>
+          <p>Клиент для первых трех этапов жизненного цикла сезона.</p>
         </div>
       </header>
       <section className="catalog-grid">
         <Link className="catalog-card" to="/season-plans/new">
-          <h2>Season planning</h2>
-          <p>Create, update, and submit a SeasonPlan draft through the backend API.</p>
-          <span className="card-tag">Use case 1</span>
+          <h2>Планирование сезона</h2>
+          <p>Создайте новый черновик или отредактируйте последний черновик через backend API.</p>
+          <span className="card-tag">UC 1</span>
         </Link>
         <Link className={`catalog-card ${planId ? '' : 'disabled-card'}`} to={planId ? `/season-plans/${planId}/review` : '/season-plans/new'}>
-          <h2>Review and approval</h2>
-          <p>{planId ? 'Review cached plan and approve or return it.' : 'A saved draft is required before review.'}</p>
-          <span className="card-tag">{planId ? 'Use case 2' : 'Needs plan'}</span>
+          <h2>Согласование сезонного плана</h2>
+          <p>{planId ? 'Откройте последний план из текущей сессии, утвердите его или верните на доработку.' : 'Для согласования нужен сохраненный план.'}</p>
+          <span className="card-tag">{planId ? 'UC 2' : 'Нужен план'}</span>
         </Link>
         <Link
           className={`catalog-card ${planId ? '' : 'disabled-card'}`}
           to={planId ? `/season-plans/${planId}/preparation` : '/season-plans/new'}
         >
-          <h2>Preparation for launch</h2>
-          <p>{planId ? 'Prepare pollen reservation, tasks, assignments, and readiness.' : 'A saved draft is required before preparation.'}</p>
-          <span className="card-tag">{planId ? 'Use case 3' : 'Needs plan'}</span>
+          <h2>Подготовка сезона к запуску</h2>
+          <p>{planId ? 'Настройте резерв пыльцы, задачи, назначения и готовность.' : 'Для подготовки нужен сохраненный план.'}</p>
+          <span className="card-tag">{planId ? 'UC 3' : 'Нужен план'}</span>
         </Link>
       </section>
 
       <section className="card dashboard-card">
-        <h2>Current cached plan</h2>
+        <h2>Последний план в текущей сессии</h2>
         {planId ? (
           <div className="button-row">
             <span className="pill accent">{workflow.latestPlan?.status ?? 'cached'}</span>
             <span className="pill">Plan {planId}</span>
             <Link className="back-link" to={`/season-plans/${planId}/review`}>
-              Review cached plan
+              Открыть согласование
             </Link>
             <Link className="back-link" to={`/season-plans/${planId}/preparation`}>
-              Prepare cached plan
+              Открыть подготовку
             </Link>
           </div>
         ) : (
-          <p className="note">Create a draft plan to begin. The backend has no list endpoint, so workflow continuity starts after a real command succeeds.</p>
+          <p className="note">Создайте черновик, чтобы начать. У backend нет list endpoint, поэтому сессия запоминает только результаты успешных команд.</p>
         )}
       </section>
     </main>
@@ -72,14 +72,14 @@ function InactiveWorkflow() {
     <main className="page-shell">
       <header className="site-header">
         <div>
-          <h1>Workflow not active</h1>
-          <p>Later lifecycle use cases are intentionally inactive in this frontend slice.</p>
+          <h1>Этап неактивен</h1>
+          <p>Поздние этапы жизненного цикла намеренно не включены в этот frontend slice.</p>
         </div>
         <Link className="back-link" to="/">
-          Back to dashboard
+          К списку этапов
         </Link>
       </header>
-      <p className="note">Ritual launch, active monitoring, incidents, corrections, completion, reports, and archive are out of scope.</p>
+      <p className="note">Запуск RitualSession, мониторинг, инциденты, корректировки, завершение, отчеты и архив пока вне объема реализации.</p>
     </main>
   );
 }

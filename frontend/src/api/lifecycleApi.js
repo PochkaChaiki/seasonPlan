@@ -46,6 +46,7 @@ export const lifecycleApi = {
   submitPlan: (id, actor) => request(`/season-plans/${id}/submit`, { method: 'POST', actor }),
   approvePlan: (id, payload, actor) => request(`/season-plans/${id}/approve`, { method: 'POST', body: payload, actor }),
   returnPlan: (id, payload, actor) => request(`/season-plans/${id}/return`, { method: 'POST', body: payload, actor }),
+  listPlans: () => request('/season-plans'),
   getPlan: (id) => request(`/season-plans/${id}`),
   getReadiness: (id) => request(`/season-plans/${id}/readiness`),
   requestReservation: (id, payload, actor) =>
@@ -57,5 +58,7 @@ export const lifecycleApi = {
   createTask: (id, payload, actor) => request(`/season-plans/${id}/tasks`, { method: 'POST', body: payload, actor }),
   updateTask: (id, payload, actor) => request(`/tasks/${id}`, { method: 'PATCH', body: payload, actor }),
   assignFairy: (id, payload, actor) => request(`/tasks/${id}/assignments`, { method: 'POST', body: payload, actor }),
+  completeReadinessChecklistItem: (id, key, actor) =>
+    request(`/season-plans/${id}/readiness-checklist/${encodeURIComponent(key)}/complete`, { method: 'POST', actor }),
   markRitualReady: (id, actor) => request(`/season-plans/${id}/mark-ritual-ready`, { method: 'POST', actor })
 };

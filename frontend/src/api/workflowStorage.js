@@ -3,6 +3,7 @@ const STORAGE_KEY = 'seasonPlan.workflow';
 const emptyWorkflow = {
   latestPlanId: null,
   latestPlan: null,
+  plansById: {},
   reservationsByPlan: {},
   tasksByPlan: {},
   assignmentsByTask: {}
@@ -22,7 +23,18 @@ export function writeWorkflow(nextWorkflow) {
 
 export function cachePlan(plan) {
   const workflow = readWorkflow();
-  writeWorkflow({ ...workflow, latestPlanId: plan.id, latestPlan: plan });
+  writeWorkflow({
+    ...workflow,
+    latestPlanId: plan.id,
+    latestPlan: plan,
+    plansById: { ...workflow.plansById, [plan.id]: plan }
+  });
+}
+
+export function cachePlans(plans) {
+  const workflow = readWorkflow();
+  const plansById = plans.reduce((result, plan) => ({ ...result, [plan.id]: plan }), workflow.plansById);
+  writeWorkflow({ ...workflow, plansById });
 }
 
 export function cacheReservation(planId, reservation) {

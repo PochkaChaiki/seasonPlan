@@ -48,7 +48,7 @@ export default function PlanReviewPage() {
       setPlan(result);
       cachePlan(result);
       setComment('');
-      setMessage(action === 'approve' ? `Approved plan ${result.id}` : `Returned plan ${result.id}`);
+      setMessage(action === 'approve' ? `План ${result.id} утвержден` : `План ${result.id} возвращен на доработку`);
     } catch (decisionError) {
       setError(decisionError);
     } finally {
@@ -58,35 +58,35 @@ export default function PlanReviewPage() {
 
   if (busy && !plan) {
     return (
-      <AppShell title="Review and approve" activeStep={2}>
-        <LoadingState label="Loading plan and readiness..." />
+      <AppShell title="Согласование сезонного плана" activeStep={2}>
+        <LoadingState label="Загружаем план и готовность..." />
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Review and approve" activeStep={2} plan={plan}>
+    <AppShell title="Согласование сезонного плана" activeStep={2} plan={plan}>
       <div className="content-grid two-col">
         <section className="card stack">
-          <h4>Plan summary</h4>
+          <h4>Сводка плана</h4>
           <SummaryRows plan={plan} />
           <ReadinessSummary readiness={readiness} />
-          <p className="note">Audit history is not exposed by the current API.</p>
-          <p className="note">Standalone plan validation is not exposed; action errors and readiness are shown as available feedback.</p>
+          <p className="note">История аудита не раскрыта текущим API.</p>
+          <p className="note">Отдельного endpoint для валидации плана нет; показываем ошибки действий и ответ готовности.</p>
         </section>
         <aside className="card stack">
-          <h4>Decision</h4>
+          <h4>Решение</h4>
           <ActorSelector actor={actor} onChange={setActor} options={[actors.guardian]} />
           <label className="field">
-            <span>Decision comment</span>
+            <span>Комментарий к решению</span>
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} />
           </label>
           <div className="button-row">
             <button className="primary" disabled={busy} onClick={() => decide('approve')}>
-              Approve plan
+              Утвердить план
             </button>
             <button disabled={busy} onClick={() => decide('return')}>
-              Return for revision
+              Вернуть на доработку
             </button>
           </div>
           {message && <p className="note">{message}</p>}
@@ -100,34 +100,34 @@ export default function PlanReviewPage() {
 
 function SummaryRows({ plan }) {
   if (!plan) {
-    return <p className="note rose">Plan could not be loaded.</p>;
+    return <p className="note rose">План не удалось загрузить.</p>;
   }
 
   return (
     <div className="mini-list">
       <div className="mini-item">
-        <span>Season type</span>
+        <span>Тип сезона</span>
         <strong>{plan.seasonType}</strong>
       </div>
       <div className="mini-item">
-        <span>Territories</span>
+        <span>Территории</span>
         <strong>{(plan.targetTerritories ?? []).join(', ')}</strong>
       </div>
       <div className="mini-item">
-        <span>Windows</span>
-        <strong>{(plan.timeWindows ?? []).map((window) => `${window.start} to ${window.end}`).join(', ')}</strong>
+        <span>Окна проведения</span>
+        <strong>{(plan.timeWindows ?? []).map((window) => `${window.start} - ${window.end}`).join(', ')}</strong>
       </div>
       <div className="mini-item">
-        <span>Climate metrics</span>
+        <span>Климатические метрики</span>
         <strong>{Object.entries(plan.targetClimateMetrics ?? {}).map(([key, value]) => `${key}: ${value}`).join(', ')}</strong>
       </div>
       <div className="mini-item">
-        <span>Natural parameters</span>
+        <span>Природные параметры</span>
         <strong>{Object.entries(plan.naturalPhenomenonParameters ?? {}).map(([key, value]) => `${key}: ${value}`).join(', ')}</strong>
       </div>
       <div className="mini-item">
-        <span>Approval comment</span>
-        <strong>{plan.approvalComment ?? 'none'}</strong>
+        <span>Комментарий согласования</span>
+        <strong>{plan.approvalComment ?? 'нет'}</strong>
       </div>
     </div>
   );

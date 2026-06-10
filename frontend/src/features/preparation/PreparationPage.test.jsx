@@ -43,11 +43,11 @@ describe('PreparationPage', () => {
       .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }));
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Request pollen reservation' }));
-    expect(await screen.findByText('PENDING')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Запросить резерв' }));
+    expect((await screen.findAllByText('PENDING')).length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole('button', { name: 'Confirm reservation' }));
-    expect(await screen.findByText('CONFIRMED')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Подтвердить резерв' }));
+    expect((await screen.findAllByText('CONFIRMED')).length).toBeGreaterThan(0);
   });
 
   it('displays pollen limit errors when confirmation is rejected', async () => {
@@ -61,7 +61,7 @@ describe('PreparationPage', () => {
     );
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Confirm reservation' }));
+    await user.click(await screen.findByRole('button', { name: 'Подтвердить резерв' }));
 
     expect(await screen.findByText('pollen limit exceeded')).toBeInTheDocument();
   });
@@ -79,12 +79,91 @@ describe('PreparationPage', () => {
       .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }));
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Create task' }));
+    await user.click(await screen.findByRole('button', { name: 'Создать задачу' }));
     expect(await screen.findByText('Launch blooming')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Assign fairy' }));
+    await user.click(screen.getByRole('button', { name: 'Назначить фею' }));
     expect(await screen.findByText('fairy-1')).toBeInTheDocument();
-    expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
+    expect(screen.getAllByText('CONFIRMED').length).toBeGreaterThan(0);
+  });
+
+  it('offers only backend-supported assignment statuses and compatible fairy options', async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem(
+      'seasonPlan.workflow',
+      JSON.stringify({
+        tasksByPlan: {
+          'plan-1': [
+            { id: 'task-1', title: 'Launch blooming', requiredTalent: 'SPRING_WEATHER', status: 'READY' }
+          ]
+        }
+      })
+    );
+    mockInitialLoad();
+
+    renderPage();
+
+    const status = await screen.findByLabelText('assignment-status');
+    expect(Array.from(status.options).map((option) => option.value)).toEqual(['PROPOSED', 'CONFIRMED']);
+
+    await user.selectOptions(screen.getByLabelText('assignment-task'), 'task-1');
+    const fairy = screen.getByLabelText('assignment-fairy');
+    expect(Array.from(fairy.options).map((option) => option.value)).toEqual(['fairy-spring', 'fairy-bloom']);
+
+    const role = screen.getByLabelText('assignment-role');
+    expect(Array.from(role.options).map((option) => option.value)).toEqual(['LEAD', 'SUPPORT', 'BACKUP']);
+  });
+
+  it('sends manually entered task and assignment values', async () => {
+    const user = userEvent.setup();
+    const requests = [];
+    mockInitialLoad()
+      .mockImplementation((url, options) => {
+        requests.push({ url: String(url), options });
+        if (String(url).endsWith('/tasks') && options?.method === 'POST') {
+          return Promise.resolve(
+            Response.json({
+              id: 'task-1',
+              seasonPlanId: 'plan-1',
+              title: 'Проверить северные сады',
+              requiredTalent: 'FROST_CONTROL',
+              status: 'READY'
+            })
+          );
+        }
+        if (String(url).endsWith('/readiness')) {
+          return Promise.resolve(Response.json({ ready: false, errors: {} }));
+        }
+        if (String(url).endsWith('/assignments')) {
+          return Promise.resolve(
+            Response.json({ id: 'assignment-1', magicTaskId: 'task-1', fairyId: 'fairy-north', talent: 'FROST_CONTROL', status: 'CONFIRMED' })
+          );
+        }
+        return Promise.reject(new Error(`unexpected request: ${url}`));
+      });
+
+    renderPage();
+
+    await user.clear(await screen.findByLabelText(/Название задачи/i));
+    await user.type(screen.getByLabelText(/Название задачи/i), 'Проверить северные сады');
+    await user.clear(screen.getByLabelText(/Описание задачи/i));
+    await user.type(screen.getByLabelText(/Описание задачи/i), 'Осмотреть участки перед запуском');
+    await user.selectOptions(screen.getByLabelText(/Требуемый талант/i), 'FROST_CONTROL');
+    await user.selectOptions(screen.getByLabelText(/Талант назначения/i), 'FROST_CONTROL');
+
+    await user.click(screen.getByRole('button', { name: 'Создать задачу' }));
+    expect(await screen.findByLabelText('assignment-fairy')).toHaveValue('fairy-north');
+    await user.click(await screen.findByRole('button', { name: 'Назначить фею' }));
+
+    const createTask = requests.find((request) => request.url.endsWith('/tasks'));
+    expect(JSON.parse(createTask.options.body)).toMatchObject({
+      title: 'Проверить северные сады',
+      description: 'Осмотреть участки перед запуском',
+      requiredTalent: 'FROST_CONTROL'
+    });
+
+    const assignFairy = requests.find((request) => request.url.endsWith('/assignments'));
+    expect(JSON.parse(assignFairy.options.body)).toMatchObject({ fairyId: 'fairy-north', talent: 'FROST_CONTROL' });
   });
 
   it('shows assignment schedule and talent errors', async () => {
@@ -98,7 +177,7 @@ describe('PreparationPage', () => {
     );
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Assign fairy' }));
+    await user.click(await screen.findByRole('button', { name: 'Назначить фею' }));
 
     expect(await screen.findByText('fairy has schedule conflict')).toBeInTheDocument();
   });
@@ -112,7 +191,38 @@ describe('PreparationPage', () => {
     renderPage();
 
     expect(await screen.findByText('mandatory task is required')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Mark ritual ready' }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить готовность' }));
     expect(await screen.findByText(/RITUAL_READY/)).toBeInTheDocument();
+  });
+
+  it('completes readiness checklist items through the backend', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({
+          ...plan,
+          readinessChecklist: [
+            { key: 'calendar-reviewed', complete: false },
+            { key: 'roles-reviewed', complete: false }
+          ]
+        })
+      )
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: { readinessChecklist: ['all readiness checklist items must be complete'] } }))
+      .mockResolvedValueOnce(
+        Response.json({
+          ...plan,
+          readinessChecklist: [
+            { key: 'calendar-reviewed', complete: true },
+            { key: 'roles-reviewed', complete: false }
+          ]
+        })
+      )
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: { readinessChecklist: ['all readiness checklist items must be complete'] } }));
+
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /calendar-reviewed/i }));
+
+    expect(await screen.findByText(/calendar-reviewed: complete/i)).toBeInTheDocument();
   });
 });

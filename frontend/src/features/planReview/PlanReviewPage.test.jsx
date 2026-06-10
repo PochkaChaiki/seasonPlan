@@ -42,7 +42,7 @@ describe('PlanReviewPage', () => {
 
     expect(await screen.findByText('Northern Forest')).toBeInTheDocument();
     expect(screen.getByText('confirmed pollen reservation is required')).toBeInTheDocument();
-    expect(screen.getByText(/Audit history is not exposed/i)).toBeInTheDocument();
+    expect(screen.getByText(/История аудита не раскрыта/i)).toBeInTheDocument();
   });
 
   it('approves with a comment and displays APPROVED status', async () => {
@@ -53,8 +53,8 @@ describe('PlanReviewPage', () => {
       .mockResolvedValueOnce(Response.json({ ...plan, status: 'APPROVED', approvalComment: 'approved for launch' }));
 
     renderPage();
-    await user.type(await screen.findByLabelText(/Decision comment/i), 'approved for launch');
-    await user.click(screen.getByRole('button', { name: 'Approve plan' }));
+    await user.type(await screen.findByLabelText(/Комментарий к решению/i), 'approved for launch');
+    await user.click(screen.getByRole('button', { name: 'Утвердить план' }));
 
     expect(await screen.findByText(/APPROVED/)).toBeInTheDocument();
     expect(screen.getByText('approved for launch')).toBeInTheDocument();
@@ -68,11 +68,11 @@ describe('PlanReviewPage', () => {
       .mockResolvedValueOnce(Response.json({ ...plan, status: 'DRAFT', approvalComment: 'revise windows' }));
 
     renderPage();
-    await user.type(await screen.findByLabelText(/Decision comment/i), 'revise windows');
-    await user.click(screen.getByRole('button', { name: 'Return for revision' }));
+    await user.type(await screen.findByLabelText(/Комментарий к решению/i), 'revise windows');
+    await user.click(screen.getByRole('button', { name: 'Вернуть на доработку' }));
 
-    expect(await screen.findByText(/Returned plan plan-1/i)).toBeInTheDocument();
-    expect(screen.getByText('DRAFT')).toBeInTheDocument();
+    expect(await screen.findByText(/План plan-1 возвращен на доработку/i)).toBeInTheDocument();
+    expect(screen.getByText(/DRAFT/)).toBeInTheDocument();
   });
 
   it('shows backend approval blocking errors', async () => {
@@ -88,7 +88,7 @@ describe('PlanReviewPage', () => {
       );
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Approve plan' }));
+    await user.click(await screen.findByRole('button', { name: 'Утвердить план' }));
 
     expect(await screen.findByText('rejected pollen reservation blocks approval')).toBeInTheDocument();
   });

@@ -25,17 +25,17 @@ describe('App navigation', () => {
     renderApp();
 
     expect(screen.getByRole('heading', { name: 'SeasonPlan lifecycle' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Season planning/i })).toBeInTheDocument();
-    expect(screen.getByText(/Review and approval/i)).toBeInTheDocument();
-    expect(screen.getByText(/Preparation for launch/i)).toBeInTheDocument();
-    expect(screen.getByText(/Create a draft plan to begin/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Планирование сезона/i })).toBeInTheDocument();
+    expect(screen.getByText(/Согласование сезонного плана/i)).toBeInTheDocument();
+    expect(screen.getByText(/Подготовка сезона к запуску/i)).toBeInTheDocument();
+    expect(screen.getByText(/Создайте черновик/i)).toBeInTheDocument();
   });
 
   it('does not expose later lifecycle use cases as active routes', () => {
     renderApp('/incidents');
 
-    expect(screen.getByRole('heading', { name: 'Workflow not active' })).toBeInTheDocument();
-    expect(screen.getByText(/Later lifecycle use cases are intentionally inactive/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Этап неактивен' })).toBeInTheDocument();
+    expect(screen.getByText(/Поздние этапы жизненного цикла/i)).toBeInTheDocument();
   });
 
   it('navigates to planning, review, and preparation routes from cached workflow state', async () => {
@@ -56,13 +56,13 @@ describe('App navigation', () => {
     });
 
     renderApp();
-    await user.click(screen.getByRole('link', { name: /Season planning/i }));
-    expect(screen.getByRole('heading', { name: 'Plan the season' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: /Планирование сезона/i }));
+    expect(screen.getByRole('heading', { name: 'Планирование сезона' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: /Review cached plan/i }));
-    expect(await screen.findByRole('heading', { name: 'Review and approve' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Согласование' }));
+    expect(await screen.findByRole('heading', { name: 'Согласование сезонного плана' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: /Prepare cached plan/i }));
-    expect(await screen.findByRole('heading', { name: 'Preparation for launch' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Подготовка' }));
+    expect(await screen.findByRole('heading', { name: 'Подготовка сезона к запуску' })).toBeInTheDocument();
   });
 });

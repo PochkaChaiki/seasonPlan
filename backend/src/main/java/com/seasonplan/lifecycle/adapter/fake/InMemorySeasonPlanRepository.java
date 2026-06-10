@@ -3,6 +3,8 @@ package com.seasonplan.lifecycle.adapter.fake;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.service.SeasonPlanRepository;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,5 +22,12 @@ public class InMemorySeasonPlanRepository implements SeasonPlanRepository {
     @Override
     public Optional<SeasonPlan> findById(UUID id) {
         return Optional.ofNullable(plans.get(id));
+    }
+
+    @Override
+    public List<SeasonPlan> findAll() {
+        return plans.values().stream()
+                .sorted(Comparator.comparing(SeasonPlan::updatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
     }
 }

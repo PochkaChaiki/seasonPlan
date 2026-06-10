@@ -128,6 +128,10 @@ public class SeasonPlanService {
         return plans.findById(id).orElseThrow(() -> new NotFoundException("season plan not found: " + id));
     }
 
+    public List<SeasonPlan> listPlans() {
+        return plans.findAll();
+    }
+
     private SeasonPlan requireSubmitted(UUID id) {
         SeasonPlan plan = get(id);
         if (plan.status() != SeasonPlanStatus.SUBMITTED) {

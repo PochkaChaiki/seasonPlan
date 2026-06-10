@@ -133,6 +133,15 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
         return Optional.of(plan);
     }
 
+    @Override
+    public List<SeasonPlan> findAll() {
+        return jdbc.query("select id from season_plans order by updated_at desc", (rs, rowNum) -> rs.getObject("id", UUID.class))
+                .stream()
+                .map(this::findById)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
     private SeasonPlan mapPlan(ResultSet rs, int rowNum) throws SQLException {
         return SeasonPlan.rehydrate(
                 rs.getObject("id", UUID.class),

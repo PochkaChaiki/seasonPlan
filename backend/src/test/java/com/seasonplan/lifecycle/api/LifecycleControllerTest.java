@@ -72,6 +72,49 @@ class LifecycleControllerTest {
     }
 
     @Test
+    void completeReadinessChecklistItemEndpointPersistsChecklistState() throws Exception {
+        String createResponse = mvc.perform(post("/season-plans")
+                        .header("X-Actor-Role", "FAIRY_PLANNER")
+                        .header("X-Actor-Id", "planner-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validPlanRequestWithServerOwnedFields()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String planId = objectMapper.readTree(createResponse).get("id").asText();
+
+        mvc.perform(post("/season-plans/{id}/readiness-checklist/{key}/complete", planId, "calendar-reviewed")
+                        .header("X-Actor-Role", "TALENT_COORDINATOR")
+                        .header("X-Actor-Id", "coordinator-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.readinessChecklist[?(@.key == 'calendar-reviewed')].complete").value(true));
+    }
+
+    @Test
+    void listSeasonPlansEndpointExposesCreatedPlansForSelection() throws Exception {
+        mvc.perform(post("/season-plans")
+                        .header("X-Actor-Role", "FAIRY_PLANNER")
+                        .header("X-Actor-Id", "planner-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validPlanRequestWithServerOwnedFields()))
+                .andExpect(status().isOk());
+
+        mvc.perform(post("/season-plans")
+                        .header("X-Actor-Role", "FAIRY_PLANNER")
+                        .header("X-Actor-Id", "planner-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validPlanRequestWithSeasonType("SUMMER")))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/season-plans"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[*].seasonType").value(org.hamcrest.Matchers.containsInAnyOrder("SPRING", "SUMMER")));
+    }
+
+    @Test
     void unauthorizedRoleReturnsForbiddenWithStructuredError() throws Exception {
         mvc.perform(post("/season-plans")
                         .header("X-Actor-Role", "CHIEF_GUARDIAN")
@@ -83,12 +126,16 @@ class LifecycleControllerTest {
     }
 
     private String validPlanRequestWithServerOwnedFields() {
+        return validPlanRequestWithSeasonType("SPRING");
+    }
+
+    private String validPlanRequestWithSeasonType(String seasonType) {
         return """
                 {
                   "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
                   "status": "APPROVED",
                   "createdBy": "attacker",
-                  "seasonType": "SPRING",
+                  "seasonType": "%s",
                   "targetTerritories": ["north-grove"],
                   "timeWindows": [
                     {
@@ -103,6 +150,6 @@ class LifecycleControllerTest {
                     "temperature": 17.5
                   }
                 }
-                """;
+                """.formatted(seasonType);
     }
 }

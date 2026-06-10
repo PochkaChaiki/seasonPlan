@@ -59,6 +59,11 @@ public class LifecycleController {
         return SeasonPlanResponse.from(seasonPlanService.updateDraft(id, request.toDraft(), role, actorId));
     }
 
+    @GetMapping("/season-plans")
+    public List<SeasonPlanResponse> listPlans() {
+        return seasonPlanService.listPlans().stream().map(SeasonPlanResponse::from).toList();
+    }
+
     @PostMapping("/season-plans/{id}/submit")
     public SeasonPlanResponse submit(@PathVariable UUID id, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
         return SeasonPlanResponse.from(seasonPlanService.submitForApproval(id, role, actorId));
@@ -83,6 +88,12 @@ public class LifecycleController {
     public ReadinessResponse readiness(@PathVariable UUID id) {
         Map<String, List<String>> errors = readinessChecklistService.calculateChecklist(id);
         return new ReadinessResponse(errors.isEmpty(), errors);
+    }
+
+    @PostMapping("/season-plans/{id}/readiness-checklist/{key}/complete")
+    public SeasonPlanResponse completeReadinessChecklistItem(@PathVariable UUID id, @PathVariable String key, @RequestHeader("X-Actor-Role") ActorRole role, @RequestHeader("X-Actor-Id") String actorId) {
+        readinessChecklistService.completeItem(id, key, role, actorId);
+        return SeasonPlanResponse.from(seasonPlanService.get(id));
     }
 
     @PostMapping("/season-plans/{id}/pollen-reservations")
