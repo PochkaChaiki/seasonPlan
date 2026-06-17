@@ -4,6 +4,8 @@ info:
   version: 0.1.0
 paths:
   /season-plans:
+    get:
+      summary: List season plans
     post:
       summary: Create a draft season plan
   /season-plans/{id}:
@@ -23,6 +25,9 @@ paths:
   /season-plans/{id}/readiness:
     get:
       summary: Read readiness validation status
+  /season-plans/{id}/readiness-checklist/{key}/complete:
+    post:
+      summary: Complete a readiness checklist item
   /season-plans/{id}/pollen-reservations:
     post:
       summary: Request a pollen reservation

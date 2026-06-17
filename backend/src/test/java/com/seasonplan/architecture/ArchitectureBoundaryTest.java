@@ -43,6 +43,11 @@ class ArchitectureBoundaryTest {
         assertThat(violations).isEmpty();
     }
 
+    @Test
+    void lifecycleControllerDoesNotOwnApiModelDefinitions() {
+        assertThat(com.seasonplan.lifecycle.api.LifecycleController.class.getDeclaredClasses()).isEmpty();
+    }
+
     private String source(Path path) {
         try {
             return Files.readString(path);
