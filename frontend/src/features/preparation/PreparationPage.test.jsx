@@ -17,11 +17,36 @@ function renderPage() {
   );
 }
 
+function renderPageAs(actor) {
+  return render(
+    <MemoryRouter initialEntries={['/season-plans/plan-1/preparation']}>
+      <Routes>
+        <Route path="/season-plans/:id/preparation" element={<PreparationPage currentActor={actor} />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 function mockInitialLoad() {
   return vi
     .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json(plan))
-    .mockResolvedValueOnce(Response.json({ ready: false, errors: { task: ['mandatory task is required'] } }));
+    .mockResolvedValueOnce(Response.json({ ready: false, errors: { task: ['mandatory task is required'] } }))
+    .mockResolvedValueOnce(Response.json([]));
+}
+
+function mockInitialLoadWithTasks(tasks, assignmentsByTask = {}) {
+  const fetchMock = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json(plan))
+    .mockResolvedValueOnce(Response.json({ ready: false, errors: { task: ['mandatory task is required'] } }))
+    .mockResolvedValueOnce(Response.json(tasks));
+
+  tasks.forEach((task) => {
+    fetchMock.mockResolvedValueOnce(Response.json(assignmentsByTask[task.id] ?? []));
+  });
+
+  return fetchMock;
 }
 
 describe('PreparationPage', () => {
@@ -48,6 +73,62 @@ describe('PreparationPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Подтвердить резерв' }));
     expect((await screen.findAllByText('CONFIRMED')).length).toBeGreaterThan(0);
+  });
+
+  it('loads persisted tasks and fairy assignments for the opened season plan', async () => {
+    mockInitialLoadWithTasks(
+      [
+        {
+          id: 'task-from-db',
+          seasonPlanId: 'plan-1',
+          title: 'Loaded from database',
+          requiredTalent: 'SPRING_WEATHER',
+          timeWindow: { start: '2027-03-02T09:00:00', end: '2027-03-02T12:00:00' },
+          status: 'READY'
+        }
+      ],
+      {
+        'task-from-db': [
+          {
+            id: 'assignment-from-db',
+            magicTaskId: 'task-from-db',
+            fairyId: 'fairy-spring',
+            role: 'LEAD',
+            talent: 'SPRING_WEATHER',
+            status: 'CONFIRMED'
+          }
+        ]
+      }
+    );
+
+    renderPage();
+
+    expect(await screen.findByText('Loaded from database')).toBeInTheDocument();
+    expect((await screen.findAllByText('fairy-spring')).length).toBeGreaterThan(0);
+  });
+
+  it('keeps backend tasks visible when assignment loading fails', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }))
+      .mockResolvedValueOnce(
+        Response.json([
+          {
+            id: 'task-from-db',
+            seasonPlanId: 'plan-1',
+            title: 'Task survives assignment failure',
+            requiredTalent: 'SPRING_WEATHER',
+            timeWindow: { start: '2027-03-02T09:00:00', end: '2027-03-02T12:00:00' },
+            status: 'READY'
+          }
+        ])
+      )
+      .mockResolvedValueOnce(Response.json({ message: 'bad gateway' }, { status: 502 }));
+
+    renderPage();
+
+    expect(await screen.findByText('Task survives assignment failure')).toBeInTheDocument();
+    expect(await screen.findByText('bad gateway')).toBeInTheDocument();
   });
 
   it('displays pollen limit errors when confirmation is rejected', async () => {
@@ -89,17 +170,7 @@ describe('PreparationPage', () => {
 
   it('offers only backend-supported assignment statuses and compatible fairy options', async () => {
     const user = userEvent.setup();
-    sessionStorage.setItem(
-      'seasonPlan.workflow',
-      JSON.stringify({
-        tasksByPlan: {
-          'plan-1': [
-            { id: 'task-1', title: 'Launch blooming', requiredTalent: 'SPRING_WEATHER', status: 'READY' }
-          ]
-        }
-      })
-    );
-    mockInitialLoad();
+    mockInitialLoadWithTasks([{ id: 'task-1', title: 'Launch blooming', requiredTalent: 'SPRING_WEATHER', status: 'READY' }]);
 
     renderPage();
 
@@ -168,11 +239,7 @@ describe('PreparationPage', () => {
 
   it('shows assignment schedule and talent errors', async () => {
     const user = userEvent.setup();
-    sessionStorage.setItem(
-      'seasonPlan.workflow',
-      JSON.stringify({ tasksByPlan: { 'plan-1': [{ id: 'task-1', title: 'Launch blooming', status: 'READY' }] } })
-    );
-    mockInitialLoad().mockResolvedValueOnce(
+    mockInitialLoadWithTasks([{ id: 'task-1', title: 'Launch blooming', requiredTalent: 'SPRING_WEATHER', status: 'READY' }]).mockResolvedValueOnce(
       Response.json({ message: 'validation failed', errors: { assignment: ['fairy has schedule conflict'] } }, { status: 400 })
     );
 
@@ -208,6 +275,7 @@ describe('PreparationPage', () => {
         })
       )
       .mockResolvedValueOnce(Response.json({ ready: false, errors: { readinessChecklist: ['all readiness checklist items must be complete'] } }))
+      .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(
         Response.json({
           ...plan,
@@ -224,5 +292,16 @@ describe('PreparationPage', () => {
     await user.click(await screen.findByRole('button', { name: /calendar-reviewed/i }));
 
     expect(await screen.findByText(/calendar-reviewed: complete/i)).toBeInTheDocument();
+  });
+
+  it('shows only pollen controls to pollen guardian observers', async () => {
+    mockInitialLoad();
+
+    renderPageAs({ role: 'POLLEN_GUARDIAN', id: 'pollen-1' });
+
+    expect(await screen.findByRole('button', { name: /Запросить резерв/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Создать задачу/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Подтвердить готовность/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Task and readiness controls are available only to TALENT_COORDINATOR/i).length).toBeGreaterThan(0);
   });
 });

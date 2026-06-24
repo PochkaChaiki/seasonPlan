@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import ActorSelector from '../../components/ActorSelector.jsx';
 import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
 import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
@@ -37,15 +36,16 @@ function planToForm(plan) {
   };
 }
 
-export default function SeasonPlanningPage() {
+export default function SeasonPlanningPage({ currentActor = actors.planner }) {
   const cached = useMemo(() => readWorkflow(), []);
   const cachedPlan = cached.latestPlan;
   const initialPlan = cachedPlan?.status === 'DRAFT' ? cachedPlan : null;
   const cachedPlans = useMemo(() => Object.values(cached.plansById ?? {}), [cached.plansById]);
-  const [actor, setActor] = useState(actors.planner);
+  const actor = currentActor;
+  const canPlan = actor.role === 'FAIRY_PLANNER';
   const [form, setForm] = useState(() => planToForm(initialPlan));
   const [plan, setPlan] = useState(initialPlan);
-  const [availablePlans, setAvailablePlans] = useState(cachedPlans);
+  const [availablePlans, setAvailablePlans] = useState(() => (canPlan ? cachedPlans : cachedPlans.filter((item) => item.status !== 'DRAFT')));
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlan?.id ?? cachedPlan?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -60,7 +60,7 @@ export default function SeasonPlanningPage() {
         if (!active) {
           return;
         }
-        setAvailablePlans(plans);
+        setAvailablePlans(canPlan ? plans : plans.filter((item) => item.status !== 'DRAFT'));
         cachePlans(plans);
         setSelectedPlanId((current) => current || plans[0]?.id || '');
       })
@@ -70,7 +70,7 @@ export default function SeasonPlanningPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [canPlan]);
 
   function startNewDraft() {
     setForm(defaultForm);
@@ -155,9 +155,9 @@ export default function SeasonPlanningPage() {
   return (
     <AppShell title="Планирование сезона" activeStep={1} plan={plan ?? cachedPlan}>
       <div className="content-grid two-col">
+        {canPlan ? (
         <form className="card stack" onSubmit={(event) => event.preventDefault()}>
           <h4>{plan?.id ? 'Черновик SeasonPlan' : 'Новый черновик SeasonPlan'}</h4>
-          <ActorSelector actor={actor} onChange={setActor} options={[actors.planner]} />
           <div className="field-grid">
           <label className="field">
             <span>Тип сезона</span>
@@ -237,6 +237,13 @@ export default function SeasonPlanningPage() {
             </button>
           </div>
         </form>
+        ) : (
+          <section className="card stack">
+            <h4>SeasonPlan planning</h4>
+            <p className="note">Planning controls are available only to FAIRY_PLANNER.</p>
+            <p className="note">DRAFT plans are hidden from this role until planning is complete.</p>
+          </section>
+        )}
         <aside className="stack">
           {message && <p className="note">{message}</p>}
           {error && <p className="note rose">{error.message}</p>}
@@ -250,7 +257,7 @@ export default function SeasonPlanningPage() {
                   <select aria-label="existing-plan" value={selectedPlanId} onChange={(event) => setSelectedPlanId(event.target.value)}>
                     {availablePlans.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.seasonType} - {item.status} - {item.targetTerritories?.join(', ') || item.id}
+                        {item.id} - {item.seasonType} - {item.status} - {item.targetTerritories?.join(', ') || item.id}
                       </option>
                     ))}
                   </select>

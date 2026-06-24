@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ActorSelector from '../../components/ActorSelector.jsx';
 import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
 import LoadingState from '../../components/LoadingState.jsx';
 import ReadinessSummary from '../../components/ReadinessSummary.jsx';
 import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
-import { cacheAssignment, cachePlan, cacheReservation, cacheTask, readWorkflow } from '../../api/workflowStorage.js';
+import {
+  cacheAssignment,
+  cacheAssignments,
+  cachePlan,
+  cacheReservation,
+  cacheTask,
+  cacheTasks,
+  readWorkflow
+} from '../../api/workflowStorage.js';
 
 const talentOptions = [
   'SPRING_WEATHER',
@@ -49,7 +56,7 @@ function compatibleFairiesForTalent(talent) {
   return fairyOptionsByTalent[talent] ?? [];
 }
 
-export default function PreparationPage() {
+export default function PreparationPage({ currentActor = null }) {
   const { id } = useParams();
   const workflow = useMemo(() => readWorkflow(), []);
   const [plan, setPlan] = useState(null);
@@ -57,8 +64,11 @@ export default function PreparationPage() {
   const [reservation, setReservation] = useState(workflow.reservationsByPlan[id]);
   const [tasks, setTasks] = useState(workflow.tasksByPlan[id] ?? []);
   const [assignmentsByTask, setAssignmentsByTask] = useState(workflow.assignmentsByTask ?? {});
-  const [pollenActor, setPollenActor] = useState(actors.pollen);
-  const [taskActor, setTaskActor] = useState(actors.coordinator);
+  const pollenActor = currentActor ?? actors.pollen;
+  const taskActor = currentActor ?? actors.coordinator;
+  const scopedRole = currentActor?.role;
+  const canManagePollen = !scopedRole || scopedRole === 'POLLEN_GUARDIAN';
+  const canCoordinateTasks = !scopedRole || scopedRole === 'TALENT_COORDINATOR';
   const [pollenForm, setPollenForm] = useState({ requestedAmount: '100', confirmedAmount: '100', comment: 'в пределах лимита' });
   const [taskForm, setTaskForm] = useState(defaultTaskForm);
   const [assignmentForm, setAssignmentForm] = useState(defaultAssignmentForm);
@@ -69,12 +79,34 @@ export default function PreparationPage() {
   useEffect(() => {
     let active = true;
     setBusy(true);
-    Promise.all([lifecycleApi.getPlan(id), lifecycleApi.getReadiness(id)])
-      .then(([loadedPlan, loadedReadiness]) => {
+    Promise.all([lifecycleApi.getPlan(id), lifecycleApi.getReadiness(id), lifecycleApi.listTasks(id)])
+      .then(async ([loadedPlan, loadedReadiness, loadedTasks]) => {
         if (active) {
           setPlan(loadedPlan);
           setReadiness(loadedReadiness);
+          setTasks(loadedTasks);
+          setAssignmentForm((current) => {
+            const firstTask = loadedTasks[0];
+            if (!firstTask) {
+              return current;
+            }
+            const nextTalent = firstTask.requiredTalent ?? current.talent;
+            return {
+              ...current,
+              taskId: firstTask.id,
+              talent: nextTalent,
+              fairyId: compatibleFairiesForTalent(nextTalent)[0] ?? current.fairyId
+            };
+          });
           cachePlan(loadedPlan);
+          cacheTasks(id, loadedTasks);
+        }
+        const loadedAssignments = await Promise.all(
+          loadedTasks.map(async (task) => [task.id, await lifecycleApi.listAssignments(task.id)])
+        );
+        if (active) {
+          setAssignmentsByTask(Object.fromEntries(loadedAssignments));
+          loadedAssignments.forEach(([taskId, assignments]) => cacheAssignments(taskId, assignments));
         }
       })
       .catch((loadError) => active && setError(loadError))
@@ -147,9 +179,9 @@ export default function PreparationPage() {
     <AppShell title="Подготовка сезона к запуску" activeStep={3} plan={plan}>
       <div className="content-grid two-col">
         <section className="stack">
+          {canManagePollen ? (
           <div className="card stack">
             <h4>Резерв пыльцы</h4>
-            <ActorSelector actor={pollenActor} onChange={setPollenActor} options={[actors.pollen]} />
             <div className="field-grid">
               <label className="field">
                 <span>Запрошенный объем</span>
@@ -216,10 +248,18 @@ export default function PreparationPage() {
             </div>
             <ObjectSummary object={reservation} empty="В этой сессии еще нет резерва." />
           </div>
+          ) : (
+            <div className="card stack">
+              <h4>Pollen reservation</h4>
+              <p className="note">Pollen reservation controls are available only to POLLEN_GUARDIAN.</p>
+              <ObjectSummary object={reservation} empty="В этой сессии еще нет резерва." />
+            </div>
+          )}
 
+          {canCoordinateTasks ? (
+          <>
           <div className="card stack">
             <h4>MagicTask</h4>
-            <ActorSelector actor={taskActor} onChange={setTaskActor} options={[actors.coordinator]} />
             <div className="field-grid">
               <label className="field">
                 <span>Название задачи</span>
@@ -384,6 +424,13 @@ export default function PreparationPage() {
               Назначить фею
             </button>
           </div>
+          </>
+          ) : (
+            <div className="card stack">
+              <h4>MagicTask and readiness</h4>
+              <p className="note">Task and readiness controls are available only to TALENT_COORDINATOR.</p>
+            </div>
+          )}
 
           <SessionLists tasks={tasks} assignmentsByTask={assignmentsByTask} />
         </section>
@@ -392,6 +439,8 @@ export default function PreparationPage() {
           <div className="card stack">
             <h4>Готовность к RitualSession</h4>
             <ReadinessSummary readiness={readiness} />
+            {canCoordinateTasks ? (
+              <>
             <ChecklistControls
               checklist={plan?.readinessChecklist ?? []}
               busy={busy}
@@ -418,9 +467,13 @@ export default function PreparationPage() {
             >
               Подтвердить готовность
             </button>
+              </>
+            ) : (
+              <p className="note">Task and readiness controls are available only to TALENT_COORDINATOR.</p>
+            )}
           </div>
           <p className="note">
-            Резервы, задачи и назначения показаны только для текущей сессии, потому что текущий API не предоставляет list endpoints.
+            Tasks and assignments are loaded from backend for the opened SeasonPlan.
           </p>
           <p className="note">Доступность фей API не раскрывает. Конфликты расписания показываются только из ошибок действия назначения.</p>
           {message && <p className="note">{message}</p>}
@@ -470,7 +523,7 @@ function SessionLists({ tasks, assignmentsByTask }) {
   return (
     <div className="card stack">
       <h4>Задачи и состав команды</h4>
-      <p className="note">Списки задач и назначений являются сессионными, не авторитетными данными backend.</p>
+      <p className="note">Tasks and assignments show backend data for this SeasonPlan.</p>
       {tasks.length === 0 ? (
         <p className="note">В этой сессии еще нет задач.</p>
       ) : (

@@ -25,10 +25,28 @@ describe('App navigation', () => {
     renderApp();
 
     expect(screen.getByRole('heading', { name: 'SeasonPlan lifecycle' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Observe as role' })).toHaveValue('FAIRY_PLANNER');
     expect(screen.getByRole('link', { name: /Планирование сезона/i })).toBeInTheDocument();
     expect(screen.getByText(/Согласование сезонного плана/i)).toBeInTheDocument();
     expect(screen.getByText(/Подготовка сезона к запуску/i)).toBeInTheDocument();
     expect(screen.getByText(/Создайте черновик/i)).toBeInTheDocument();
+  });
+
+  it('keeps season plan status visible while role selection changes available dashboard actions', async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem(
+      'seasonPlan.workflow',
+      JSON.stringify({ latestPlanId: 'plan-1', latestPlan: { id: 'plan-1', status: 'DRAFT' } })
+    );
+
+    renderApp();
+    expect(screen.getAllByText('DRAFT').length).toBeGreaterThan(0);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Observe as role' }), 'TALENT_COORDINATOR');
+
+    expect(screen.getAllByText('DRAFT').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /РџР»Р°РЅРёСЂРѕРІР°РЅРёРµ СЃРµР·РѕРЅР°/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/DRAFT plans are hidden/i).length).toBeGreaterThan(0);
   });
 
   it('does not expose later lifecycle use cases as active routes', () => {

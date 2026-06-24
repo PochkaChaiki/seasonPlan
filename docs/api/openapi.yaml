@@ -38,12 +38,16 @@ paths:
     post:
       summary: Reject a pollen reservation
   /season-plans/{id}/tasks:
+    get:
+      summary: List magic tasks for a season plan
     post:
       summary: Create a magic task
   /tasks/{id}:
     patch:
       summary: Update a magic task
   /tasks/{id}/assignments:
+    get:
+      summary: List fairy assignments for a magic task
     post:
       summary: Assign a fairy to a task
   /season-plans/{id}/mark-ritual-ready:

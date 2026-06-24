@@ -159,6 +159,11 @@ public class LifecycleController {
         return toResponse(magicTaskService.createTask(id, request.toDraft(), role, actorId));
     }
 
+    @GetMapping("/season-plans/{id}/tasks")
+    public List<MagicTaskResponse> listTasks(@PathVariable UUID id) {
+        return magicTaskService.listTasksBySeasonPlan(id).stream().map(this::toResponse).toList();
+    }
+
     @PatchMapping("/tasks/{id}")
     public MagicTaskResponse updateTask(
             @PathVariable UUID id,
@@ -177,6 +182,11 @@ public class LifecycleController {
             @RequestHeader("X-Actor-Id") String actorId
     ) {
         return toResponse(fairyAssignmentService.assignFairy(id, request.fairyId(), request.role(), request.talent(), request.status(), role, actorId));
+    }
+
+    @GetMapping("/tasks/{id}/assignments")
+    public List<FairyAssignmentResponse> listAssignments(@PathVariable UUID id) {
+        return fairyAssignmentService.assignmentsForTask(id).stream().map(this::toResponse).toList();
     }
 
     @PostMapping("/season-plans/{id}/mark-ritual-ready")

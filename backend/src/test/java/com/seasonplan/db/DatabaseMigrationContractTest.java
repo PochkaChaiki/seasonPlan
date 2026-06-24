@@ -11,10 +11,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DatabaseMigrationContractTest {
     @Test
-    void lifecycleMigrationDefinesRequiredTablesAndAuditImmutability() throws IOException {
-        String migration = Files.readString(Path.of("src/main/resources/db/migration/V2__season_coordination_schema.sql"));
+    void liquibaseChangelogDefinesRequiredTablesAndAuditImmutability() throws IOException {
+        String masterChangelog = Files.readString(Path.of("src/main/resources/db/changelog/db.changelog-master.yaml"));
+        assertThat(masterChangelog).contains(
+                "db/changelog/changes/001-initial-schema.sql",
+                "db/changelog/changes/002-season-coordination-schema.sql"
+        );
+
+        String migration = Files.readString(Path.of("src/main/resources/db/changelog/changes/002-season-coordination-schema.sql"));
 
         assertThat(migration).contains(
+                "--liquibase formatted sql",
+                "--changeset seasonplan:002-season-coordination-schema",
                 "create table season_plans",
                 "create table season_plan_time_windows",
                 "create table season_plan_target_territories",

@@ -1,6 +1,10 @@
 package com.seasonplan.lifecycle.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.seasonplan.lifecycle.domain.ActorRole;
+import com.seasonplan.lifecycle.domain.AssignmentStatus;
+import com.seasonplan.lifecycle.domain.MagicTask;
+import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,10 +21,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LifecycleControllerTest {
     private MockMvc mvc;
     private ObjectMapper objectMapper;
+    private SeasonPlanTestFixture fixture;
 
     @BeforeEach
     void setUp() {
-        SeasonPlanTestFixture fixture = SeasonPlanTestFixture.create();
+        fixture = SeasonPlanTestFixture.create();
         objectMapper = new ObjectMapper().findAndRegisterModules();
         mvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
                         fixture.seasonPlanService(),
@@ -112,6 +117,44 @@ class LifecycleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").exists())
                 .andExpect(jsonPath("$[*].seasonType").value(org.hamcrest.Matchers.containsInAnyOrder("SPRING", "SUMMER")));
+    }
+
+    @Test
+    void taskAndAssignmentListEndpointsExposePersistedPreparationDataForPlan() throws Exception {
+        SeasonPlan draft = fixture.seasonPlanService().createDraft(
+                SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER,
+                "planner-1"
+        );
+        fixture.seasonPlanService().submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        SeasonPlan approved = fixture.seasonPlanService().approve(draft.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        MagicTask task = fixture.magicTaskService().createTask(
+                approved.id(),
+                SeasonPlanTestFixture.validTaskDraft(),
+                ActorRole.TALENT_COORDINATOR,
+                "coordinator-1"
+        );
+        fixture.fairyAssignmentService().assignFairy(
+                task.id(),
+                "fairy-spring",
+                "LEAD",
+                "SPRING_WEATHER",
+                AssignmentStatus.CONFIRMED,
+                ActorRole.TALENT_COORDINATOR,
+                "coordinator-1"
+        );
+
+        mvc.perform(get("/season-plans/{id}/tasks", approved.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(task.id().toString()))
+                .andExpect(jsonPath("$[0].seasonPlanId").value(approved.id().toString()))
+                .andExpect(jsonPath("$[0].title").value("Prepare weather lattice"));
+
+        mvc.perform(get("/tasks/{id}/assignments", task.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].magicTaskId").value(task.id().toString()))
+                .andExpect(jsonPath("$[0].fairyId").value("fairy-spring"))
+                .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
     }
 
     @Test

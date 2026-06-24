@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ActorSelector from '../../components/ActorSelector.jsx';
 import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
 import LoadingState from '../../components/LoadingState.jsx';
@@ -8,9 +7,10 @@ import ReadinessSummary from '../../components/ReadinessSummary.jsx';
 import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
 import { cachePlan } from '../../api/workflowStorage.js';
 
-export default function PlanReviewPage() {
+export default function PlanReviewPage({ currentActor = actors.guardian }) {
   const { id } = useParams();
-  const [actor, setActor] = useState(actors.guardian);
+  const actor = currentActor;
+  const canDecide = actor.role === 'CHIEF_GUARDIAN';
   const [plan, setPlan] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [comment, setComment] = useState('');
@@ -74,9 +74,9 @@ export default function PlanReviewPage() {
           <p className="note">История аудита не раскрыта текущим API.</p>
           <p className="note">Отдельного endpoint для валидации плана нет; показываем ошибки действий и ответ готовности.</p>
         </section>
+        {canDecide ? (
         <aside className="card stack">
           <h4>Решение</h4>
-          <ActorSelector actor={actor} onChange={setActor} options={[actors.guardian]} />
           <label className="field">
             <span>Комментарий к решению</span>
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} />
@@ -93,6 +93,14 @@ export default function PlanReviewPage() {
           {error && <p className="note rose">{error.message}</p>}
           <FieldErrors errors={error?.errors} />
         </aside>
+        ) : (
+          <aside className="card stack">
+            <h4>Review decision</h4>
+            <p className="note">Review decisions are available only to CHIEF_GUARDIAN.</p>
+            {error && <p className="note rose">{error.message}</p>}
+            <FieldErrors errors={error?.errors} />
+          </aside>
+        )}
       </div>
     </AppShell>
   );

@@ -133,4 +133,24 @@ describe('SeasonPlanningPage', () => {
     expect(screen.getByLabelText('season-type')).toHaveValue('SPRING');
     expect(screen.getByDisplayValue('Northern Forest')).toBeInTheDocument();
   });
+
+  it('hides draft planning controls from the talent coordinator observer role', async () => {
+    mockPlanList([
+      { id: 'plan-draft', seasonType: 'SPRING', status: 'DRAFT', targetTerritories: ['Northern Forest'] },
+      { id: 'plan-submitted', seasonType: 'SUMMER', status: 'SUBMITTED', targetTerritories: ['South Field'] }
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/season-plans/new']}>
+        <Routes>
+          <Route path="/season-plans/new" element={<SeasonPlanningPage currentActor={{ role: 'TALENT_COORDINATOR', id: 'coordinator-1' }} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Planning controls are available only to FAIRY_PLANNER/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'РЎРѕС…СЂР°РЅРёС‚СЊ РЅРѕРІС‹Р№ С‡РµСЂРЅРѕРІРёРє' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/plan-draft/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/plan-submitted/i)).toBeInTheDocument();
+  });
 });

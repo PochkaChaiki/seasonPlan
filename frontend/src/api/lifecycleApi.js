@@ -40,6 +40,8 @@ export const actors = {
   pollen: { role: 'POLLEN_GUARDIAN', id: 'pollen-1' }
 };
 
+export const actorOptions = [actors.planner, actors.guardian, actors.coordinator, actors.pollen];
+
 export const lifecycleApi = {
   createPlan: (payload, actor) => request('/season-plans', { method: 'POST', body: payload, actor }),
   updatePlan: (id, payload, actor) => request(`/season-plans/${id}`, { method: 'PATCH', body: payload, actor }),
@@ -49,6 +51,7 @@ export const lifecycleApi = {
   listPlans: () => request('/season-plans'),
   getPlan: (id) => request(`/season-plans/${id}`),
   getReadiness: (id) => request(`/season-plans/${id}/readiness`),
+  listTasks: (id) => request(`/season-plans/${id}/tasks`),
   requestReservation: (id, payload, actor) =>
     request(`/season-plans/${id}/pollen-reservations`, { method: 'POST', body: payload, actor }),
   confirmReservation: (id, payload, actor) =>
@@ -57,6 +60,7 @@ export const lifecycleApi = {
     request(`/pollen-reservations/${id}/reject`, { method: 'POST', body: payload, actor }),
   createTask: (id, payload, actor) => request(`/season-plans/${id}/tasks`, { method: 'POST', body: payload, actor }),
   updateTask: (id, payload, actor) => request(`/tasks/${id}`, { method: 'PATCH', body: payload, actor }),
+  listAssignments: (id) => request(`/tasks/${id}/assignments`),
   assignFairy: (id, payload, actor) => request(`/tasks/${id}/assignments`, { method: 'POST', body: payload, actor }),
   completeReadinessChecklistItem: (id, key, actor) =>
     request(`/season-plans/${id}/readiness-checklist/${encodeURIComponent(key)}/complete`, { method: 'POST', actor }),

@@ -54,11 +54,24 @@ export function cacheTask(planId, task) {
   writeWorkflow({ ...workflow, tasksByPlan: { ...workflow.tasksByPlan, [planId]: nextTasks } });
 }
 
+export function cacheTasks(planId, tasks) {
+  const workflow = readWorkflow();
+  writeWorkflow({ ...workflow, tasksByPlan: { ...workflow.tasksByPlan, [planId]: tasks } });
+}
+
 export function cacheAssignment(taskId, assignment) {
   const workflow = readWorkflow();
   const assignments = workflow.assignmentsByTask[taskId] ?? [];
   writeWorkflow({
     ...workflow,
     assignmentsByTask: { ...workflow.assignmentsByTask, [taskId]: [...assignments, assignment] }
+  });
+}
+
+export function cacheAssignments(taskId, assignments) {
+  const workflow = readWorkflow();
+  writeWorkflow({
+    ...workflow,
+    assignmentsByTask: { ...workflow.assignmentsByTask, [taskId]: assignments }
   });
 }

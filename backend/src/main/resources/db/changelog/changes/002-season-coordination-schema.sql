@@ -1,3 +1,8 @@
+--liquibase formatted sql
+
+--changeset seasonplan:002-season-coordination-schema
+--preconditions onFail:MARK_RAN onError:HALT
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'season_plans'
 create extension if not exists btree_gist;
 
 create table season_plans (
@@ -223,6 +228,7 @@ create table audit_log_entries (
 create index audit_log_entries_plan_created_idx on audit_log_entries(season_plan_id, created_at);
 create index audit_log_entries_action_idx on audit_log_entries(action);
 
+--changeset seasonplan:003-audit-log-immutability-function splitStatements:false
 create or replace function prevent_audit_log_mutation()
 returns trigger
 language plpgsql
@@ -232,6 +238,9 @@ begin
 end;
 $$;
 
+--changeset seasonplan:004-audit-log-immutability-triggers
+--preconditions onFail:MARK_RAN onError:HALT
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema() AND trigger_name IN ('audit_log_entries_no_update', 'audit_log_entries_no_delete')
 create trigger audit_log_entries_no_update
 before update on audit_log_entries
 for each row execute function prevent_audit_log_mutation();
