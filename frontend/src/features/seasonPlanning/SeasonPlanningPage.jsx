@@ -237,13 +237,8 @@ export default function SeasonPlanningPage({ currentActor = actors.planner }) {
             </button>
           </div>
         </form>
-        ) : (
-          <section className="card stack">
-            <h4>SeasonPlan planning</h4>
-            <p className="note">Planning controls are available only to FAIRY_PLANNER.</p>
-            <p className="note">DRAFT plans are hidden from this role until planning is complete.</p>
-          </section>
-        )}
+        ) : null}
+        {canPlan && (
         <aside className="stack">
           {message && <p className="note">{message}</p>}
           {error && <p className="note rose">{error.message}</p>}
@@ -295,6 +290,7 @@ export default function SeasonPlanningPage({ currentActor = actors.planner }) {
             )}
           </div>
         </aside>
+        )}
       </div>
     </AppShell>
   );

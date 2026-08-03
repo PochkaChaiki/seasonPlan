@@ -248,13 +248,7 @@ export default function PreparationPage({ currentActor = null }) {
             </div>
             <ObjectSummary object={reservation} empty="В этой сессии еще нет резерва." />
           </div>
-          ) : (
-            <div className="card stack">
-              <h4>Pollen reservation</h4>
-              <p className="note">Pollen reservation controls are available only to POLLEN_GUARDIAN.</p>
-              <ObjectSummary object={reservation} empty="В этой сессии еще нет резерва." />
-            </div>
-          )}
+          ) : null}
 
           {canCoordinateTasks ? (
           <>
@@ -425,16 +419,12 @@ export default function PreparationPage({ currentActor = null }) {
             </button>
           </div>
           </>
-          ) : (
-            <div className="card stack">
-              <h4>MagicTask and readiness</h4>
-              <p className="note">Task and readiness controls are available only to TALENT_COORDINATOR.</p>
-            </div>
-          )}
+          ) : null}
 
-          <SessionLists tasks={tasks} assignmentsByTask={assignmentsByTask} />
+          {canCoordinateTasks && <SessionLists tasks={tasks} assignmentsByTask={assignmentsByTask} />}
         </section>
 
+        {canCoordinateTasks && (
         <aside className="stack">
           <div className="card stack">
             <h4>Готовность к RitualSession</h4>
@@ -480,6 +470,7 @@ export default function PreparationPage({ currentActor = null }) {
           {error && <p className="note rose">{error.message}</p>}
           <FieldErrors errors={error?.errors} />
         </aside>
+        )}
       </div>
     </AppShell>
   );

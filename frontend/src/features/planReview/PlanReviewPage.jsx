@@ -66,6 +66,7 @@ export default function PlanReviewPage({ currentActor = actors.guardian }) {
 
   return (
     <AppShell title="Согласование сезонного плана" activeStep={2} plan={plan}>
+      {canDecide && (
       <div className="content-grid two-col">
         <section className="card stack">
           <h4>Сводка плана</h4>
@@ -93,15 +94,9 @@ export default function PlanReviewPage({ currentActor = actors.guardian }) {
           {error && <p className="note rose">{error.message}</p>}
           <FieldErrors errors={error?.errors} />
         </aside>
-        ) : (
-          <aside className="card stack">
-            <h4>Review decision</h4>
-            <p className="note">Review decisions are available only to CHIEF_GUARDIAN.</p>
-            {error && <p className="note rose">{error.message}</p>}
-            <FieldErrors errors={error?.errors} />
-          </aside>
-        )}
+        ) : null}
       </div>
+      )}
     </AppShell>
   );
 }

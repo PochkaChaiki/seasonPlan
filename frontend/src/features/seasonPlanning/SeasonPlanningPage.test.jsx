@@ -134,7 +134,7 @@ describe('SeasonPlanningPage', () => {
     expect(screen.getByDisplayValue('Northern Forest')).toBeInTheDocument();
   });
 
-  it('hides draft planning controls from the talent coordinator observer role', async () => {
+  it('hides planning and existing-plan blocks from the talent coordinator observer role', async () => {
     mockPlanList([
       { id: 'plan-draft', seasonType: 'SPRING', status: 'DRAFT', targetTerritories: ['Northern Forest'] },
       { id: 'plan-submitted', seasonType: 'SUMMER', status: 'SUBMITTED', targetTerritories: ['South Field'] }
@@ -148,9 +148,11 @@ describe('SeasonPlanningPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Planning controls are available only to FAIRY_PLANNER/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'РЎРѕС…СЂР°РЅРёС‚СЊ РЅРѕРІС‹Р№ С‡РµСЂРЅРѕРІРёРє' })).not.toBeInTheDocument();
+    expect((await screen.findAllByText(/Планирование сезона/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Planning controls are available only to FAIRY_PLANNER/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Existing SeasonPlans/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Сохранить новый черновик/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/plan-draft/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/plan-submitted/i)).toBeInTheDocument();
+    expect(screen.queryByText(/plan-submitted/i)).not.toBeInTheDocument();
   });
 });

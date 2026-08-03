@@ -103,15 +103,17 @@ describe('PlanReviewPage', () => {
     expect(await screen.findByText('rejected pollen reservation blocks approval')).toBeInTheDocument();
   });
 
-  it('shows review status without decision controls for non-guardian roles', async () => {
+  it('hides review summary and decision blocks for non-guardian roles', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json(plan))
       .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }));
 
     renderPageAs({ role: 'FAIRY_PLANNER', id: 'planner-1' });
 
-    expect(await screen.findByText('Northern Forest')).toBeInTheDocument();
-    expect(screen.getByText(/Review decisions are available only to CHIEF_GUARDIAN/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Согласование сезонного плана/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Northern Forest')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Review decisions are available only to CHIEF_GUARDIAN/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Сводка плана/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'РЈС‚РІРµСЂРґРёС‚СЊ РїР»Р°РЅ' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Р’РµСЂРЅСѓС‚СЊ РЅР° РґРѕСЂР°Р±РѕС‚РєСѓ' })).not.toBeInTheDocument();
   });

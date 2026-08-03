@@ -302,6 +302,18 @@ describe('PreparationPage', () => {
     expect(await screen.findByRole('button', { name: /Запросить резерв/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Создать задачу/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Подтвердить готовность/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Task and readiness controls are available only to TALENT_COORDINATOR/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Task and readiness controls are available only to TALENT_COORDINATOR/i)).not.toBeInTheDocument();
+  });
+
+  it('does not render unauthorized task and readiness blocks for pollen guardian observers', async () => {
+    mockInitialLoad();
+
+    renderPageAs({ role: 'POLLEN_GUARDIAN', id: 'pollen-1' });
+
+    expect((await screen.findAllByRole('button', { name: /резерв/i })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Task and readiness controls are available only to TALENT_COORDINATOR/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/MagicTask/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FairyAssignment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/RitualSession/i)).not.toBeInTheDocument();
   });
 });
