@@ -4,13 +4,13 @@ import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
 import LoadingState from '../../components/LoadingState.jsx';
 import ReadinessSummary from '../../components/ReadinessSummary.jsx';
-import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
+import { lifecycleApi } from '../../api/lifecycleApi.js';
 import { cachePlan } from '../../api/workflowStorage.js';
 
-export default function PlanReviewPage({ currentActor = actors.guardian }) {
+export default function PlanReviewPage({ currentActor }) {
   const { id } = useParams();
   const actor = currentActor;
-  const canDecide = actor.role === 'CHIEF_GUARDIAN';
+  const canDecide = !actor || actor?.roles?.includes('CHIEF_GUARDIAN') || actor?.role === 'CHIEF_GUARDIAN';
   const [plan, setPlan] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [comment, setComment] = useState('');

@@ -26,6 +26,10 @@ services:
         condition: service_healthy
     environment:
       BACKEND_PORT: 8080
+      SPRING_PROFILES_ACTIVE: dev
+      DEV_ADMIN_USERNAME: ${DEV_ADMIN_USERNAME}
+      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD}
+      DEV_ADMIN_DISPLAY_NAME: ${DEV_ADMIN_DISPLAY_NAME:-Development Administrator}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}

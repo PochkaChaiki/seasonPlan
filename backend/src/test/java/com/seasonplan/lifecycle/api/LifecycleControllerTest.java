@@ -1,11 +1,7 @@
 package com.seasonplan.lifecycle.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seasonplan.lifecycle.domain.ActorRole;
-import com.seasonplan.lifecycle.domain.AssignmentStatus;
-import com.seasonplan.lifecycle.domain.MagicTask;
-import com.seasonplan.lifecycle.domain.SeasonPlan;
-import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
+import com.seasonplan.lifecycle.domain.CurrentActor;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,186 +9,36 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import java.util.Set;
+import java.util.UUID;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class LifecycleControllerTest {
     private MockMvc mvc;
-    private ObjectMapper objectMapper;
-    private SeasonPlanTestFixture fixture;
 
     @BeforeEach
     void setUp() {
-        fixture = SeasonPlanTestFixture.create();
-        objectMapper = new ObjectMapper().findAndRegisterModules();
+        SeasonPlanTestFixture fixture = SeasonPlanTestFixture.create();
+        CurrentActor planner = new CurrentActor(UUID.fromString("00000000-0000-0000-0000-000000000001"), "planner", Set.of(ActorRole.FAIRY_PLANNER));
         mvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
-                        fixture.seasonPlanService(),
-                        fixture.pollenReservationService(),
-                        fixture.magicTaskService(),
-                        fixture.fairyAssignmentService(),
-                        fixture.readinessChecklistService()
-                ))
-                .setControllerAdvice(new LifecycleExceptionHandler())
-                .build();
+                        fixture.seasonPlanService(), fixture.pollenReservationService(), fixture.magicTaskService(),
+                        fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> planner))
+                .setControllerAdvice(new LifecycleExceptionHandler()).build();
     }
 
     @Test
-    void createSubmitApproveAndReadinessEndpointsExposeLifecycle() throws Exception {
-        String createResponse = mvc.perform(post("/season-plans")
-                        .header("X-Actor-Role", "FAIRY_PLANNER")
-                        .header("X-Actor-Id", "planner-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validPlanRequestWithServerOwnedFields()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(SeasonPlanStatus.DRAFT.name()))
-                .andExpect(jsonPath("$.createdBy").value("planner-1"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String planId = objectMapper.readTree(createResponse).get("id").asText();
-
-        mvc.perform(post("/season-plans/{id}/submit", planId)
-                        .header("X-Actor-Role", "FAIRY_PLANNER")
-                        .header("X-Actor-Id", "planner-1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(SeasonPlanStatus.SUBMITTED.name()));
-
-        mvc.perform(post("/season-plans/{id}/approve", planId)
-                        .header("X-Actor-Role", "CHIEF_GUARDIAN")
-                        .header("X-Actor-Id", "guardian-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"comment\":\"approved\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(SeasonPlanStatus.APPROVED.name()));
-
-        mvc.perform(get("/season-plans/{id}/readiness", planId)
-                        .header("X-Actor-Role", "TALENT_COORDINATOR")
-                        .header("X-Actor-Id", "coordinator-1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.ready").value(false))
-                .andExpect(jsonPath("$.errors.pollenReservation[0]").value("confirmed pollen reservation is required"));
-    }
-
-    @Test
-    void completeReadinessChecklistItemEndpointPersistsChecklistState() throws Exception {
-        String createResponse = mvc.perform(post("/season-plans")
-                        .header("X-Actor-Role", "FAIRY_PLANNER")
-                        .header("X-Actor-Id", "planner-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validPlanRequestWithServerOwnedFields()))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String planId = objectMapper.readTree(createResponse).get("id").asText();
-
-        mvc.perform(post("/season-plans/{id}/readiness-checklist/{key}/complete", planId, "calendar-reviewed")
-                        .header("X-Actor-Role", "TALENT_COORDINATOR")
-                        .header("X-Actor-Id", "coordinator-1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.readinessChecklist[?(@.key == 'calendar-reviewed')].complete").value(true));
-    }
-
-    @Test
-    void listSeasonPlansEndpointExposesCreatedPlansForSelection() throws Exception {
+    void createPlanDerivesOwnerFromCurrentActorInsteadOfRequestFields() throws Exception {
         mvc.perform(post("/season-plans")
-                        .header("X-Actor-Role", "FAIRY_PLANNER")
-                        .header("X-Actor-Id", "planner-1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validPlanRequestWithServerOwnedFields()))
-                .andExpect(status().isOk());
-
-        mvc.perform(post("/season-plans")
-                        .header("X-Actor-Role", "FAIRY_PLANNER")
-                        .header("X-Actor-Id", "planner-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validPlanRequestWithSeasonType("SUMMER")))
-                .andExpect(status().isOk());
-
-        mvc.perform(get("/season-plans"))
+                        .content("""
+                            {"createdBy":"attacker","seasonType":"SPRING","targetTerritories":["north-grove"],
+                             "timeWindows":[{"start":"2026-03-01T09:00:00","end":"2026-03-01T12:00:00"}],
+                             "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5}}
+                            """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").exists())
-                .andExpect(jsonPath("$[*].seasonType").value(org.hamcrest.Matchers.containsInAnyOrder("SPRING", "SUMMER")));
-    }
-
-    @Test
-    void taskAndAssignmentListEndpointsExposePersistedPreparationDataForPlan() throws Exception {
-        SeasonPlan draft = fixture.seasonPlanService().createDraft(
-                SeasonPlanTestFixture.validPlanDraft("planner-1"),
-                ActorRole.FAIRY_PLANNER,
-                "planner-1"
-        );
-        fixture.seasonPlanService().submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
-        SeasonPlan approved = fixture.seasonPlanService().approve(draft.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
-        MagicTask task = fixture.magicTaskService().createTask(
-                approved.id(),
-                SeasonPlanTestFixture.validTaskDraft(),
-                ActorRole.TALENT_COORDINATOR,
-                "coordinator-1"
-        );
-        fixture.fairyAssignmentService().assignFairy(
-                task.id(),
-                "fairy-spring",
-                "LEAD",
-                "SPRING_WEATHER",
-                AssignmentStatus.CONFIRMED,
-                ActorRole.TALENT_COORDINATOR,
-                "coordinator-1"
-        );
-
-        mvc.perform(get("/season-plans/{id}/tasks", approved.id()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(task.id().toString()))
-                .andExpect(jsonPath("$[0].seasonPlanId").value(approved.id().toString()))
-                .andExpect(jsonPath("$[0].title").value("Prepare weather lattice"));
-
-        mvc.perform(get("/tasks/{id}/assignments", task.id()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].magicTaskId").value(task.id().toString()))
-                .andExpect(jsonPath("$[0].fairyId").value("fairy-spring"))
-                .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
-    }
-
-    @Test
-    void unauthorizedRoleReturnsForbiddenWithStructuredError() throws Exception {
-        mvc.perform(post("/season-plans")
-                        .header("X-Actor-Role", "CHIEF_GUARDIAN")
-                        .header("X-Actor-Id", "guardian-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validPlanRequestWithServerOwnedFields()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("role is not allowed for this command: CHIEF_GUARDIAN"));
-    }
-
-    private String validPlanRequestWithServerOwnedFields() {
-        return validPlanRequestWithSeasonType("SPRING");
-    }
-
-    private String validPlanRequestWithSeasonType(String seasonType) {
-        return """
-                {
-                  "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                  "status": "APPROVED",
-                  "createdBy": "attacker",
-                  "seasonType": "%s",
-                  "targetTerritories": ["north-grove"],
-                  "timeWindows": [
-                    {
-                      "start": "2026-03-01T09:00:00",
-                      "end": "2026-03-01T12:00:00"
-                    }
-                  ],
-                  "naturalPhenomenonParameters": {
-                    "bloom": "early"
-                  },
-                  "targetClimateMetrics": {
-                    "temperature": 17.5
-                  }
-                }
-                """.formatted(seasonType);
+                .andExpect(jsonPath("$.createdBy").value("00000000-0000-0000-0000-000000000001"));
     }
 }

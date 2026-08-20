@@ -3,3 +3,7 @@ databaseChangeLog:
       file: db/changelog/changes/001-initial-schema.sql
   - include:
       file: db/changelog/changes/002-season-coordination-schema.sql
+  - include:
+      file: db/changelog/changes/005-authentication-and-sessions.sql
+  - include:
+      file: db/changelog/changes/007-system-administrators.sql

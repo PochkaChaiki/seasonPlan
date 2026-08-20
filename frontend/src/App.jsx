@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
-import { actors } from './api/lifecycleApi.js';
 import { readWorkflow } from './api/workflowStorage.js';
-import RoleObserverBox from './components/RoleObserverBox.jsx';
+import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
+import LoginPage from './auth/LoginPage.jsx';
+import ProfileSecurityPage from './auth/ProfileSecurityPage.jsx';
+import UserRegistrationPage from './auth/UserRegistrationPage.jsx';
 import PreparationPage from './features/preparation/PreparationPage.jsx';
 import PlanReviewPage from './features/planReview/PlanReviewPage.jsx';
 import SeasonPlanningPage from './features/seasonPlanning/SeasonPlanningPage.jsx';
@@ -12,7 +13,7 @@ function Dashboard({ currentActor }) {
   const workflow = readWorkflow();
   const planId = workflow.latestPlanId;
   const currentStatus = workflow.latestPlan?.status;
-  const canPlan = currentActor.role === 'FAIRY_PLANNER';
+  const canPlan = currentActor.roles.includes('FAIRY_PLANNER');
   const draftHidden = currentStatus === 'DRAFT' && !canPlan;
   const canOpenPlan = Boolean(planId && !draftHidden);
 
@@ -113,25 +114,48 @@ function InactiveWorkflow() {
   );
 }
 
-export default function App() {
-  const [currentActor, setCurrentActor] = useState(actors.planner);
-  const workflow = readWorkflow();
+function AccessDenied() {
+  return <main className="page-shell"><section className="card compact">
+    <h1>Доступ запрещен</h1>
+    <p className="note">У вас нет прав для управления пользователями.</p>
+    <Link className="back-link" to="/">На главную</Link>
+  </section></main>;
+}
 
+function AdminRoute({ user }) {
+  return user.administrator ? <UserRegistrationPage /> : <AccessDenied />;
+}
+
+function AuthenticatedApp() {
+  const { loading, user, logout, reauthenticationNotice } = useAuth();
+  if (loading) return <main className="page-shell"><p>Загрузка сеанса…</p></main>;
+  if (!user) return <LoginPage notice={reauthenticationNotice} />;
   return (
     <>
-      <RoleObserverBox actor={currentActor} onChange={setCurrentActor} plan={workflow.latestPlan} />
+      <header className="auth-bar">
+        <span>{user.displayName} ({user.roles.join(', ')})</span>
+        <nav aria-label="Учетная запись" className="auth-nav">
+          <Link to="/profile/security">Профиль и безопасность</Link>
+          {user.administrator && <Link to="/admin/users">Управление пользователями</Link>}
+          <button onClick={logout}>Выйти</button>
+        </nav>
+      </header>
       <Routes>
-        <Route path="/" element={<Dashboard currentActor={currentActor} />} />
-        <Route path="/season-plans/new" element={<SeasonPlanningPage currentActor={currentActor} />} />
+        <Route path="/" element={<Dashboard currentActor={user} />} />
+        <Route path="/season-plans/new" element={<SeasonPlanningPage currentActor={user} />} />
         <Route path="/season-plans/:id" element={<PlanRedirect />} />
-        <Route path="/season-plans/:id/review" element={<PlanReviewPage currentActor={currentActor} />} />
-        <Route path="/season-plans/:id/preparation" element={<PreparationPage currentActor={currentActor} />} />
+        <Route path="/season-plans/:id/review" element={<PlanReviewPage currentActor={user} />} />
+        <Route path="/season-plans/:id/preparation" element={<PreparationPage currentActor={user} />} />
         <Route path="/incidents" element={<InactiveWorkflow />} />
         <Route path="/climate-metrics" element={<InactiveWorkflow />} />
         <Route path="/audit-log" element={<InactiveWorkflow />} />
         <Route path="/reports" element={<InactiveWorkflow />} />
+        <Route path="/profile/security" element={<ProfileSecurityPage />} />
+        <Route path="/admin/users" element={<AdminRoute user={user} />} />
         <Route path="*" element={<InactiveWorkflow />} />
       </Routes>
     </>
   );
 }
+
+export default function App() { return <AuthProvider><AuthenticatedApp /></AuthProvider>; }

@@ -1,68 +1,44 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+let csrfToken = null;
+let csrfHeaderName = 'X-XSRF-TOKEN';
 
-async function request(path, { method = 'GET', body, actor } = {}) {
+export function setCsrfToken(token, headerName = 'X-XSRF-TOKEN') {
+  csrfToken = token;
+  csrfHeaderName = headerName;
+}
+
+export async function apiRequest(path, { method = 'GET', body } = {}) {
   const headers = { Accept: 'application/json' };
-
-  if (body !== undefined) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  if (actor) {
-    headers['X-Actor-Role'] = actor.role;
-    headers['X-Actor-Id'] = actor.id;
-  }
-
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (method !== 'GET' && method !== 'HEAD' && csrfToken) headers[csrfHeaderName] = csrfToken;
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body)
+      method, headers, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch {
     throw { message: 'Network error. Check that the backend API is reachable.', errors: {} };
   }
-
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw {
-      message: data.message ?? `Request failed with status ${response.status}`,
-      errors: data.errors ?? {}
-    };
-  }
+  if (!response.ok) throw { status: response.status, code: data.code, message: data.message ?? `Request failed with status ${response.status}`, errors: data.errors ?? {} };
   return data;
 }
 
-export const actors = {
-  planner: { role: 'FAIRY_PLANNER', id: 'planner-1' },
-  guardian: { role: 'CHIEF_GUARDIAN', id: 'guardian-1' },
-  coordinator: { role: 'TALENT_COORDINATOR', id: 'coordinator-1' },
-  pollen: { role: 'POLLEN_GUARDIAN', id: 'pollen-1' }
-};
-
-export const actorOptions = [actors.planner, actors.guardian, actors.coordinator, actors.pollen];
-
 export const lifecycleApi = {
-  createPlan: (payload, actor) => request('/season-plans', { method: 'POST', body: payload, actor }),
-  updatePlan: (id, payload, actor) => request(`/season-plans/${id}`, { method: 'PATCH', body: payload, actor }),
-  submitPlan: (id, actor) => request(`/season-plans/${id}/submit`, { method: 'POST', actor }),
-  approvePlan: (id, payload, actor) => request(`/season-plans/${id}/approve`, { method: 'POST', body: payload, actor }),
-  returnPlan: (id, payload, actor) => request(`/season-plans/${id}/return`, { method: 'POST', body: payload, actor }),
-  listPlans: () => request('/season-plans'),
-  getPlan: (id) => request(`/season-plans/${id}`),
-  getReadiness: (id) => request(`/season-plans/${id}/readiness`),
-  listTasks: (id) => request(`/season-plans/${id}/tasks`),
-  requestReservation: (id, payload, actor) =>
-    request(`/season-plans/${id}/pollen-reservations`, { method: 'POST', body: payload, actor }),
-  confirmReservation: (id, payload, actor) =>
-    request(`/pollen-reservations/${id}/confirm`, { method: 'POST', body: payload, actor }),
-  rejectReservation: (id, payload, actor) =>
-    request(`/pollen-reservations/${id}/reject`, { method: 'POST', body: payload, actor }),
-  createTask: (id, payload, actor) => request(`/season-plans/${id}/tasks`, { method: 'POST', body: payload, actor }),
-  updateTask: (id, payload, actor) => request(`/tasks/${id}`, { method: 'PATCH', body: payload, actor }),
-  listAssignments: (id) => request(`/tasks/${id}/assignments`),
-  assignFairy: (id, payload, actor) => request(`/tasks/${id}/assignments`, { method: 'POST', body: payload, actor }),
-  completeReadinessChecklistItem: (id, key, actor) =>
-    request(`/season-plans/${id}/readiness-checklist/${encodeURIComponent(key)}/complete`, { method: 'POST', actor }),
-  markRitualReady: (id, actor) => request(`/season-plans/${id}/mark-ritual-ready`, { method: 'POST', actor })
+  createPlan: (payload) => apiRequest('/season-plans', { method: 'POST', body: payload }),
+  updatePlan: (id, payload) => apiRequest(`/season-plans/${id}`, { method: 'PATCH', body: payload }),
+  submitPlan: (id) => apiRequest(`/season-plans/${id}/submit`, { method: 'POST' }),
+  approvePlan: (id, payload) => apiRequest(`/season-plans/${id}/approve`, { method: 'POST', body: payload }),
+  returnPlan: (id, payload) => apiRequest(`/season-plans/${id}/return`, { method: 'POST', body: payload }),
+  listPlans: () => apiRequest('/season-plans'), getPlan: (id) => apiRequest(`/season-plans/${id}`),
+  getReadiness: (id) => apiRequest(`/season-plans/${id}/readiness`), listTasks: (id) => apiRequest(`/season-plans/${id}/tasks`),
+  requestReservation: (id, payload) => apiRequest(`/season-plans/${id}/pollen-reservations`, { method: 'POST', body: payload }),
+  confirmReservation: (id, payload) => apiRequest(`/pollen-reservations/${id}/confirm`, { method: 'POST', body: payload }),
+  rejectReservation: (id, payload) => apiRequest(`/pollen-reservations/${id}/reject`, { method: 'POST', body: payload }),
+  createTask: (id, payload) => apiRequest(`/season-plans/${id}/tasks`, { method: 'POST', body: payload }),
+  updateTask: (id, payload) => apiRequest(`/tasks/${id}`, { method: 'PATCH', body: payload }),
+  listAssignments: (id) => apiRequest(`/tasks/${id}/assignments`),
+  assignFairy: (id, payload) => apiRequest(`/tasks/${id}/assignments`, { method: 'POST', body: payload }),
+  completeReadinessChecklistItem: (id, key) => apiRequest(`/season-plans/${id}/readiness-checklist/${encodeURIComponent(key)}/complete`, { method: 'POST' }),
+  markRitualReady: (id) => apiRequest(`/season-plans/${id}/mark-ritual-ready`, { method: 'POST' })
 };

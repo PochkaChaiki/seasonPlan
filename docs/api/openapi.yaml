@@ -3,6 +3,64 @@ info:
   title: SeasonPlan API
   version: 0.1.0
 paths:
+  /api/auth/csrf:
+    get:
+      summary: Establish or refresh browser CSRF state
+  /api/auth/login:
+    post:
+      summary: Authenticate a local user with a CSRF-protected form request
+  /api/auth/me:
+    get:
+      summary: Return the authenticated application user and roles
+  /api/auth/me/credentials:
+    put:
+      summary: Change the authenticated local user's username and password
+      description: Verifies the current password, updates only the current account, invalidates the session, and returns no credential data.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialChangeRequest'
+      responses:
+        '204':
+          description: Credentials changed and current session invalidated
+        '400':
+          description: Validation failure or invalid current password
+        '401':
+          description: Authentication required
+  /api/auth/logout:
+    post:
+      summary: Invalidate the authenticated browser session
+  /api/admin/users:
+    post:
+      summary: Register an enabled local user
+      description: Requires ROLE_SYSTEM_ADMIN and accepts only roles from the fixed SeasonPlan business-role catalog.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocalUserRequest'
+      responses:
+        '201':
+          description: User created without credential material
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+        '400':
+          description: Validation failure
+        '401':
+          description: Authentication required
+        '403':
+          description: System administrator authority required
+        '409':
+          description: Normalized username already exists
   /season-plans:
     get:
       summary: List season plans
@@ -53,3 +111,76 @@ paths:
   /season-plans/{id}/mark-ritual-ready:
     post:
       summary: Mark an approved season plan ritual ready
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SESSION
+  schemas:
+    ActorRole:
+      type: string
+      enum:
+        - FAIRY_PLANNER
+        - CHIEF_GUARDIAN
+        - TALENT_COORDINATOR
+        - POLLEN_GUARDIAN
+        - CLIMATE_BALANCER
+        - MAGIC_ANOMALY_CONTROLLER
+        - FAIRY_PARTICIPANT
+    CreateLocalUserRequest:
+      type: object
+      required: [username, displayName, password, roles]
+      properties:
+        username:
+          type: string
+          maxLength: 100
+        displayName:
+          type: string
+          maxLength: 200
+        password:
+          type: string
+          format: password
+          minLength: 12
+          writeOnly: true
+          description: Maximum 72 UTF-8 bytes
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ActorRole'
+    CredentialChangeRequest:
+      type: object
+      required: [currentPassword, username, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          writeOnly: true
+        username:
+          type: string
+          maxLength: 100
+        newPassword:
+          type: string
+          format: password
+          minLength: 12
+          writeOnly: true
+          description: Maximum 72 UTF-8 bytes
+    ManagedUser:
+      type: object
+      required: [id, username, displayName, enabled, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActorRole'

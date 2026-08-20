@@ -49,4 +49,17 @@ class DatabaseMigrationContractTest {
             assertThat(migration).contains("'" + status + "'");
         }
     }
+
+    @Test
+    void authenticationAdministrationMigrationAddsASeparateSystemAdministratorFlag() throws IOException {
+        String masterChangelog = Files.readString(Path.of("src/main/resources/db/changelog/db.changelog-master.yaml"));
+        String migration = Files.readString(Path.of("src/main/resources/db/changelog/changes/007-system-administrators.sql"));
+
+        assertThat(masterChangelog).contains("db/changelog/changes/007-system-administrators.sql");
+        assertThat(migration).contains(
+                "alter table users add column system_admin boolean not null default false",
+                "create unique index users_one_system_admin",
+                "where system_admin"
+        );
+    }
 }

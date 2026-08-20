@@ -27,7 +27,7 @@ describe('SeasonPlanningPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('saves a valid draft through POST with planner actor headers', async () => {
+  it('saves a valid draft through the session-authenticated API', async () => {
     const user = userEvent.setup();
     const requests = [];
     mockPlanList().mockImplementation((url, options) => {
@@ -43,9 +43,9 @@ describe('SeasonPlanningPage', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить новый черновик' }));
 
     expect(await screen.findByText(/Сохранен черновик plan-1/i)).toBeInTheDocument();
-    expect(requests[0].url).toBe('http://localhost:8080/season-plans');
+    expect(requests[0].url).toBe('/api/season-plans');
     expect(requests[0].options.method).toBe('POST');
-    expect(requests[0].options.headers['X-Actor-Role']).toBe('FAIRY_PLANNER');
+    expect(requests[0].options.headers['X-Actor-Role']).toBeUndefined();
     expect(JSON.parse(requests[0].options.body).seasonType).toBe('SPRING');
   });
 
@@ -94,7 +94,7 @@ describe('SeasonPlanningPage', () => {
 
     expect(await screen.findByText(/Сохранен черновик plan-next/i)).toBeInTheDocument();
     expect(requests[0].options.method).toBe('POST');
-    expect(requests[0].url).toBe('http://localhost:8080/season-plans');
+    expect(requests[0].url).toBe('/api/season-plans');
   });
 
   it('requires choosing season type from available options', async () => {

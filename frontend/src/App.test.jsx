@@ -1,86 +1,153 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App.jsx';
 
-function renderApp(route = '/') {
-  return render(
-    <MemoryRouter initialEntries={[route]}>
-      <App />
-    </MemoryRouter>
-  );
+function renderApp(route = '/') { return render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>); }
+
+describe('session authentication', () => {
+  afterEach(() => cleanup());
+  beforeEach(() => { sessionStorage.clear(); vi.restoreAllMocks(); });
+
+  it('shows the login screen when session restoration returns 401', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => Promise.resolve(
+      String(url).endsWith('/auth/csrf') ? Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' }) : new Response('', { status: 401 })
+    ));
+    renderApp();
+    expect(await screen.findByRole('heading', { name: 'Вход в систему' })).toBeInTheDocument();
+  });
+
+  it('restores the server session and sends no actor simulator headers', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation((url) => Promise.resolve(
+      String(url).endsWith('/auth/csrf') ? Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' }) :
+        Response.json({ id: '00000000-0000-0000-0000-000000000001', username: 'planner', displayName: 'Planner', roles: ['FAIRY_PLANNER'] })
+    ));
+    renderApp();
+    expect(await screen.findByRole('heading', { name: 'SeasonPlan lifecycle' })).toBeInTheDocument();
+    expect(screen.getByText(/Planner/)).toBeInTheDocument();
+    expect(fetch.mock.calls.every(([, options]) => !options?.headers?.['X-Actor-Id'] && !options?.headers?.['X-Actor-Role'])).toBe(true);
+  });
+});
+
+const admin = {
+  id: '00000000-0000-0000-0000-000000000001', username: 'admin', displayName: 'Администратор',
+  roles: ['FAIRY_PLANNER'], administrator: true
+};
+
+function mockAuthenticatedSession(user, handler = () => Response.json({})) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((url, options = {}) => {
+    const path = String(url);
+    if (path.endsWith('/auth/csrf')) return Promise.resolve(Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' }));
+    if (path.endsWith('/auth/me')) return Promise.resolve(Response.json(user));
+    return Promise.resolve(handler(path, options));
+  });
 }
 
-describe('App navigation', () => {
+describe('authentication administration', () => {
   afterEach(() => cleanup());
+  beforeEach(() => { sessionStorage.clear(); vi.restoreAllMocks(); });
 
-  beforeEach(() => {
-    sessionStorage.clear();
-    vi.restoreAllMocks();
-  });
-
-  it('renders the first 3 lifecycle use-case cards on the dashboard', () => {
-    renderApp();
-
-    expect(screen.getByRole('heading', { name: 'SeasonPlan lifecycle' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Observe as role' })).toHaveValue('FAIRY_PLANNER');
-    expect(screen.getByRole('link', { name: /Планирование сезона/i })).toBeInTheDocument();
-    expect(screen.getByText(/Согласование сезонного плана/i)).toBeInTheDocument();
-    expect(screen.getByText(/Подготовка сезона к запуску/i)).toBeInTheDocument();
-    expect(screen.getByText(/Создайте черновик/i)).toBeInTheDocument();
-  });
-
-  it('keeps season plan status visible while role selection changes available dashboard actions', async () => {
+  it('shows the administration link only to an administrator and sends user registration with CSRF', async () => {
+    const fetch = mockAuthenticatedSession(admin, (path) => path.endsWith('/admin/users')
+      ? new Response(JSON.stringify({ id: 'new-user', username: 'fairy' }), { status: 201, headers: { 'Content-Type': 'application/json' } })
+      : new Response('', { status: 404 }));
     const user = userEvent.setup();
-    sessionStorage.setItem(
-      'seasonPlan.workflow',
-      JSON.stringify({ latestPlanId: 'plan-1', latestPlan: { id: 'plan-1', status: 'DRAFT' } })
-    );
-
     renderApp();
-    expect(screen.getAllByText('DRAFT').length).toBeGreaterThan(0);
+    await user.click(await screen.findByRole('link', { name: 'Управление пользователями' }));
+    await user.type(screen.getByLabelText('Имя пользователя'), 'fairy');
+    await user.type(screen.getByLabelText('Отображаемое имя'), 'Новая фея');
+    await user.type(screen.getByLabelText('Пароль'), 'Secret-password-123');
+    await user.click(screen.getByLabelText('Планировщик сезона'));
+    await user.click(screen.getByRole('button', { name: 'Создать пользователя' }));
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Observe as role' }), 'TALENT_COORDINATOR');
-
-    expect(screen.getAllByText('DRAFT').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('link', { name: /РџР»Р°РЅРёСЂРѕРІР°РЅРёРµ СЃРµР·РѕРЅР°/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/DRAFT plans are hidden/i).length).toBeGreaterThan(0);
+    await screen.findByText('Пользователь создан. Передайте учетные данные безопасным способом.');
+    const call = fetch.mock.calls.find(([url, options]) => String(url).endsWith('/admin/users') && options.method === 'POST');
+    expect(call[1].headers['X-XSRF-TOKEN']).toBe('csrf');
+    expect(JSON.parse(call[1].body)).toEqual({ username: 'fairy', displayName: 'Новая фея', password: 'Secret-password-123', roles: ['FAIRY_PLANNER'] });
   });
 
-  it('does not expose later lifecycle use cases as active routes', () => {
-    renderApp('/incidents');
-
-    expect(screen.getByRole('heading', { name: 'Этап неактивен' })).toBeInTheDocument();
-    expect(screen.getByText(/Поздние этапы жизненного цикла/i)).toBeInTheDocument();
+  it('hides administrator navigation and denies the registration route to an ordinary user', async () => {
+    mockAuthenticatedSession({ ...admin, administrator: false });
+    renderApp('/admin/users');
+    expect(await screen.findByRole('heading', { name: 'Доступ запрещен' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Управление пользователями' })).not.toBeInTheDocument();
   });
 
-  it('navigates to planning, review, and preparation routes from cached workflow state', async () => {
+  it('validates registration roles, renders backend field errors, and clears its password after failure', async () => {
+    mockAuthenticatedSession(admin, (path) => path.endsWith('/admin/users')
+      ? new Response(JSON.stringify({ message: 'Проверьте введенные данные', errors: { username: ['Имя уже занято'] } }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+      : new Response('', { status: 404 }));
     const user = userEvent.setup();
-    sessionStorage.setItem(
-      'seasonPlan.workflow',
-      JSON.stringify({ latestPlanId: 'plan-1', latestPlan: { id: 'plan-1', status: 'SUBMITTED' } })
-    );
+    renderApp('/admin/users');
+    await screen.findByRole('heading', { name: 'Регистрация пользователя' });
+    await user.click(screen.getByRole('button', { name: 'Создать пользователя' }));
+    expect(await screen.findByText('Выберите хотя бы одну роль.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Имя пользователя'), 'fairy');
+    await user.type(screen.getByLabelText('Отображаемое имя'), 'Новая фея');
+    await user.type(screen.getByLabelText('Пароль'), 'Secret-password-123');
+    await user.click(screen.getByLabelText('Планировщик сезона'));
+    await user.click(screen.getByRole('button', { name: 'Создать пользователя' }));
+    expect(await screen.findByText('Имя уже занято')).toBeInTheDocument();
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
-      if (String(url).endsWith('/season-plans/plan-1')) {
-        return Promise.resolve(Response.json({ id: 'plan-1', seasonType: 'SPRING', status: 'SUBMITTED' }));
-      }
-      if (String(url).endsWith('/season-plans/plan-1/readiness')) {
-        return Promise.resolve(Response.json({ ready: false, errors: {} }));
-      }
-      return Promise.reject(new Error(`unexpected request: ${url}`));
+  it('changes own credentials with CSRF and returns to login after session invalidation', async () => {
+    const fetch = mockAuthenticatedSession(admin, (path) => path.endsWith('/auth/me/credentials')
+      ? new Response(null, { status: 204 }) : new Response('', { status: 404 }));
+    const user = userEvent.setup();
+    renderApp('/profile/security');
+    await screen.findByRole('heading', { name: 'Профиль и безопасность' });
+    await user.type(screen.getByLabelText('Текущий пароль'), 'Old-secret');
+    await user.clear(screen.getByLabelText('Имя пользователя'));
+    await user.type(screen.getByLabelText('Имя пользователя'), 'new-admin');
+    await user.type(screen.getByLabelText('Новый пароль'), 'New-secret-123');
+    await user.click(screen.getByRole('button', { name: 'Сохранить учетные данные' }));
+
+    expect(await screen.findByRole('heading', { name: 'Вход в систему' })).toBeInTheDocument();
+    expect(screen.getByText('Учетные данные изменены. Войдите снова с новыми данными.')).toBeInTheDocument();
+    await waitFor(() => {
+      const call = fetch.mock.calls.find(([url, options]) => String(url).endsWith('/auth/me/credentials') && options.method === 'PUT');
+      expect(call[1].headers['X-XSRF-TOKEN']).toBe('csrf');
+      expect(JSON.parse(call[1].body)).toEqual({ currentPassword: 'Old-secret', username: 'new-admin', newPassword: 'New-secret-123' });
     });
+  });
 
-    renderApp();
-    await user.click(screen.getByRole('link', { name: /Планирование сезона/i }));
-    expect(screen.getByRole('heading', { name: 'Планирование сезона' })).toBeInTheDocument();
+  it('rejects a password shorter than 12 characters in both forms without sending a command', async () => {
+    const registrationFetch = mockAuthenticatedSession(admin);
+    const user = userEvent.setup();
+    renderApp('/admin/users');
+    await screen.findByRole('heading', { name: 'Регистрация пользователя' });
+    await user.type(screen.getByLabelText('Имя пользователя'), 'fairy');
+    await user.type(screen.getByLabelText('Отображаемое имя'), 'Новая фея');
+    await user.type(screen.getByLabelText('Пароль'), 'короткий');
+    await user.click(screen.getByLabelText('Планировщик сезона'));
+    await user.click(screen.getByRole('button', { name: 'Создать пользователя' }));
+    expect(await screen.findByText('Пароль должен содержать не менее 12 символов и не более 72 байт UTF-8.')).toBeInTheDocument();
+    expect(registrationFetch.mock.calls.some(([url, options]) => String(url).endsWith('/admin/users') && options.method === 'POST')).toBe(false);
 
-    await user.click(screen.getByRole('link', { name: 'Согласование' }));
-    expect(await screen.findByRole('heading', { name: 'Согласование сезонного плана' })).toBeInTheDocument();
+    cleanup();
+    vi.restoreAllMocks();
+    const credentialFetch = mockAuthenticatedSession(admin);
+    renderApp('/profile/security');
+    await screen.findByRole('heading', { name: 'Профиль и безопасность' });
+    await user.type(screen.getByLabelText('Текущий пароль'), 'Old-secret');
+    await user.type(screen.getByLabelText('Новый пароль'), 'короткий');
+    await user.click(screen.getByRole('button', { name: 'Сохранить учетные данные' }));
+    expect(await screen.findByText('Пароль должен содержать не менее 12 символов и не более 72 байт UTF-8.')).toBeInTheDocument();
+    expect(credentialFetch.mock.calls.some(([url, options]) => String(url).endsWith('/auth/me/credentials') && options.method === 'PUT')).toBe(false);
+  });
 
-    await user.click(screen.getByRole('link', { name: 'Подготовка' }));
-    expect(await screen.findByRole('heading', { name: 'Подготовка сезона к запуску' })).toBeInTheDocument();
+  it('rejects a new password exceeding 72 UTF-8 bytes without sending a command', async () => {
+    const fetch = mockAuthenticatedSession(admin);
+    const user = userEvent.setup();
+    renderApp('/profile/security');
+    await screen.findByRole('heading', { name: 'Профиль и безопасность' });
+    await user.type(screen.getByLabelText('Текущий пароль'), 'Old-secret');
+    await user.type(screen.getByLabelText('Новый пароль'), 'я'.repeat(37));
+    await user.click(screen.getByRole('button', { name: 'Сохранить учетные данные' }));
+    expect(await screen.findByText('Пароль должен содержать не менее 12 символов и не более 72 байт UTF-8.')).toBeInTheDocument();
+    expect(fetch.mock.calls.some(([url, options]) => String(url).endsWith('/auth/me/credentials') && options.method === 'PUT')).toBe(false);
   });
 });

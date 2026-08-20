@@ -4,7 +4,7 @@ import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
 import LoadingState from '../../components/LoadingState.jsx';
 import ReadinessSummary from '../../components/ReadinessSummary.jsx';
-import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
+import { lifecycleApi } from '../../api/lifecycleApi.js';
 import {
   cacheAssignment,
   cacheAssignments,
@@ -64,11 +64,11 @@ export default function PreparationPage({ currentActor = null }) {
   const [reservation, setReservation] = useState(workflow.reservationsByPlan[id]);
   const [tasks, setTasks] = useState(workflow.tasksByPlan[id] ?? []);
   const [assignmentsByTask, setAssignmentsByTask] = useState(workflow.assignmentsByTask ?? {});
-  const pollenActor = currentActor ?? actors.pollen;
-  const taskActor = currentActor ?? actors.coordinator;
-  const scopedRole = currentActor?.role;
-  const canManagePollen = !scopedRole || scopedRole === 'POLLEN_GUARDIAN';
-  const canCoordinateTasks = !scopedRole || scopedRole === 'TALENT_COORDINATOR';
+  const pollenActor = currentActor;
+  const taskActor = currentActor;
+  const roles = currentActor?.roles ?? (currentActor?.role ? [currentActor.role] : []);
+  const canManagePollen = !currentActor || roles.includes('POLLEN_GUARDIAN');
+  const canCoordinateTasks = !currentActor || roles.includes('TALENT_COORDINATOR');
   const [pollenForm, setPollenForm] = useState({ requestedAmount: '100', confirmedAmount: '100', comment: 'в пределах лимита' });
   const [taskForm, setTaskForm] = useState(defaultTaskForm);
   const [assignmentForm, setAssignmentForm] = useState(defaultAssignmentForm);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../../components/AppShell.jsx';
 import FieldErrors from '../../components/FieldErrors.jsx';
-import { actors, lifecycleApi } from '../../api/lifecycleApi.js';
+import { lifecycleApi } from '../../api/lifecycleApi.js';
 import { cachePlan, cachePlans, readWorkflow } from '../../api/workflowStorage.js';
 
 const seasonTypeOptions = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'];
@@ -36,13 +36,13 @@ function planToForm(plan) {
   };
 }
 
-export default function SeasonPlanningPage({ currentActor = actors.planner }) {
+export default function SeasonPlanningPage({ currentActor }) {
   const cached = useMemo(() => readWorkflow(), []);
   const cachedPlan = cached.latestPlan;
   const initialPlan = cachedPlan?.status === 'DRAFT' ? cachedPlan : null;
   const cachedPlans = useMemo(() => Object.values(cached.plansById ?? {}), [cached.plansById]);
   const actor = currentActor;
-  const canPlan = actor.role === 'FAIRY_PLANNER';
+  const canPlan = !actor || actor?.roles?.includes('FAIRY_PLANNER') || actor?.role === 'FAIRY_PLANNER';
   const [form, setForm] = useState(() => planToForm(initialPlan));
   const [plan, setPlan] = useState(initialPlan);
   const [availablePlans, setAvailablePlans] = useState(() => (canPlan ? cachedPlans : cachedPlans.filter((item) => item.status !== 'DRAFT')));

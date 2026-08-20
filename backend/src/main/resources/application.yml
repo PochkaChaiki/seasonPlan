@@ -9,15 +9,27 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  flyway:
-    enabled: true
+  session:
+    store-type: jdbc
+    timeout: 30m
+    jdbc:
+      initialize-schema: never
 
 server:
   port: ${BACKEND_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
+  forward-headers-strategy: framework
 
 management:
+  server:
+    address: 127.0.0.1
+    port: ${MANAGEMENT_PORT:8081}
   endpoints:
     web:
       exposure:
         include: health,info
-
