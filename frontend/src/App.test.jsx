@@ -31,6 +31,63 @@ describe('session authentication', () => {
   });
 });
 
+describe('persisted season plan access', () => {
+  afterEach(() => cleanup());
+  beforeEach(() => { sessionStorage.clear(); vi.restoreAllMocks(); });
+
+  const persistedPlan = {
+    id: '11111111-1111-1111-1111-111111111111',
+    seasonType: 'SPRING',
+    targetTerritories: ['Northern Forest'],
+    timeWindows: [],
+    targetClimateMetrics: {},
+    naturalPhenomenonParameters: {},
+    readinessChecklist: []
+  };
+
+  it('lets a chief guardian open a submitted plan returned by the backend with an empty browser cache', async () => {
+    const guardian = {
+      id: '22222222-2222-2222-2222-222222222222', username: 'guardian', displayName: 'Guardian',
+      roles: ['CHIEF_GUARDIAN'], administrator: false
+    };
+    const plan = { ...persistedPlan, status: 'SUBMITTED' };
+    const fetch = mockAuthenticatedSession(guardian, (path) => {
+      if (path.endsWith('/season-plans')) return Response.json([plan]);
+      if (path.endsWith(`/season-plans/${plan.id}`)) return Response.json(plan);
+      if (path.endsWith(`/season-plans/${plan.id}/readiness`)) return Response.json({ ready: false, errors: {} });
+      return new Response('', { status: 404 });
+    });
+    const user = userEvent.setup();
+
+    renderApp();
+    const openReview = await screen.findByRole('link', { name: `Open review for plan ${plan.id}` });
+    expect(openReview).toHaveAttribute('href', `/season-plans/${plan.id}/review`);
+    await user.click(openReview);
+
+    expect(await screen.findByRole('button', { name: 'Утвердить план' })).toBeEnabled();
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/season-plans'))).toBe(true);
+  });
+
+  it('lets a preparation role open an approved plan returned by the backend with an empty browser cache', async () => {
+    const coordinator = {
+      id: '33333333-3333-3333-3333-333333333333', username: 'coordinator', displayName: 'Coordinator',
+      roles: ['TALENT_COORDINATOR'], administrator: false
+    };
+    const plan = { ...persistedPlan, status: 'APPROVED' };
+    mockAuthenticatedSession(coordinator, (path) => {
+      if (path.endsWith('/season-plans')) return Response.json([plan]);
+      if (path.endsWith(`/season-plans/${plan.id}`)) return Response.json(plan);
+      if (path.endsWith(`/season-plans/${plan.id}/readiness`)) return Response.json({ ready: false, errors: {} });
+      if (path.endsWith(`/season-plans/${plan.id}/tasks`)) return Response.json([]);
+      return new Response('', { status: 404 });
+    });
+
+    renderApp();
+    const openPreparation = await screen.findByRole('link', { name: `Open preparation for plan ${plan.id}` });
+    expect(openPreparation).toHaveAttribute('href', `/season-plans/${plan.id}/preparation`);
+  });
+});
+
 const admin = {
   id: '00000000-0000-0000-0000-000000000001', username: 'admin', displayName: 'Администратор',
   roles: ['FAIRY_PLANNER'], administrator: true

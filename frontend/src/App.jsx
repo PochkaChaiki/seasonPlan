@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
-import { readWorkflow } from './api/workflowStorage.js';
+import { lifecycleApi } from './api/lifecycleApi.js';
+import { cachePlans, readWorkflow } from './api/workflowStorage.js';
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
 import LoginPage from './auth/LoginPage.jsx';
 import ProfileSecurityPage from './auth/ProfileSecurityPage.jsx';
@@ -10,12 +12,32 @@ import SeasonPlanningPage from './features/seasonPlanning/SeasonPlanningPage.jsx
 import './styles/global.css';
 
 function Dashboard({ currentActor }) {
-  const workflow = readWorkflow();
-  const planId = workflow.latestPlanId;
-  const currentStatus = workflow.latestPlan?.status;
-  const canPlan = currentActor.roles.includes('FAIRY_PLANNER');
-  const draftHidden = currentStatus === 'DRAFT' && !canPlan;
-  const canOpenPlan = Boolean(planId && !draftHidden);
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [planLoadError, setPlanLoadError] = useState('');
+  const roles = currentActor.roles ?? [];
+  const canPlan = roles.includes('FAIRY_PLANNER');
+  const canReview = roles.includes('CHIEF_GUARDIAN');
+  const canPrepare = roles.includes('TALENT_COORDINATOR') || roles.includes('POLLEN_GUARDIAN');
+  const primaryPlan = plans[0];
+
+  useEffect(() => {
+    let active = true;
+    lifecycleApi.listPlans()
+      .then((loadedPlans) => {
+        if (!active) return;
+        setPlans(loadedPlans);
+        cachePlans(loadedPlans);
+        setPlanLoadError('');
+      })
+      .catch((error) => {
+        if (active) setPlanLoadError(error.message ?? 'Не удалось загрузить планы сезона.');
+      })
+      .finally(() => {
+        if (active) setLoadingPlans(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   return (
     <main className="page-shell">
@@ -39,50 +61,62 @@ function Dashboard({ currentActor }) {
             <span className="card-tag">Observer</span>
           </article>
         )}
-        <Link className={`catalog-card ${canOpenPlan ? '' : 'disabled-card'}`} to={canOpenPlan ? `/season-plans/${planId}/review` : '/'}>
+        {canReview && primaryPlan ? (
+        <Link className="catalog-card" to={`/season-plans/${primaryPlan.id}/review`}>
           <h2>Согласование сезонного плана</h2>
-          <p>
-            {draftHidden
-              ? 'DRAFT plans are hidden from this role until planning is complete.'
-              : planId
-                ? 'Откройте последний план из текущей сессии, утвердите его или верните на доработку.'
-                : 'Для согласования нужен сохраненный план.'}
-          </p>
-          <span className="card-tag">{canOpenPlan ? 'UC 2' : 'Observer'}</span>
+          <p>Откройте план, проверьте его и примите решение после отправки на согласование.</p>
+          <span className="card-tag">UC 2</span>
         </Link>
-        <Link className={`catalog-card ${canOpenPlan ? '' : 'disabled-card'}`} to={canOpenPlan ? `/season-plans/${planId}/preparation` : '/'}>
+        ) : (
+        <article className="catalog-card disabled-card">
+          <h2>Согласование сезонного плана</h2>
+          <p>{canReview ? 'Нет сохраненных планов.' : 'Review controls are available only to CHIEF_GUARDIAN.'}</p>
+          <span className="card-tag">Observer</span>
+        </article>
+        )}
+        {canPrepare && primaryPlan ? (
+        <Link className="catalog-card" to={`/season-plans/${primaryPlan.id}/preparation`}>
           <h2>Подготовка сезона к запуску</h2>
-          <p>
-            {draftHidden
-              ? 'DRAFT plans are hidden from this role until planning is complete.'
-              : planId
-                ? 'Настройте резерв пыльцы, задачи, назначения и готовность.'
-                : 'Для подготовки нужен сохраненный план.'}
-          </p>
-          <span className="card-tag">{canOpenPlan ? 'UC 3' : 'Observer'}</span>
+          <p>Настройте резерв пыльцы, задачи, назначения и готовность.</p>
+          <span className="card-tag">UC 3</span>
         </Link>
+        ) : (
+        <article className="catalog-card disabled-card">
+          <h2>Подготовка сезона к запуску</h2>
+          <p>{canPrepare ? 'Нет сохраненных планов.' : 'Preparation controls are available to TALENT_COORDINATOR and POLLEN_GUARDIAN.'}</p>
+          <span className="card-tag">Observer</span>
+        </article>
+        )}
       </section>
 
       <section className="card dashboard-card">
-        <h2>Последний план в текущей сессии</h2>
-        {planId ? (
-          <div className="button-row">
-            <span className="pill accent">{workflow.latestPlan?.status ?? 'cached'}</span>
-            <span className="pill">Plan {planId}</span>
-            {canOpenPlan && (
-              <>
-                <Link className="back-link" to={`/season-plans/${planId}/review`}>
-                  Открыть согласование
-                </Link>
-                <Link className="back-link" to={`/season-plans/${planId}/preparation`}>
-                  Открыть подготовку
-                </Link>
-              </>
-            )}
-            {draftHidden && <span className="note">DRAFT plans are hidden from this role until planning is complete.</span>}
+        <h2>Доступные планы сезона</h2>
+        {loadingPlans && plans.length === 0 ? <p className="note">Загрузка планов…</p> : null}
+        {planLoadError ? <p className="note rose">{planLoadError}</p> : null}
+        {plans.length > 0 ? (
+          <div className="mini-list">
+            {plans.map((plan) => (
+              <div className="mini-item wrap" key={plan.id}>
+                <span>{plan.seasonType ?? 'SeasonPlan'} · {plan.id}</span>
+                <strong>{plan.status}</strong>
+                <div className="button-row">
+                  {canReview && (
+                    <Link className="back-link" aria-label={`Open review for plan ${plan.id}`} to={`/season-plans/${plan.id}/review`}>
+                      Открыть согласование
+                    </Link>
+                  )}
+                  {canPrepare && (
+                    <Link className="back-link" aria-label={`Open preparation for plan ${plan.id}`} to={`/season-plans/${plan.id}/preparation`}>
+                      Открыть подготовку
+                    </Link>
+                  )}
+                  {!canReview && !canPrepare && <span className="note">План доступен только для просмотра статуса.</span>}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <p className="note">Создайте черновик, чтобы начать. У backend нет list endpoint, поэтому сессия запоминает только результаты успешных команд.</p>
+          !loadingPlans && <p className="note">Сохраненных планов пока нет.</p>
         )}
       </section>
     </main>

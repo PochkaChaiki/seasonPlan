@@ -103,6 +103,19 @@ describe('PlanReviewPage', () => {
     expect(await screen.findByText('rejected pollen reservation blocks approval')).toBeInTheDocument();
   });
 
+  it('keeps a readable draft visible but disables guardian decisions until it is submitted', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ ...plan, status: 'DRAFT' }))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }));
+
+    renderPageAs({ role: 'CHIEF_GUARDIAN', id: 'guardian-1' });
+
+    expect(await screen.findByText('Northern Forest')).toBeInTheDocument();
+    expect(screen.getByText(/планировщик должен отправить план на согласование/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Утвердить план' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Вернуть на доработку' })).toBeDisabled();
+  });
+
   it('hides review summary and decision blocks for non-guardian roles', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json(plan))

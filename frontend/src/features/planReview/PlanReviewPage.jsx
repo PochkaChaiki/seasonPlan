@@ -17,6 +17,7 @@ export default function PlanReviewPage({ currentActor }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
+  const canSubmitDecision = canDecide && plan?.status === 'SUBMITTED';
 
   useEffect(() => {
     let active = true;
@@ -78,15 +79,18 @@ export default function PlanReviewPage({ currentActor }) {
         {canDecide ? (
         <aside className="card stack">
           <h4>Решение</h4>
+          {plan?.status !== 'SUBMITTED' && (
+            <p className="note">Планировщик должен отправить план на согласование. Решение доступно только для плана в статусе SUBMITTED.</p>
+          )}
           <label className="field">
             <span>Комментарий к решению</span>
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} />
           </label>
           <div className="button-row">
-            <button className="primary" disabled={busy} onClick={() => decide('approve')}>
+            <button className="primary" disabled={busy || !canSubmitDecision} onClick={() => decide('approve')}>
               Утвердить план
             </button>
-            <button disabled={busy} onClick={() => decide('return')}>
+            <button disabled={busy || !canSubmitDecision} onClick={() => decide('return')}>
               Вернуть на доработку
             </button>
           </div>

@@ -42,6 +42,12 @@ services:
     volumes:
       - ./backend:/workspace
       - maven-cache:/root/.m2
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:8080/auth/csrf"]
+      interval: 5s
+      timeout: 3s
+      retries: 360
+      start_period: 10s
 
   frontend:
     build:
@@ -49,7 +55,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: seasonplan-frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       FRONTEND_PORT: 5173
       BACKEND_HOST: backend
