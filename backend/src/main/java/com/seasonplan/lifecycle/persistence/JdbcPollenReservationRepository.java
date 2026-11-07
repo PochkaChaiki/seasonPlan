@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.persistence;
 
 import com.seasonplan.lifecycle.domain.PollenReservation;
-import com.seasonplan.lifecycle.service.PollenReservationRepository;
+import com.seasonplan.lifecycle.application.port.PollenReservationRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

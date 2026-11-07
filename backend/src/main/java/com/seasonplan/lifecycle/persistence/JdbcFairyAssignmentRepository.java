@@ -2,7 +2,7 @@ package com.seasonplan.lifecycle.persistence;
 
 import com.seasonplan.lifecycle.domain.AssignmentStatus;
 import com.seasonplan.lifecycle.domain.FairyAssignment;
-import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
+import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

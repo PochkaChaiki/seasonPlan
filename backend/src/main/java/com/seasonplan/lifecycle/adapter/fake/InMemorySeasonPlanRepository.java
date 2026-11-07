@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.SeasonPlan;
-import com.seasonplan.lifecycle.service.SeasonPlanRepository;
+import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 
 import java.util.Comparator;
 import java.util.List;

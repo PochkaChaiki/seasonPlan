@@ -2,7 +2,7 @@ package com.seasonplan.security;
 
 import com.seasonplan.lifecycle.config.SecurityConfiguration;
 import com.seasonplan.lifecycle.domain.ActorRole;
-import com.seasonplan.lifecycle.service.CurrentActorProvider;
+import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

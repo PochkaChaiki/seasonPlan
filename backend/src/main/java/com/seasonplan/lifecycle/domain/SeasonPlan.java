@@ -238,6 +238,36 @@ public class SeasonPlan {
         touch(actorId, now);
     }
 
+    public void activate(RitualSession session, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.RITUAL_READY, "only RITUAL_READY plans can be activated");
+        if (!id.equals(session.seasonPlanId()) || session.result() != RitualSession.Result.SUCCESS) {
+            throw new IllegalArgumentException("activation requires a successful ritual for this plan");
+        }
+        this.status = SeasonPlanStatus.ACTIVE;
+        touch(actorId, now);
+    }
+
+    public void complete(SeasonReport report, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.ACTIVE, "only ACTIVE plans can be completed");
+        requireApprovedReport(report);
+        this.status = SeasonPlanStatus.COMPLETED;
+        touch(actorId, now);
+    }
+
+    public void archive(SeasonReport report, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.COMPLETED, "only COMPLETED plans can be archived");
+        requireApprovedReport(report);
+        this.status = SeasonPlanStatus.ARCHIVED;
+        touch(actorId, now);
+    }
+
+    private void requireApprovedReport(SeasonReport report) {
+        if (!id.equals(report.seasonPlanId()) || report.status() != SeasonReport.Status.APPROVED
+                || report.snapshot().incidents().stream().anyMatch(MagicIncident::critical)) {
+            throw new IllegalArgumentException("a complete approved report for this plan is required");
+        }
+    }
+
     private void touch(String actorId, Instant now) {
         this.updatedBy = actorId;
         this.updatedAt = now;

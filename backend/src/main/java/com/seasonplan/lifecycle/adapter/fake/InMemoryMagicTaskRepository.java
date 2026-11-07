@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.MagicTask;
-import com.seasonplan.lifecycle.service.MagicTaskRepository;
+import com.seasonplan.lifecycle.application.port.MagicTaskRepository;
 
 import java.util.List;
 import java.util.Map;

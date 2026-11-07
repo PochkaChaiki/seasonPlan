@@ -1,7 +1,7 @@
 package com.seasonplan.security;
 
 import com.seasonplan.lifecycle.domain.CurrentActor;
-import com.seasonplan.lifecycle.service.CurrentActorProvider;
+import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

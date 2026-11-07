@@ -1,5 +1,11 @@
 package com.seasonplan.lifecycle.service;
 
+import com.seasonplan.lifecycle.application.preparation.*;
+import com.seasonplan.lifecycle.application.port.*;
+import com.seasonplan.lifecycle.application.shared.AuditLogService;
+import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
+import com.seasonplan.lifecycle.adapter.fake.NotificationService;
+
 import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryMagicTaskRepository;

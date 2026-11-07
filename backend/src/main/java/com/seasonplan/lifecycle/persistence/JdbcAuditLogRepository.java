@@ -2,7 +2,7 @@ package com.seasonplan.lifecycle.persistence;
 
 import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.AuditLogEntry;
-import com.seasonplan.lifecycle.service.AuditLogRepository;
+import com.seasonplan.lifecycle.application.port.AuditLogRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

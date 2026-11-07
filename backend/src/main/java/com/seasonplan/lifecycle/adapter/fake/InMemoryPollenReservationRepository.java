@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.PollenReservation;
-import com.seasonplan.lifecycle.service.PollenReservationRepository;
+import com.seasonplan.lifecycle.application.port.PollenReservationRepository;
 
 import java.util.Collection;
 import java.util.Map;

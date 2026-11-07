@@ -2,7 +2,7 @@ package com.seasonplan.lifecycle.adapter.fake;
 
 import com.seasonplan.lifecycle.domain.FairyAssignment;
 import com.seasonplan.lifecycle.domain.AssignmentStatus;
-import com.seasonplan.lifecycle.service.FairyAssignmentRepository;
+import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository;
 
 import java.util.List;
 import java.util.Map;

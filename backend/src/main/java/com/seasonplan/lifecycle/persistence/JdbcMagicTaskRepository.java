@@ -3,7 +3,7 @@ package com.seasonplan.lifecycle.persistence;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;
 import com.seasonplan.lifecycle.domain.TimeWindow;
-import com.seasonplan.lifecycle.service.MagicTaskRepository;
+import com.seasonplan.lifecycle.application.port.MagicTaskRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

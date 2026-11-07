@@ -26,3 +26,5 @@ coverage/
 
 application*.yml
 layout/
+
+/*.md

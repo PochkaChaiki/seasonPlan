@@ -2,7 +2,7 @@ package com.seasonplan.security;
 
 import com.seasonplan.lifecycle.domain.ActorRole;
 import com.seasonplan.lifecycle.domain.CurrentActor;
-import com.seasonplan.lifecycle.service.CurrentActorProvider;
+import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

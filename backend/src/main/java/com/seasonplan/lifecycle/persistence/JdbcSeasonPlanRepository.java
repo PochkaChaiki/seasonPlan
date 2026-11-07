@@ -5,7 +5,7 @@ import com.seasonplan.lifecycle.domain.ChecklistItem;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
 import com.seasonplan.lifecycle.domain.TimeWindow;
-import com.seasonplan.lifecycle.service.SeasonPlanRepository;
+import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
