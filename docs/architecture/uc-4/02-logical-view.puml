@@ -1,0 +1,86 @@
+@startuml UC4_Logical_View
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam ArrowColor #40566E
+skinparam nodesep 55
+skinparam ranksep 120
+hide members
+hide circle
+left to right direction
+
+title UC-4 — Выполнение и контроль сезона\nЛогическое представление: основные классы и интерфейсы
+
+package "Прикладные сервисы UC-4" #EAF7EC {
+  class RitualService
+  class MonitoringService
+  class IncidentResponseService
+  class PollenService <<UC4 projection>> #EEEEEE
+  class RestPollenTreeClient <<UC4 projection>> #EEEEEE
+}
+
+package "Контракты и общая поддержка" #FFF6D9 {
+  interface "ExecutionPorts.Rituals" as Rituals
+  interface "ExecutionPorts.LaunchReadiness" as LaunchReadiness
+  interface "ExecutionPorts.Metrics" as Metrics
+  interface "ExecutionPorts.MetricRules" as MetricRules
+  interface "ExecutionPorts.Incidents" as Incidents
+  interface "ExecutionPorts.Corrections" as Corrections
+  interface "ExecutionPorts.IncidentRules" as IncidentRules
+  interface PollenTreeClient <<UC4 projection>>
+  class AuditLogService <<shared>> #EAF7EC
+  interface NotificationOutbox
+}
+
+package "Домен UC-4" #EAF3FC {
+  class SeasonPlan <<UC4 projection>> #EEEEEE
+  class RitualSession
+  class ClimateMetric
+  class MagicIncident
+  class CorrectionAction
+  class PollenUsage <<external snapshot>>
+  class AuditLogEntry <<immutable>>
+}
+
+RitualService --> Rituals
+RitualService --> LaunchReadiness
+RitualService --> Incidents
+RitualService ..> SeasonPlan : активация
+MonitoringService --> Metrics
+MonitoringService --> MetricRules
+MonitoringService --> Incidents
+MonitoringService --> Corrections
+IncidentResponseService --> Incidents
+IncidentResponseService --> Corrections
+IncidentResponseService --> IncidentRules
+PollenService --> PollenTreeClient
+PollenService ..> PollenUsage
+
+Rituals ..> RitualSession
+Metrics ..> ClimateMetric
+Incidents ..> MagicIncident
+Corrections ..> CorrectionAction
+RestPollenTreeClient ..|> PollenTreeClient
+
+RitualService --> AuditLogService
+MonitoringService --> AuditLogService
+IncidentResponseService --> AuditLogService
+PollenService --> AuditLogService
+AuditLogService ..> AuditLogEntry
+MonitoringService --> NotificationOutbox
+IncidentResponseService --> NotificationOutbox
+PollenService --> NotificationOutbox
+
+legend bottom left
+  Только UC-4. Классы и интерфейсы показаны без атрибутов и методов.
+  Слева — сервисы и существующий внешний адаптер; в центре — контракты и общая поддержка;
+  справа — доменные объекты. Подробные зависимости хранения и транзакций — только в реализации.
+  --> внедрённая зависимость; ..> использование доменного типа; ..|> реализация интерфейса.
+  PollenService — единственная прикладная точка доступа к Pollen Tree.
+  AuditLogEntry неизменяем; уведомления сохраняются через transactional outbox.
+  LaunchReadiness получает результаты подготовки из UC-3, но команды UC-3 здесь не моделируются.
+  Конкретные реализации execution-репозиториев, датчиков, правил и доставки не выдуманы.
+  UC4 projection — общий тип, рассматриваемый только в границах четвёртого прецедента.
+endlegend
+@enduml

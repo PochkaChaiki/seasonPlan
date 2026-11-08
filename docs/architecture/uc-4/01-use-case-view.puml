@@ -1,0 +1,84 @@
+@startuml UC4_Use_Case_View
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam classBackgroundColor #EAF3FC
+skinparam ArrowColor #40566E
+skinparam nodesep 45
+skinparam ranksep 55
+hide members
+hide circle
+top to bottom direction
+
+title UC-4 — Выполнение и контроль сезона\nПредставление прецедентов: взаимодействие сущностей
+
+class SeasonPlan <<entity>>
+class RitualSession <<entity>>
+class "RitualSession.Participant" as Participant <<snapshot>>
+class "RitualSession.Event" as RitualEvent <<value object>>
+class ClimateMetric <<entity>>
+class MagicIncident <<entity>>
+class CorrectionAction <<entity>>
+class AuditLogEntry <<immutable record>>
+class "NotificationOutbox.Event" as NotificationEvent <<outbox record>>
+class PollenUsage <<external snapshot>>
+
+SeasonPlan "1" -- "0..*" RitualSession : попытки запуска
+RitualSession "1" *-- "1..*" Participant : зафиксированный состав
+RitualSession "1" *-- "0..*" RitualEvent : упорядоченный протокол
+SeasonPlan "1" -- "0..*" ClimateMetric : история измерений
+SeasonPlan "1" -- "0..*" MagicIncident : журнал инцидентов
+SeasonPlan "1" -- "0..*" CorrectionAction : корректирующие работы
+MagicIncident "0..1" -- "0..*" CorrectionAction : связанные действия
+SeasonPlan "1" -- "0..*" AuditLogEntry : неизменяемая история
+SeasonPlan "1" -- "0..*" NotificationEvent : уведомления ответственным
+SeasonPlan ..> PollenUsage : расход через Pollen Tree
+
+RitualSession ..> SeasonPlan : SUCCESS позволяет активацию
+ClimateMetric ..> CorrectionAction : отклонение инициирует создание
+ClimateMetric ..> MagicIncident : критическое отклонение инициирует создание
+MagicIncident ..> NotificationEvent : регистрация / повторное открытие
+CorrectionAction ..> NotificationEvent : назначение / просрочка
+
+note top of SeasonPlan
+  Вход UC-4: RITUAL_READY.
+  Успешное завершение ритуала: ACTIVE.
+  CORRECTION / EMERGENCY — условия работы,
+  а не дополнительные статусы SeasonPlan.
+end note
+
+note right of RitualSession
+  Не более одной незавершённой попытки на план.
+  После FAILED разрешена новая попытка.
+  Готовность повторно проверяется при старте
+  и завершении; только SUCCESS активирует план.
+  Участники — снимки, не живые FairyAssignment.
+end note
+
+note right of ClimateMetric
+  deviation_score = round4(abs(value-target)/tolerance)
+  >= 1: корректирующее действие;
+  >= 2: также CRITICAL-инцидент и уведомление.
+  Пунктир создания — взаимодействие через сервис,
+  не постоянная ссылка metricId в сущностях.
+end note
+
+note right of MagicIncident
+  Есть OPEN / IN_PROGRESS + CRITICAL
+  => критическое условие работы.
+  Закрытие последнего такого инцидента
+  снимает условие без перехода статуса плана.
+end note
+
+legend bottom left
+  Только UC-4; создание плана, согласование, подготовка и отчёты не показаны.
+  Чек-лист, подтверждённые роли и ресурсы — входные условия из UC-3.
+  Участники UC-4: координатор талантов, балансировщик климата,
+  контролёр магических аномалий, феи-участники.
+  Учёт расхода пыльцы включён по уточнению ST-00 (FR-20–FR-22).
+  -- ассоциация; *-- композиция снимков; ..> зависимость / взаимодействие.
+  Связи с SeasonPlan не означают каскадное удаление или поля-коллекции.
+endlegend
+@enduml

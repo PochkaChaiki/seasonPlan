@@ -2,6 +2,11 @@
 
 Architecture notes and diagrams belong here.
 
+- [Visual Paradigm agent handoff guide](VISUAL_PARADIGM_AGENT_GUIDE.md): reusable
+  native-project generation, layout, caption interaction and validation lessons.
+- [UC-4 class diagrams](uc-4/README.md): native Visual Paradigm project with
+  use-case, logical and implementation class views, limited to season execution.
+
 # Architecture decisions
 
 - [ST-00 specification resolution](ST-00-specification-resolution.md) is the

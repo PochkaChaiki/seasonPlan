@@ -1,0 +1,57 @@
+{
+  "project": "SeasonPlan-UC4.vpp",
+  "passed": true,
+  "diagrams": [
+    {
+      "diagram": "UC-4 — 1. Use-case view — Взаимодействие сущностей",
+      "classifiers": 10,
+      "fields": 0,
+      "operations": 0,
+      "relationships": 15,
+      "anchored_connectors": 15,
+      "class_intersections": 0
+    },
+    {
+      "diagram": "UC-4 — 2. Logical view — Классы и интерфейсы",
+      "classifiers": 22,
+      "fields": 0,
+      "operations": 0,
+      "relationships": 26,
+      "anchored_connectors": 26,
+      "class_intersections": 0
+    },
+    {
+      "diagram": "UC-4 — 3. Implementation view — Поля, методы и связи",
+      "classifiers": 44,
+      "fields": 128,
+      "operations": 127,
+      "relationships": 81,
+      "anchored_connectors": 81,
+      "class_intersections": 0
+    }
+  ],
+  "violations": 0,
+  "examples": [],
+  "projectSha256": "69b670fc8485f13e29146d3a18e31ebd9e5f478efa5216015e8a93ce402ea52f",
+  "nativeSaveReopen": "passed: exact class bounds, members, semantic/visual endpoint agreement",
+  "notes": "passed: all 17 native note models persist their text; fresh native PNG exports inspected",
+  "moveAndRebuildSmoke": "passed: one classifier moved in each diagram; 23 affected connectors attached after explicit endpoint rebuilding",
+  "alternateProject": "SeasonPlan-UC4-movable.vpp",
+  "captionInteraction": {
+    "visibleRelationshipNames": 62,
+    "nativeDraggableMode": 1,
+    "oldNonDraggableModeRemaining": 0,
+    "hitTesting": "old mode false; repaired mode true",
+    "mouseEvents": "native Swing component dispatchEvent press/drag/release; old delta (0,0), repaired delta (60,30)",
+    "textsAndDimensionsTested": 62,
+    "saveReopen": "passed for all 62 caption modes and original caption bounds",
+    "scope": "native widget-level interaction regression, not full desktop GUI automation"
+  },
+  "preservation": {
+    "modelElementRowsUnchanged": 930,
+    "diagramRowsUnchanged": 3,
+    "connectorRoutesUnchanged": 122,
+    "annotationAndOtherNonconnectorElementsUnchanged": 93,
+    "note": "Native caption reset also refreshed a few endpoint-label rectangles and reset flags; names, cardinality values, main-caption bounds, routes and all class members were preserved."
+  }
+}

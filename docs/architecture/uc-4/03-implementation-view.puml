@@ -1,0 +1,521 @@
+@startuml UC4_Implementation_View
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam nodesep 40
+skinparam ranksep 65
+hide circle
+top to bottom direction
+title UC-4 — Выполнение и контроль сезона\nПредставление реализации: поля, методы и типы связей
+
+package "Прикладные классы UC-4 и общая поддержка" {
+  class "RitualService" as RitualService <<application>> #EAF7EC {
+    - plans: SeasonPlanRepository {readOnly}
+    - rituals: ExecutionPorts.Rituals {readOnly}
+    - incidents: ExecutionPorts.Incidents {readOnly}
+    - readiness: ExecutionPorts.LaunchReadiness {readOnly}
+    - transactions: CommandTransaction {readOnly}
+    - audit: AuditLogService {readOnly}
+    - clock: Clock {readOnly}
+    + RitualService(plans: SeasonPlanRepository, rituals: ExecutionPorts.Rituals, incidents: ExecutionPorts.Incidents, readiness: ExecutionPorts.LaunchReadiness, transactions: CommandTransaction, audit: AuditLogService, clock: Clock)
+    + finish(id: UUID, failureCode: String, failureMessage: String, role: ActorRole, actorId: String): RitualSession
+    - get(id: UUID): RitualSession
+    + recordEvent(id: UUID, type: String, payload: String, role: ActorRole, actorId: String): RitualSession
+    + start(planId: UUID, role: ActorRole, actorId: String): RitualSession
+  }
+  class "MonitoringService" as MonitoringService <<application>> #EAF7EC {
+    - plans: SeasonPlanRepository {readOnly}
+    - metrics: ExecutionPorts.Metrics {readOnly}
+    - incidents: ExecutionPorts.Incidents {readOnly}
+    - actions: ExecutionPorts.Corrections {readOnly}
+    - rules: ExecutionPorts.MetricRules {readOnly}
+    - outbox: NotificationOutbox {readOnly}
+    - transactions: CommandTransaction {readOnly}
+    - audit: AuditLogService {readOnly}
+    - clock: Clock {readOnly}
+    + MonitoringService(plans: SeasonPlanRepository, metrics: ExecutionPorts.Metrics, incidents: ExecutionPorts.Incidents, actions: ExecutionPorts.Corrections, rules: ExecutionPorts.MetricRules, outbox: NotificationOutbox, transactions: CommandTransaction, audit: AuditLogService, clock: Clock)
+    + history(planId: UUID): List<ClimateMetric>
+    + importMetrics(planId: UUID, inputs: List<MonitoringService.Measurement>, role: ActorRole, actorId: String): List<ClimateMetric>
+    + record(planId: UUID, input: MonitoringService.Measurement, role: ActorRole, actorId: String): ClimateMetric
+    - recordInsideCommand(planId: UUID, input: MonitoringService.Measurement, actorId: String): ClimateMetric
+  }
+  class "MonitoringService.Measurement" as Measurement <<record>> #EAF7EC {
+    - source: String {readOnly}
+    - eventId: String {readOnly}
+    - metric: String {readOnly}
+    - unit: String {readOnly}
+    - value: BigDecimal {readOnly}
+    - observedAt: Instant {readOnly}
+    + Measurement(source: String, eventId: String, metric: String, unit: String, value: BigDecimal, observedAt: Instant)
+  }
+  class "IncidentResponseService" as IncidentResponseService <<application>> #EAF7EC {
+    - plans: SeasonPlanRepository {readOnly}
+    - incidents: ExecutionPorts.Incidents {readOnly}
+    - actions: ExecutionPorts.Corrections {readOnly}
+    - rules: ExecutionPorts.IncidentRules {readOnly}
+    - transactions: CommandTransaction {readOnly}
+    - outbox: NotificationOutbox {readOnly}
+    - audit: AuditLogService {readOnly}
+    - clock: Clock {readOnly}
+    + IncidentResponseService(plans: SeasonPlanRepository, incidents: ExecutionPorts.Incidents, actions: ExecutionPorts.Corrections, rules: ExecutionPorts.IncidentRules, transactions: CommandTransaction, outbox: NotificationOutbox, audit: AuditLogService, clock: Clock)
+    - action(id: UUID): CorrectionAction
+    + changeAction(id: UUID, status: CorrectionAction.Status, reason: String, role: ActorRole, actorId: String): CorrectionAction
+    + createAction(planId: UUID, incidentId: UUID, description: String, owner: String, deadline: Instant, role: ActorRole, actorId: String): CorrectionAction
+    + escalateOverdue(): void
+    + hasCriticalCondition(planId: UUID): boolean
+    - incident(id: UUID): MagicIncident
+    - mutablePlan(id: UUID): void
+    - notifyIncident(incident: MagicIncident, event: String): void
+    + overrideSeverity(id: UUID, severity: MagicIncident.Severity, reason: String, role: ActorRole, actorId: String): MagicIncident
+    + registerIncident(planId: UUID, type: MagicIncident.Type, cause: String, consequences: String, role: ActorRole, actorId: String): MagicIncident
+    + reopenIncident(id: UUID, role: ActorRole, actorId: String): MagicIncident
+    - requireResponder(role: ActorRole): void
+    + resolveIncident(id: UUID, role: ActorRole, actorId: String): MagicIncident
+  }
+  class "PollenService" as PollenService <<UC4 projection>> #EEEEEE {
+    - plans: SeasonPlanRepository {readOnly}
+    - client: PollenTreeClient {readOnly}
+    - outbox: Supplier<NotificationOutbox> {readOnly}
+    - transactions: CommandTransaction {readOnly}
+    - audit: AuditLogService {readOnly}
+    - clock: Clock {readOnly}
+    + PollenService(plans: SeasonPlanRepository, client: PollenTreeClient, outbox: Supplier<NotificationOutbox>, transactions: CommandTransaction, audit: AuditLogService, clock: Clock)
+    - eventId(key: String): UUID
+    - notify(notifications: NotificationOutbox, planId: UUID, eventId: UUID, summary: PollenTreeClient.Summary, threshold: String, chief: boolean): void
+    + recordConsumption(planId: UUID, clientEventId: UUID, grams: BigDecimal, role: ActorRole, actorId: String): PollenUsage
+    + usage(planId: UUID): Optional<PollenUsage>
+  }
+  class "AuditLogService" as AuditLogService <<application>> #EAF7EC {
+    - auditLogRepository: AuditLogRepository {readOnly}
+    - clock: Clock {readOnly}
+    + AuditLogService(auditLogRepository: AuditLogRepository, clock: Clock)
+    + append(seasonPlanId: UUID, action: AuditAction, actorId: String, comment: String): AuditLogEntry
+    + appendOnce(eventId: UUID, seasonPlanId: UUID, action: AuditAction, actorId: String, comment: String): AuditLogEntry
+    + entriesFor(seasonPlanId: UUID): List<AuditLogEntry>
+  }
+  class "UseCaseSupport" as UseCaseSupport <<application>> #EAF7EC {
+    - UseCaseSupport()
+    + {static} copy(plan: SeasonPlan): SeasonPlan
+    + {static} plan(plans: SeasonPlanRepository, id: UUID, allowed: SeasonPlanStatus[]): SeasonPlan
+    + {static} reject(field: String, message: String): void
+  }
+  class "ValidationSupport" as ValidationSupport <<UC4 projection>> #EEEEEE {
+    - ValidationSupport()
+    + {static} requireAnyRole(actual: ActorRole, allowed: ActorRole[]): void
+    + {static} requireRole(actual: ActorRole, expected: ActorRole): void
+  }
+}
+
+package "Контракты application.port" {
+  interface "ExecutionPorts.Rituals" as Rituals #FFF6D9 {
+    + find(id: UUID): Optional<RitualSession>
+    + forPlan(planId: UUID): List<RitualSession>
+    + save(session: RitualSession): void
+  }
+  interface "ExecutionPorts.Metrics" as Metrics #FFF6D9 {
+    + byImportKey(source: String, eventId: String): Optional<ClimateMetric>
+    + forPlan(planId: UUID): List<ClimateMetric>
+    + save(metric: ClimateMetric): void
+  }
+  interface "ExecutionPorts.Incidents" as Incidents #FFF6D9 {
+    + find(id: UUID): Optional<MagicIncident>
+    + forPlan(planId: UUID): List<MagicIncident>
+    + save(incident: MagicIncident): void
+  }
+  interface "ExecutionPorts.Corrections" as Corrections #FFF6D9 {
+    + allOpen(): List<CorrectionAction>
+    + byKey(key: String): Optional<CorrectionAction>
+    + find(id: UUID): Optional<CorrectionAction>
+    + forPlan(planId: UUID): List<CorrectionAction>
+    + save(action: CorrectionAction): void
+  }
+  class "ExecutionPorts.Readiness" as Readiness <<record>> #FFF6D9 {
+    - blockers: List<String> {readOnly}
+    - participants: List<RitualSession.Participant> {readOnly}
+    - requiredEvents: Set<String> {readOnly}
+    + Readiness(blockers: List<String>, participants: List<RitualSession.Participant>, requiredEvents: Set<String>)
+  }
+  interface "ExecutionPorts.LaunchReadiness" as LaunchReadiness #FFF6D9 {
+    + inspect(planId: UUID): ExecutionPorts.Readiness
+  }
+  class "ExecutionPorts.MetricRule" as MetricRule <<record>> #FFF6D9 {
+    - target: BigDecimal {readOnly}
+    - tolerance: BigDecimal {readOnly}
+    - version: String {readOnly}
+    - owner: String {readOnly}
+    - responseTime: Duration {readOnly}
+    + MetricRule(target: BigDecimal, tolerance: BigDecimal, version: String, owner: String, responseTime: Duration)
+  }
+  interface "ExecutionPorts.MetricRules" as MetricRules #FFF6D9 {
+    + forMetric(planId: UUID, metric: MetricDefinition): ExecutionPorts.MetricRule
+  }
+  interface "ExecutionPorts.IncidentRules" as IncidentRules #FFF6D9 {
+    + severityFor(type: MagicIncident.Type): MagicIncident.Severity
+  }
+  interface "SeasonPlanRepository" as SeasonPlanRepository <<UC4 projection>> #EEEEEE {
+    + findById(id: UUID): Optional<SeasonPlan>
+    + save(plan: SeasonPlan): SeasonPlan
+  }
+  interface "AuditLogRepository" as AuditLogRepository #FFF6D9 {
+    + append(entry: AuditLogEntry): AuditLogEntry
+    + entriesFor(seasonPlanId: UUID): List<AuditLogEntry>
+  }
+  interface "CommandTransaction" as CommandTransaction #FFF6D9 {
+    + execute<T>(seasonPlanId: UUID, command: Supplier<T>): T
+  }
+  interface "NotificationOutbox" as NotificationOutbox #FFF6D9 {
+    + enqueue(event: NotificationOutbox.Event): void
+  }
+  class "NotificationOutbox.Event" as NotificationEvent <<record>> #FFF6D9 {
+    - deduplicationKey: String {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - type: String {readOnly}
+    - recipients: Set<String> {readOnly}
+    - channels: Set<NotificationOutbox.Channel> {readOnly}
+    - message: String {readOnly}
+    - occurredAt: Instant {readOnly}
+    + Event(deduplicationKey: String, seasonPlanId: UUID, type: String, recipients: Set<String>, channels: Set<NotificationOutbox.Channel>, message: String, occurredAt: Instant)
+  }
+  enum "NotificationOutbox.Channel" as Channel #FFF6D9 {
+    IN_APP
+    EMAIL
+  }
+  interface "PollenTreeClient" as PollenTreeClient <<UC4 projection>> #EEEEEE {
+    + recordConsumption(planId: UUID, clientEventId: UUID, grams: BigDecimal): PollenTreeClient.Summary
+    + summary(planId: UUID): Optional<PollenTreeClient.Summary>
+  }
+  class "PollenTreeClient.Summary" as PollenSummary <<record>> #FFF6D9 {
+    - reservationId: UUID {readOnly}
+    - confirmedGrams: BigDecimal {readOnly}
+    - actualGrams: BigDecimal {readOnly}
+    - version: String {readOnly}
+    + Summary(reservationId: UUID, confirmedGrams: BigDecimal, actualGrams: BigDecimal, version: String)
+    + snapshot(): PollenUsage
+  }
+}
+
+package "Домен" {
+  class "SeasonPlan" as SeasonPlan <<UC4 projection>> #EEEEEE {
+    - id: UUID
+    - seasonType: String
+    - targetTerritories: List<String>
+    - timeWindows: List<TimeWindow>
+    - naturalPhenomenonParameters: Map<String, String>
+    - targetClimateMetrics: Map<String, Double>
+    - status: SeasonPlanStatus
+    - approvalComment: String
+    - readinessChecklist: List<ChecklistItem>
+    - createdBy: String
+    - updatedBy: String
+    - createdAt: Instant
+    - updatedAt: Instant
+    + SeasonPlan()
+    + activate(session: RitualSession, actorId: String, now: Instant): void
+    + approvalComment(): String
+    + createdAt(): Instant
+    + createdBy(): String
+    + id(): UUID
+    + naturalPhenomenonParameters(): Map<String, String>
+    + readinessChecklist(): List<ChecklistItem>
+    + {static} rehydrate(id: UUID, seasonType: String, targetTerritories: List<String>, timeWindows: List<TimeWindow>, naturalPhenomenonParameters: Map<String, String>, targetClimateMetrics: Map<String, Double>, status: SeasonPlanStatus, approvalComment: String, readinessChecklist: List<ChecklistItem>, createdBy: String, updatedBy: String, createdAt: Instant, updatedAt: Instant): SeasonPlan
+    - requireStatus(requiredStatus: SeasonPlanStatus, message: String): void
+    + seasonType(): String
+    + status(): SeasonPlanStatus
+    + targetClimateMetrics(): Map<String, Double>
+    + targetTerritories(): List<String>
+    + timeWindows(): List<TimeWindow>
+    - touch(actorId: String, now: Instant): void
+    + updatedAt(): Instant
+    + updatedBy(): String
+  }
+  enum "SeasonPlanStatus" as SeasonPlanStatus <<UC4 projection>> #EEEEEE {
+    RITUAL_READY
+    ACTIVE
+  }
+  enum "ActorRole" as ActorRole <<UC4 projection>> #EEEEEE {
+    CHIEF_GUARDIAN
+    TALENT_COORDINATOR
+    POLLEN_GUARDIAN
+    CLIMATE_BALANCER
+    MAGIC_ANOMALY_CONTROLLER
+    FAIRY_PARTICIPANT
+  }
+  enum "AuditAction" as AuditAction <<UC4 projection>> #EEEEEE {
+    RITUAL_SESSION_STARTED
+    RITUAL_EVENT_RECORDED
+    RITUAL_SESSION_FINISHED
+    SEASON_PLAN_ACTIVATED
+    CLIMATE_METRIC_RECORDED
+    MAGIC_INCIDENT_REGISTERED
+    MAGIC_INCIDENT_RESOLVED
+    MAGIC_INCIDENT_REOPENED
+    INCIDENT_SEVERITY_CHANGED
+    CORRECTION_ACTION_CREATED
+    CORRECTION_ACTION_CHANGED
+    POLLEN_CONSUMPTION_RECORDED
+  }
+  class "RitualSession" as RitualSession <<record>> #EAF3FC {
+    - id: UUID {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - attempt: int {readOnly}
+    - starter: String {readOnly}
+    - startedAt: Instant {readOnly}
+    - completedAt: Instant {readOnly}
+    - participants: List<RitualSession.Participant> {readOnly}
+    - events: List<RitualSession.Event> {readOnly}
+    - result: RitualSession.Result {readOnly}
+    - failureCode: String {readOnly}
+    - failureMessage: String {readOnly}
+    + RitualSession(id: UUID, seasonPlanId: UUID, attempt: int, starter: String, startedAt: Instant, completedAt: Instant, participants: List<RitualSession.Participant>, events: List<RitualSession.Event>, result: RitualSession.Result, failureCode: String, failureMessage: String)
+    + addEvent(event: RitualSession.Event): RitualSession
+    + fail(code: String, message: String, now: Instant): RitualSession
+    - finish(result: RitualSession.Result, code: String, message: String, now: Instant): RitualSession
+    + inProgress(): boolean
+    - requireInProgress(): void
+    - {static} requireText(value: String): void
+    + {static} start(id: UUID, planId: UUID, attempt: int, actor: String, now: Instant, participants: List<RitualSession.Participant>): RitualSession
+    + succeed(now: Instant): RitualSession
+  }
+  class "RitualSession.Participant" as Participant <<record>> #EAF3FC {
+    - fairyId: String {readOnly}
+    - role: String {readOnly}
+    - confirmedAt: Instant {readOnly}
+    + Participant(fairyId: String, role: String, confirmedAt: Instant)
+  }
+  class "RitualSession.Event" as RitualEvent <<record>> #EAF3FC {
+    - occurredAt: Instant {readOnly}
+    - type: String {readOnly}
+    - payload: String {readOnly}
+    + Event(occurredAt: Instant, type: String, payload: String)
+  }
+  enum "RitualSession.Result" as RitualResult #EAF3FC {
+    SUCCESS
+    FAILED
+  }
+  class "ClimateMetric" as ClimateMetric <<record>> #EAF3FC {
+    - id: UUID {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - source: String {readOnly}
+    - sourceEventId: String {readOnly}
+    - definition: MetricDefinition {readOnly}
+    - value: BigDecimal {readOnly}
+    - target: BigDecimal {readOnly}
+    - tolerance: BigDecimal {readOnly}
+    - deviationScore: BigDecimal {readOnly}
+    - observedAt: Instant {readOnly}
+    + ClimateMetric(id: UUID, seasonPlanId: UUID, source: String, sourceEventId: String, definition: MetricDefinition, value: BigDecimal, target: BigDecimal, tolerance: BigDecimal, deviationScore: BigDecimal, observedAt: Instant)
+    + critical(): boolean
+    + deviating(): boolean
+    + {static} score(value: BigDecimal, target: BigDecimal, tolerance: BigDecimal): BigDecimal
+  }
+  enum "MetricDefinition" as MetricDefinition #EAF3FC {
+    TEMPERATURE
+    HUMIDITY
+    POLLEN_DENSITY
+    - key: String {readOnly}
+    - unit: String {readOnly}
+    + {static} forKey(key: String): MetricDefinition
+    + key(): String
+    + unit(): String
+    - MetricDefinition(key: String, unit: String)
+  }
+  class "MagicIncident" as MagicIncident <<record>> #EAF3FC {
+    - id: UUID {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - type: MagicIncident.Type {readOnly}
+    - severity: MagicIncident.Severity {readOnly}
+    - status: MagicIncident.Status {readOnly}
+    - cause: String {readOnly}
+    - consequences: String {readOnly}
+    - openedBy: String {readOnly}
+    - openedAt: Instant {readOnly}
+    + MagicIncident(id: UUID, seasonPlanId: UUID, type: MagicIncident.Type, severity: MagicIncident.Severity, status: MagicIncident.Status, cause: String, consequences: String, openedBy: String, openedAt: Instant)
+    + critical(): boolean
+    + operational(): boolean
+    + reopen(): MagicIncident
+    + resolve(): MagicIncident
+    + withSeverity(value: MagicIncident.Severity): MagicIncident
+    - withStatus(value: MagicIncident.Status): MagicIncident
+  }
+  enum "MagicIncident.Type" as IncidentType #EAF3FC {
+    RITUAL
+    POLLEN
+    CLIMATE
+    ASSIGNMENT
+    SECURITY
+  }
+  enum "MagicIncident.Severity" as IncidentSeverity #EAF3FC {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+  }
+  enum "MagicIncident.Status" as IncidentStatus #EAF3FC {
+    OPEN
+    IN_PROGRESS
+    RESOLVED
+    CLOSED
+  }
+  class "CorrectionAction" as CorrectionAction <<record>> #EAF3FC {
+    - id: UUID {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - incidentId: UUID {readOnly}
+    - deduplicationKey: String {readOnly}
+    - description: String {readOnly}
+    - owner: String {readOnly}
+    - deadline: Instant {readOnly}
+    - status: CorrectionAction.Status {readOnly}
+    - cancellationReason: String {readOnly}
+    + CorrectionAction(id: UUID, seasonPlanId: UUID, incidentId: UUID, deduplicationKey: String, description: String, owner: String, deadline: Instant, status: CorrectionAction.Status, cancellationReason: String)
+    + {static} open(id: UUID, planId: UUID, incidentId: UUID, key: String, description: String, owner: String, deadline: Instant): CorrectionAction
+    + overdue(now: Instant): boolean
+    + terminal(): boolean
+    + transition(target: CorrectionAction.Status, reason: String): CorrectionAction
+  }
+  enum "CorrectionAction.Status" as CorrectionStatus #EAF3FC {
+    OPEN
+    IN_PROGRESS
+    DONE
+    CANCELLED
+  }
+  class "AuditLogEntry" as AuditLogEntry <<record>> #EAF3FC {
+    - id: UUID {readOnly}
+    - seasonPlanId: UUID {readOnly}
+    - action: AuditAction {readOnly}
+    - actorId: String {readOnly}
+    - createdAt: Instant {readOnly}
+    - comment: String {readOnly}
+    + AuditLogEntry(id: UUID, seasonPlanId: UUID, action: AuditAction, actorId: String, createdAt: Instant, comment: String)
+  }
+  class "PollenUsage" as PollenUsage <<record>> #EAF3FC {
+    - reservationId: UUID {readOnly}
+    - confirmedGrams: BigDecimal {readOnly}
+    - actualGrams: BigDecimal {readOnly}
+    - sourceVersion: String {readOnly}
+    + PollenUsage(reservationId: UUID, confirmedGrams: BigDecimal, actualGrams: BigDecimal, sourceVersion: String)
+    + consumptionRatio(): BigDecimal
+    + variance(): BigDecimal
+  }
+}
+
+package "Существующий HTTPS-адаптер" {
+  class "RestPollenTreeClient" as RestPollenTreeClient <<UC4 projection>> #EEEEEE {
+    - client: RestClient {readOnly}
+    + RestPollenTreeClient(client: RestClient)
+    + summary(planId: UUID): Optional<PollenTreeClient.Summary>
+    + recordConsumption(planId: UUID, clientEventId: UUID, grams: BigDecimal): PollenTreeClient.Summary
+  }
+}
+
+RitualService --> "1" SeasonPlanRepository : plans
+RitualService --> "1" Rituals : rituals
+RitualService --> "1" Incidents : incidents
+RitualService --> "1" LaunchReadiness : readiness
+RitualService --> "1" CommandTransaction : transactions
+RitualService --> "1" AuditLogService : audit
+MonitoringService --> "1" SeasonPlanRepository : plans
+MonitoringService --> "1" Metrics : metrics
+MonitoringService --> "1" Incidents : incidents
+MonitoringService --> "1" Corrections : actions
+MonitoringService --> "1" MetricRules : rules
+MonitoringService --> "1" NotificationOutbox : outbox
+MonitoringService --> "1" CommandTransaction : transactions
+MonitoringService --> "1" AuditLogService : audit
+IncidentResponseService --> "1" SeasonPlanRepository : plans
+IncidentResponseService --> "1" Incidents : incidents
+IncidentResponseService --> "1" Corrections : actions
+IncidentResponseService --> "1" IncidentRules : rules
+IncidentResponseService --> "1" CommandTransaction : transactions
+IncidentResponseService --> "1" NotificationOutbox : outbox
+IncidentResponseService --> "1" AuditLogService : audit
+PollenService --> "1" SeasonPlanRepository : plans
+PollenService --> "1" PollenTreeClient : client
+PollenService --> "1" NotificationOutbox : outbox {lazy}
+PollenService --> "1" CommandTransaction : transactions
+PollenService --> "1" AuditLogService : audit
+AuditLogService --> "1" AuditLogRepository : auditLogRepository
+RitualSession "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+ClimateMetric "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+MagicIncident "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+CorrectionAction "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+AuditLogEntry "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+NotificationEvent "0..*" --> "1" SeasonPlan : seasonPlanId {ID reference}
+CorrectionAction "0..*" --> "0..1" MagicIncident : incidentId {ID reference}
+RitualSession "1" *-- "1..*" Participant : participants
+RitualSession "1" *-- "0..*" RitualEvent : events {ordered}
+RitualSession --> RitualResult : result [0..1]
+ClimateMetric --> MetricDefinition : definition
+MagicIncident --> IncidentType : type
+MagicIncident --> IncidentSeverity : severity
+MagicIncident --> IncidentStatus : status
+CorrectionAction --> CorrectionStatus : status
+SeasonPlan --> SeasonPlanStatus : status
+AuditLogEntry --> AuditAction : action
+NotificationEvent --> Channel : channels
+Readiness --> Participant : participants
+Rituals ..> RitualSession
+Metrics ..> ClimateMetric
+Incidents ..> MagicIncident
+Corrections ..> CorrectionAction
+LaunchReadiness ..> Readiness
+MetricRules ..> MetricRule
+MetricRules ..> MetricDefinition
+IncidentRules ..> IncidentType
+IncidentRules ..> IncidentSeverity
+SeasonPlanRepository ..> SeasonPlan
+AuditLogRepository ..> AuditLogEntry
+NotificationOutbox ..> NotificationEvent
+PollenTreeClient ..> PollenSummary
+PollenSummary ..> PollenUsage
+PollenService ..> PollenUsage
+RitualService ..> RitualSession
+RitualService ..> SeasonPlan
+MonitoringService ..> Measurement
+MonitoringService ..> ClimateMetric
+MonitoringService ..> MagicIncident
+MonitoringService ..> CorrectionAction
+IncidentResponseService ..> MagicIncident
+IncidentResponseService ..> CorrectionAction
+UseCaseSupport ..> SeasonPlanRepository
+UseCaseSupport ..> SeasonPlan
+ValidationSupport ..> ActorRole
+RestPollenTreeClient ..|> PollenTreeClient
+RitualService ..> UseCaseSupport
+RitualService ..> ValidationSupport
+MonitoringService ..> UseCaseSupport
+MonitoringService ..> ValidationSupport
+IncidentResponseService ..> UseCaseSupport
+IncidentResponseService ..> ValidationSupport
+PollenService ..> UseCaseSupport
+PollenService ..> ValidationSupport
+
+legend bottom left
+  UC-4 only: RITUAL_READY -> ACTIVE after a successful ritual.
+  CORRECTION / EMERGENCY are operating conditions, NOT SeasonPlanStatus values.
+  Critical condition = any operational CRITICAL MagicIncident.
+  No planning, approval, preparation commands, completion or report subsystem.
+
+  Completeness: all declared fields, constructors and explicit methods of UC-4 types.
+  Grey <<UC4 projection>> = shared class/interface: only UC-4 operations/literals; other use cases intentionally excluded.
+  Record fields are private final. Canonical constructors are shown; accessors, equals/hashCode/toString are implicit.
+  Java-generated enum values/valueOf and compiler-generated helpers are implicit. JDK/Spring internals are not expanded.
+
+  Relations: solid arrow = navigable association / injected dependency; *-- = composition of session snapshots.
+  Dashed arrow = use/create dependency; hollow dashed triangle = interface realization.
+  UUID-based associations use IDs, NOT direct object-reference fields or cascade-delete ownership.
+  PollenService is the only application class accessing PollenTreeClient; no direct database pollen writes.
+
+  Integration limit: services are core-only; UC-4 REST/UI, readiness/rule adapters, execution persistence,
+  metric sensors, periodic scheduler and durable outbox delivery are not wired.
+  escalateOverdue() is callable, not a running scheduler.
+  Local command transaction covers repositories + audit + outbox, not rollback of external Pollen Tree spending.
+
+  Rules: deviation = round4(abs(value-target)/tolerance); >=1 creates an action, >=2 also a CRITICAL incident.
+  Metric uniqueness: (source, sourceEventId); correction deduplicationKey is unique.
+  One ritual in progress per plan; finish rechecks readiness, participants and required events.
+  Audit entries are append-only. Notify by deduplicated transactional outbox; delivery is a future adapter.
+
+endlegend
+@enduml
