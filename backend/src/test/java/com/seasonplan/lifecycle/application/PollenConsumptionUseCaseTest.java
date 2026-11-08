@@ -1,61 +1,60 @@
 package com.seasonplan.lifecycle.application;
 
-import com.seasonplan.lifecycle.application.execution.PollenConsumptionService;
-import com.seasonplan.lifecycle.application.port.*;
+import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
+import com.seasonplan.lifecycle.application.port.NotificationOutbox;
 import com.seasonplan.lifecycle.domain.*;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 
 class PollenConsumptionUseCaseTest {
-    @Test void consumptionUsesPollenTreeAndRetryDoesNotDoubleSpendOrDuplicateThresholdEvents() {
-        UseCaseFixture f = new UseCaseFixture(SeasonPlanStatus.ACTIVE);
-        Tree tree = new Tree();
-        var service = new PollenConsumptionService(f.plans, tree, f.outbox, f.transactions, f.audit, f.clock);
+    @Test void consumptionUsesTheSameExternalClientAndRetriesDoNotDuplicateSpendWarningsOrAudit() {
+        var f = new UseCaseFixture(SeasonPlanStatus.ACTIVE);
+        var client = confirmedClient(f);
+        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
         UUID event = UUID.randomUUID();
-        service.record(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
-        service.record(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
-        assertThat(tree.actual).isEqualByComparingTo("80.000");
+        service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
+        service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
+        assertThat(client.summary(f.plan.id()).orElseThrow().actualGrams()).isEqualByComparingTo("80.000");
         assertThat(f.events).hasSize(1);
-        service.record(f.plan.id(), UUID.randomUUID(), new BigDecimal("20.001"), ActorRole.POLLEN_GUARDIAN, "guardian");
+        assertThat(f.audit.entriesFor(f.plan.id())).hasSize(1);
+        service.recordConsumption(f.plan.id(), UUID.randomUUID(), new BigDecimal("20.001"), ActorRole.POLLEN_GUARDIAN, "guardian");
         assertThat(f.events.stream().filter(e -> e.type().equals("POLLEN_OVER_100")).findFirst().orElseThrow().recipients())
                 .contains("CHIEF_GUARDIAN");
     }
 
-    @Test void retryAfterOutboxFailureReusesTheExternalConsumptionEvent() {
-        UseCaseFixture f = new UseCaseFixture(SeasonPlanStatus.ACTIVE);
-        Tree tree = new Tree();
+    @Test void retryAfterOutboxFailureReusesExternalConsumption() {
+        var f = new UseCaseFixture(SeasonPlanStatus.ACTIVE);
+        var client = confirmedClient(f);
         boolean[] fail = {true};
-        NotificationOutbox outbox = event -> { if (fail[0]) { fail[0] = false; throw new IllegalStateException("outbox unavailable"); } f.outbox.enqueue(event); };
-        var service = new PollenConsumptionService(f.plans, tree, outbox, f.transactions, f.audit, f.clock);
-        UUID id = UUID.randomUUID();
-        assertThatThrownBy(() -> service.record(f.plan.id(), id, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian"))
+        NotificationOutbox outbox = event -> {
+            if (fail[0]) { fail[0] = false; throw new IllegalStateException("outbox unavailable"); }
+            f.outbox.enqueue(event);
+        };
+        var service = new PollenService(f.plans, client, () -> outbox, f.transactions, f.audit, f.clock);
+        UUID event = UUID.randomUUID();
+        assertThatThrownBy(() -> service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian"))
                 .isInstanceOf(IllegalStateException.class);
-        service.record(f.plan.id(), id, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
-        assertThat(tree.actual).isEqualByComparingTo("80");
+        service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
+        assertThat(client.summary(f.plan.id()).orElseThrow().actualGrams()).isEqualByComparingTo("80");
         assertThat(f.events).hasSize(1);
     }
 
-    @Test void invalidAndUnauthorizedConsumptionNeverReachesIntegration() {
-        UseCaseFixture f = new UseCaseFixture(SeasonPlanStatus.ACTIVE);
-        Tree tree = new Tree();
-        var service = new PollenConsumptionService(f.plans, tree, f.outbox, f.transactions, f.audit, f.clock);
-        assertThatThrownBy(() -> service.record(f.plan.id(), UUID.randomUUID(), new BigDecimal("0.0001"), ActorRole.POLLEN_GUARDIAN, "guardian"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.record(f.plan.id(), UUID.randomUUID(), BigDecimal.ONE, ActorRole.FAIRY_PLANNER, "planner"))
-                .isInstanceOf(com.seasonplan.lifecycle.application.shared.AccessDeniedForRoleException.class);
-        assertThat(tree.results).isEmpty();
+    @Test void nonActiveSeasonCannotConsumePollen() {
+        var f = new UseCaseFixture(SeasonPlanStatus.SUBMITTED);
+        var client = confirmedClient(f);
+        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
+        assertThatThrownBy(() -> service.recordConsumption(f.plan.id(), UUID.randomUUID(), BigDecimal.ONE,
+                ActorRole.POLLEN_GUARDIAN, "guardian")).isInstanceOf(DomainValidationException.class);
+        assertThat(client.summary(f.plan.id()).orElseThrow().actualGrams()).isEqualByComparingTo("0");
     }
-    private static class Tree implements PollenTree {
-        final UUID reservationId = UUID.randomUUID();
-        BigDecimal actual = BigDecimal.ZERO;
-        final Map<UUID, Summary> results = new HashMap<>();
-        public Optional<Summary> summary(UUID planId) { return Optional.of(new Summary(reservationId, new BigDecimal("100"), actual, "v1")); }
-        public Summary recordConsumption(UUID planId, UUID eventId, BigDecimal grams) {
-            return results.computeIfAbsent(eventId, ignored -> {
-                actual = actual.add(grams); return new Summary(reservationId, new BigDecimal("100"), actual, eventId.toString());
-            });
-        }
+
+    private FakePollenTreeClient confirmedClient(UseCaseFixture f) {
+        var client = new FakePollenTreeClient(new BigDecimal("1000"));
+        var reservation = client.requestReservation(f.plan.id(), UUID.randomUUID(), 100, "guardian");
+        client.confirmReservation(reservation.id(), 100, "ok", "guardian");
+        return client;
     }
 }

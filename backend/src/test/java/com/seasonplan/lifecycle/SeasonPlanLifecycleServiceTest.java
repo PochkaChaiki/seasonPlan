@@ -13,7 +13,7 @@ import com.seasonplan.lifecycle.domain.TimeWindow;
 import com.seasonplan.lifecycle.application.shared.AccessDeniedForRoleException;
 import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
 import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
-import com.seasonplan.lifecycle.application.preparation.PollenReservationService;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
@@ -30,7 +30,7 @@ class SeasonPlanLifecycleServiceTest {
 
     private SeasonPlanTestFixture fixture;
     private SeasonPlanService seasonPlans;
-    private PollenReservationService pollenReservations;
+    private PollenService pollenReservations;
     private MagicTaskService magicTasks;
     private FairyAssignmentService fairyAssignments;
     private ReadinessChecklistService readinessChecklist;
@@ -39,7 +39,7 @@ class SeasonPlanLifecycleServiceTest {
     void setUp() {
         fixture = SeasonPlanTestFixture.create();
         seasonPlans = fixture.seasonPlanService();
-        pollenReservations = fixture.pollenReservationService();
+        pollenReservations = fixture.pollenService();
         magicTasks = fixture.magicTaskService();
         fairyAssignments = fixture.fairyAssignmentService();
         readinessChecklist = fixture.readinessChecklistService();
@@ -89,6 +89,7 @@ class SeasonPlanLifecycleServiceTest {
     @Test
     void chiefGuardianCanApproveSubmittedPlan() {
         SeasonPlan submitted = submittedPlan();
+        confirmPollen(submitted);
 
         SeasonPlan approved = seasonPlans.approve(submitted.id(), "approved for spring", ActorRole.CHIEF_GUARDIAN, "guardian-1");
 
@@ -98,6 +99,27 @@ class SeasonPlanLifecycleServiceTest {
         assertThat(fixture.auditLogService().entriesFor(submitted.id()))
                 .extracting("action")
                 .contains(AuditAction.SEASON_PLAN_APPROVED);
+    }
+
+    @Test
+    void approvalRequiresAnExistingConfirmedReservation() {
+        SeasonPlan submitted = submittedPlan();
+
+        assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+        assertThat(fixture.auditLogService().entriesFor(submitted.id()))
+                .extracting("action").doesNotContain(AuditAction.SEASON_PLAN_APPROVED);
+    }
+
+    @Test
+    void pendingReservationBlocksApproval() {
+        SeasonPlan submitted = submittedPlan();
+        pollenReservations.requestReservation(submitted.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+
+        assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
     }
 
     @Test
@@ -128,12 +150,13 @@ class SeasonPlanLifecycleServiceTest {
         assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class)
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors())
-                        .containsEntry("pollenReservation", List.of("rejected pollen reservation blocks approval")));
+                        .containsEntry("pollenReservation", List.of("confirmed pollen reservation is required")));
     }
 
     @Test
     void ritualReadyIsBlockedUntilChecklistReservationTasksAndAssignmentsAreComplete() {
         SeasonPlan approved = approvedPlan();
+        pollenReservations.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
 
         assertThatThrownBy(() -> seasonPlans.markRitualReady(approved.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1"))
                 .isInstanceOf(DomainValidationException.class)
@@ -176,8 +199,14 @@ class SeasonPlanLifecycleServiceTest {
         return seasonPlans.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
     }
 
+    private void confirmPollen(SeasonPlan plan) {
+        PollenReservation reservation = pollenReservations.requestReservation(plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenReservations.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+    }
+
     private SeasonPlan approvedPlan() {
         SeasonPlan submitted = submittedPlan();
+        confirmPollen(submitted);
         return seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
     }
 }

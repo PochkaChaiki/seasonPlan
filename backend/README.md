@@ -15,7 +15,8 @@ application/
   planning/                     UC-1: planning
   approval/                     UC-2: approval
   preparation/                  UC-3: preparation and readiness
-  execution/                    UC-4: ritual, monitoring, incident response, consumption
+  execution/                    UC-4: ritual, monitoring and incident response
+  pollen/                       One PollenService: reservations, consumption, audit and warnings
   completion/                   UC-5: reports, completion and archival
   port/                         Inbound-context/outbound dependency contracts
   shared/                       Audit application service, validation and exceptions
@@ -23,7 +24,8 @@ application/
 service/SeasonPlanService.java  Compatibility facade for existing callers
 api/                            Existing REST adapter (package retained)
 persistence/                    Existing JDBC adapters (package retained)
-adapter/fake/                   Existing temporary adapters
+adapter/fake/                   Explicit educational integration fakes
+adapter/pollentree/             Proposed external Pollen Tree HTTPS adapter
 config/                         Existing Spring composition/security configuration
 ```
 
@@ -37,10 +39,12 @@ new framework or Maven module.
 
 ## Current runtime versus new core
 
-The existing REST routes still use the compatibility facade and existing adapters.
-UC-4 and UC-5 have executable, unit-tested Java application services, but **no new
-REST routes, Spring beans, database adapters/migrations, sensor clients, schedulers,
-notification delivery, or HTML/PDF renderers**. This is intentional.
+Existing reservation REST routes use the unified `PollenService`. Its consumption
+logic remains executable and unit-tested but has no consumption REST route or
+complete audit/outbox persistence/delivery slice. Missing outbox configuration
+fails before external spending, without affecting reservation commands.
+Other UC-4/UC-5 services also remain core-only: no new service composition,
+REST routes, database adapters/migrations, sensors, schedulers or report renderers.
 
 To integrate those services later, implement the contracts in `application/port`
 and compose them outside the core. In particular:
@@ -54,9 +58,19 @@ and compose them outside the core. In particular:
 - `CompletionPorts.Tasks` must project all **required** work and missing required
   categories; it must not mistake the legacy preparation status `READY` for
   completion.
-- `PollenTree` is authoritative for actual consumption and summary snapshots.
-  Consumption event IDs must be idempotent across external retries. An external
-  consumption cannot be rolled back by a local database transaction.
+- All application pollen access follows **use case → `PollenService` →
+  `PollenTreeClient` → `RestPollenTreeClient`** (or explicit dev/test fake).
+  Approval, readiness, completion and the compatibility facade never use the
+  external client directly. `PollenService` owns our read/command API and business
+  orchestration; `RestPollenTreeClient` is only the replaceable HTTPS adapter.
+  Public facade results are client-independent domain values. Architecture tests
+  protect this boundary. There is no local reservation repository or projection persistence. Only our
+  immutable audit and report data remain local; the old migration's unused table
+  is retained without writes to avoid silently deleting historical data.
+  Request, decision and consumption replays must be idempotent at the provider;
+  audit/outbox effects are deduplicated locally. External changes cannot be
+  rolled back by our database. See the [Pollen integration handoff](../docs/architecture/POLLEN_TREE_EXTERNAL_SERVICE.md)
+  for Vision/SRS requirements, the simplified design, proposed contract and limits.
 - Repositories must enforce the uniqueness/immutability contracts in their Javadoc.
   Outbox delivery, retries and recipient resolution belong to adapters.
 - Exporters render only approved report snapshots. The core supplies the format,
@@ -78,13 +92,23 @@ mvn.cmd -f .\backend\pom.xml clean verify
 ```
 
 The full suite requires a running Docker daemon for
-`PostgresLifecyclePersistenceTest`. To run the remaining tests explicitly when
-Docker is unavailable (not a substitute for the PostgreSQL suite):
+`PostgresLifecyclePersistenceTest`. On this host's Docker 29, Testcontainers 1.20.4
+needs the following test-process-only API compatibility override:
+
+```powershell
+$env:DOCKER_API_VERSION = '1.44'
+mvn.cmd -f .\backend\pom.xml '-Dapi.version=1.44' clean verify
+```
+
+To run the remaining tests explicitly when Docker is unavailable
+(not a substitute for the PostgreSQL suite):
 
 ```powershell
 mvn.cmd -f .\backend\pom.xml '-Dtest=!PostgresLifecyclePersistenceTest' clean verify
 ```
 
-New deterministic port fakes live only under `src/test`. They exercise the core,
-not database rollback, external service reliability, or notification delivery.
-The existing CI already selects Temurin 17 and runs the full Maven test suite.
+Execution/completion unit-test port fakes live under `src/test`. The replaceable
+`adapter/fake/FakePollenTreeClient` is also available to explicitly configured dev/test
+runtimes, never production. Mock transport and unit tests do not establish live
+provider compatibility, database rollback or notification delivery; PostgreSQL
+audit-retry and no-local-reservation-write tests require Docker. CI selects Temurin 17 and runs the full suite.

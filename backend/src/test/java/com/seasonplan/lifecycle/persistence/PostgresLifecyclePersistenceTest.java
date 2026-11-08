@@ -8,7 +8,7 @@ import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
 import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
 import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
-import com.seasonplan.lifecycle.application.preparation.PollenReservationService;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
 import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
@@ -16,7 +16,14 @@ import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import com.seasonplan.lifecycle.application.port.PollenTreeClient;
+import com.seasonplan.lifecycle.domain.AuditLogEntry;
+import com.seasonplan.lifecycle.domain.PollenReservationStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -27,8 +34,12 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Testcontainers
 class PostgresLifecyclePersistenceTest {
     @Container
@@ -48,7 +59,7 @@ class PostgresLifecyclePersistenceTest {
     private SeasonPlanService seasonPlanService;
 
     @Autowired
-    private PollenReservationService pollenReservationService;
+    private PollenService pollenService;
 
     @Autowired
     private MagicTaskService magicTaskService;
@@ -64,6 +75,36 @@ class PostgresLifecyclePersistenceTest {
 
     @Autowired
     private SeasonPlanRepository seasonPlanRepository;
+
+    @Autowired
+    private PollenTreeClient pollenTree;
+
+    @SpyBean
+    private JdbcAuditLogRepository auditRepository;
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void externalDecisionsNeverPersistReservationsAndAuditFailureCanBeRetried(boolean confirm) {
+        SeasonPlan plan = seasonPlanService.createDraft(SeasonPlanTestFixture.validPlanDraft("planner-1"),
+                ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        // Model a persistence failure directly: Spring translates generic IllegalStateException at @Repository boundaries.
+        var failure = new org.springframework.dao.DataAccessResourceFailureException("simulated audit failure");
+        doThrow(failure).doCallRealMethod().when(auditRepository).append(any(AuditLogEntry.class));
+        assertThatThrownBy(() -> decide(reservation.id(), confirm)).isSameAs(failure);
+        assertThat(pollenTree.findById(reservation.id()).orElseThrow().status())
+                .isEqualTo(confirm ? PollenReservationStatus.CONFIRMED : PollenReservationStatus.REJECTED);
+        decide(reservation.id(), confirm);
+        decide(reservation.id(), confirm);
+        assertThat(jdbc.queryForObject("select count(*) from pollen_reservations where season_plan_id = ?", Integer.class, plan.id())).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from audit_log_entries where season_plan_id = ? and action like 'POLLEN_RESERVATION_%'",
+                Integer.class, plan.id())).isEqualTo(1);
+    }
+
+    private void decide(UUID id, boolean confirm) {
+        if (confirm) pollenService.confirmReservation(id, 100, "decision", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        else pollenService.rejectReservation(id, "decision", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+    }
 
     @Test
     void lifecycleServicesPersistSeasonPlanAndAuditLogToPostgres() {
@@ -101,10 +142,9 @@ class PostgresLifecyclePersistenceTest {
                 "planner-1"
         );
         seasonPlanService.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(draft.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenService.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
         SeasonPlan approved = seasonPlanService.approve(draft.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
-
-        PollenReservation reservation = pollenReservationService.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
-        pollenReservationService.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
         MagicTask task = magicTaskService.createTask(approved.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
         fairyAssignmentService.assignFairy(task.id(), "fairy-1", "LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
         readinessChecklistService.completeItem(approved.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
@@ -113,8 +153,8 @@ class PostgresLifecyclePersistenceTest {
         SeasonPlan ready = seasonPlanService.markRitualReady(approved.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
 
         assertThat(ready.status()).isEqualTo(SeasonPlanStatus.RITUAL_READY);
-        assertThat(jdbc.queryForObject("select status from pollen_reservations where id = ?", String.class, reservation.id()))
-                .isEqualTo("CONFIRMED");
+        assertThat(pollenService.get(reservation.id()).status()).isEqualTo(PollenReservationStatus.CONFIRMED);
+        assertThat(jdbc.queryForObject("select count(*) from pollen_reservations where season_plan_id = ?", Integer.class, approved.id())).isZero();
         assertThat(jdbc.queryForObject("select count(*) from magic_tasks where season_plan_id = ?", Integer.class, approved.id()))
                 .isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from fairy_assignments where magic_task_id = ?", Integer.class, task.id()))

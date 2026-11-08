@@ -4,6 +4,7 @@ import com.seasonplan.lifecycle.adapter.fake.*;
 import com.seasonplan.lifecycle.application.execution.*;
 import com.seasonplan.lifecycle.application.completion.CompletionService;
 import com.seasonplan.lifecycle.application.port.*;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.shared.AuditLogService;
 
@@ -57,17 +58,14 @@ class UseCaseFixture {
         public void save(CorrectionAction action) { actions.put(action.id(), action); }
     };
     final List<SeasonReport.TaskResult> tasks = new ArrayList<>();
-    PollenTree.Summary pollenSummary = new PollenTree.Summary(UUID.randomUUID(), new BigDecimal("100"), new BigDecimal("80"), "v1");
+    PollenTreeClient.Summary pollenSummary = new PollenTreeClient.Summary(UUID.randomUUID(), new BigDecimal("100"), new BigDecimal("80"), "v1");
     SeasonReport draftReport;
     SeasonReport approvedReport;
     final List<SeasonReport> approvedReports = new ArrayList<>();
     SeasonReport exported;
     int reportVersion;
     final CompletionService completion;
-    final PollenTree pollenPort = new PollenTree() {
-        public Optional<Summary> summary(UUID id) { return Optional.ofNullable(pollenSummary); }
-        public Summary recordConsumption(UUID id, UUID eventId, BigDecimal grams) { throw new UnsupportedOperationException(); }
-    };
+    final PollenTreeClient pollenPort = org.mockito.Mockito.mock(PollenTreeClient.class);
     final CompletionPorts.Reports reportPort = new CompletionPorts.Reports() {
         public Optional<SeasonReport> latestDraft(UUID id) { return Optional.ofNullable(draftReport); }
         public Optional<SeasonReport> latestApproved(UUID id) { return Optional.ofNullable(approvedReport); }
@@ -85,6 +83,8 @@ class UseCaseFixture {
     final IncidentResponseService response;
 
     UseCaseFixture(SeasonPlanStatus status) {
+        org.mockito.Mockito.when(pollenPort.summary(org.mockito.ArgumentMatchers.any(UUID.class)))
+                .thenAnswer(call -> Optional.ofNullable(pollenSummary));
         plan = SeasonPlan.createDraft(UUID.randomUUID(), "SPRING", List.of("north"), List.of(), Map.of("bloom", "early"),
                 Map.of("temperature", 20.0), List.of(), "planner", now);
         setStatus(status);
@@ -96,7 +96,8 @@ class UseCaseFixture {
                 outbox, transactions, audit, clock);
         response = new IncidentResponseService(plans, incidentPort, correctionPort, type -> MagicIncident.Severity.CRITICAL,
                 transactions, outbox, audit, clock);
-        completion = new CompletionService(plans, taskPort, ritualPort, metricPort, incidentPort, correctionPort, pollenPort,
+        var pollen = new PollenService(plans, pollenPort, () -> outbox, transactions, audit, clock);
+        completion = new CompletionService(plans, taskPort, ritualPort, metricPort, incidentPort, correctionPort, pollen,
                 reportPort, id -> "v1", (report, format) -> { exported = report; return new byte[] {1, 2, 3}; }, transactions, audit, clock);
     }
     void successfulSources() {

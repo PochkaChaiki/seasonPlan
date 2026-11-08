@@ -8,7 +8,7 @@ import com.seasonplan.lifecycle.domain.PollenReservation;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
 import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
 import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
-import com.seasonplan.lifecycle.application.preparation.PollenReservationService;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
 import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @PreAuthorize("isAuthenticated()")
 public class LifecycleController {
     private final SeasonPlanService seasonPlanService;
-    private final PollenReservationService pollenReservationService;
+    private final PollenService pollenService;
     private final MagicTaskService magicTaskService;
     private final FairyAssignmentService fairyAssignmentService;
     private final ReadinessChecklistService readinessChecklistService;
@@ -36,14 +36,14 @@ public class LifecycleController {
 
     public LifecycleController(
             SeasonPlanService seasonPlanService,
-            PollenReservationService pollenReservationService,
+            PollenService pollenService,
             MagicTaskService magicTaskService,
             FairyAssignmentService fairyAssignmentService,
             ReadinessChecklistService readinessChecklistService,
             CurrentActorProvider currentActorProvider
     ) {
         this.seasonPlanService = seasonPlanService;
-        this.pollenReservationService = pollenReservationService;
+        this.pollenService = pollenService;
         this.magicTaskService = magicTaskService;
         this.fairyAssignmentService = fairyAssignmentService;
         this.readinessChecklistService = readinessChecklistService;
@@ -123,7 +123,9 @@ public class LifecycleController {
             @RequestBody ReservationRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(pollenReservationService.requestReservation(id, request.requestedAmount(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+        return toResponse(pollenService.requestReservation(id,
+                request.requestId() == null ? UUID.randomUUID() : request.requestId(),
+                request.requestedAmount(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
     }
 
     @PostMapping("/pollen-reservations/{id}/confirm")
@@ -132,7 +134,7 @@ public class LifecycleController {
             @RequestBody ReservationDecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(pollenReservationService.confirmReservation(id, request.confirmedAmount(), request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+        return toResponse(pollenService.confirmReservation(id, request.confirmedAmount(), request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
     }
 
     @PostMapping("/pollen-reservations/{id}/reject")
@@ -141,7 +143,7 @@ public class LifecycleController {
             @RequestBody DecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(pollenReservationService.rejectReservation(id, request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+        return toResponse(pollenService.rejectReservation(id, request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
     }
 
     @PostMapping("/season-plans/{id}/tasks")

@@ -2,6 +2,7 @@ package com.seasonplan.lifecycle.service;
 
 import com.seasonplan.lifecycle.application.approval.ApprovalService;
 import com.seasonplan.lifecycle.application.port.*;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.shared.AuditLogService;
 import com.seasonplan.lifecycle.application.planning.PlanningService;
 import com.seasonplan.lifecycle.application.preparation.PreparationService;
@@ -20,7 +21,7 @@ public class SeasonPlanService {
     private final ApprovalService approval;
     private final PreparationService preparation;
 
-    public SeasonPlanService(SeasonPlanRepository plans, PollenReservationRepository pollen,
+    public SeasonPlanService(SeasonPlanRepository plans, PollenService pollen,
                              AuditLogService audit, PlannerNotifications notifications,
                              NaturalCalendarService calendar, ReadinessChecklistService readiness, Clock clock) {
         planning = new PlanningService(plans, audit, calendar, clock);

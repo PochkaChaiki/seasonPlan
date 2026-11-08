@@ -41,9 +41,25 @@ class CompletionUseCaseTest {
                 .isInstanceOf(DomainValidationException.class);
     }
 
+    @Test void missingExternalUsageRemainsAReportBlocker() {
+        f.pollenSummary = null;
+        var draft = f.completion.generate(f.plan.id(), "Missing usage", ActorRole.FAIRY_PLANNER, "planner");
+        assertThat(draft.snapshot().pollen()).isNull();
+        assertThat(draft.blockers()).contains("pollen-totals");
+    }
+
+    @Test void pollenOutageDoesNotPersistAReportOrAppendASuccessAudit() {
+        var failure = new com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException("offline");
+        org.mockito.Mockito.when(f.pollenPort.summary(f.plan.id())).thenThrow(failure);
+        assertThatThrownBy(() -> f.completion.generate(f.plan.id(), "Offline", ActorRole.FAIRY_PLANNER, "planner"))
+                .isSameAs(failure);
+        assertThat(f.draftReport).isNull();
+        assertThat(f.audit.entriesFor(f.plan.id())).isEmpty();
+    }
+
     @Test void staleSourcesRequireRegenerationAndOldDraftCannotBeApproved() {
         SeasonReport first = f.completion.generate(f.plan.id(), "Первая версия", ActorRole.FAIRY_PLANNER, "planner");
-        f.pollenSummary = new com.seasonplan.lifecycle.application.port.PollenTree.Summary(f.pollenSummary.reservationId(), new BigDecimal("100"), new BigDecimal("90"), "v2");
+        f.pollenSummary = new com.seasonplan.lifecycle.application.port.PollenTreeClient.Summary(f.pollenSummary.reservationId(), new BigDecimal("100"), new BigDecimal("90"), "v2");
         assertThatThrownBy(() -> f.completion.approveAndComplete(f.plan.id(), first.id(), ActorRole.CHIEF_GUARDIAN, "guardian"))
                 .isInstanceOf(DomainValidationException.class);
         SeasonReport second = f.completion.generate(f.plan.id(), "Вторая версия", ActorRole.FAIRY_PLANNER, "planner");

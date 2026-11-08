@@ -7,3 +7,6 @@ spring:
     hibernate:
       ddl-auto: validate
 
+integrations:
+  pollen-tree:
+    mode: ${POLLEN_TREE_MODE:fake}

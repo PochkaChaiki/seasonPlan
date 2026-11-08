@@ -2,6 +2,10 @@ package com.seasonplan.lifecycle.config;
 
 import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
 import com.seasonplan.lifecycle.application.port.AuditLogRepository;
+import com.seasonplan.lifecycle.application.port.CommandTransaction;
+import com.seasonplan.lifecycle.persistence.JdbcCommandTransaction;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import com.seasonplan.lifecycle.application.shared.AuditLogService;
 import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
 import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository;
@@ -10,8 +14,10 @@ import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
 import com.seasonplan.lifecycle.application.port.MagicTaskRepository;
 import com.seasonplan.lifecycle.application.port.NaturalCalendarService;
 import com.seasonplan.lifecycle.adapter.fake.NotificationService;
-import com.seasonplan.lifecycle.application.port.PollenReservationRepository;
-import com.seasonplan.lifecycle.application.preparation.PollenReservationService;
+import com.seasonplan.lifecycle.application.port.PollenTreeClient;
+import com.seasonplan.lifecycle.application.port.NotificationOutbox;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
+import org.springframework.beans.factory.ObjectProvider;
 import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
 import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
@@ -45,35 +51,44 @@ public class LifecycleConfiguration {
     @Bean
     ReadinessChecklistService readinessChecklistService(
             SeasonPlanRepository plans,
-            PollenReservationRepository pollenReservations,
+            PollenService pollen,
             MagicTaskRepository magicTasks,
             FairyAssignmentRepository fairyAssignments,
             Clock clock
     ) {
-        return new ReadinessChecklistService(plans, pollenReservations, magicTasks, fairyAssignments, clock);
+        return new ReadinessChecklistService(plans, pollen, magicTasks, fairyAssignments, clock);
     }
 
     @Bean
     SeasonPlanService seasonPlanService(
             SeasonPlanRepository plans,
-            PollenReservationRepository pollenReservations,
+            PollenService pollen,
             AuditLogService auditLogService,
             NotificationService notificationService,
             NaturalCalendarService naturalCalendarService,
             ReadinessChecklistService readinessChecklistService,
             Clock clock
     ) {
-        return new SeasonPlanService(plans, pollenReservations, auditLogService, notificationService,
+        return new SeasonPlanService(plans, pollen, auditLogService, notificationService,
                 naturalCalendarService, readinessChecklistService, clock);
     }
 
     @Bean
-    PollenReservationService pollenReservationService(
-            PollenReservationRepository reservations,
+    CommandTransaction commandTransaction(JdbcTemplate jdbc, PlatformTransactionManager manager) {
+        return new JdbcCommandTransaction(jdbc, manager);
+    }
+
+    @Bean
+    PollenService pollenService(
             SeasonPlanRepository plans,
-            AuditLogService auditLogService
+            PollenTreeClient client,
+            ObjectProvider<NotificationOutbox> outbox,
+            CommandTransaction transactions,
+            AuditLogService auditLogService,
+            Clock clock
     ) {
-        return new PollenReservationService(reservations, plans, auditLogService);
+        // Reservations do not depend on UC-4 delivery. Consumption resolves the outbox before spending.
+        return new PollenService(plans, client, outbox::getObject, transactions, auditLogService, clock);
     }
 
     @Bean

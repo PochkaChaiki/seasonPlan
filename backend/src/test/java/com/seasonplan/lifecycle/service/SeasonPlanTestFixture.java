@@ -4,12 +4,13 @@ import com.seasonplan.lifecycle.application.preparation.*;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.application.shared.AuditLogService;
 import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
+import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.adapter.fake.NotificationService;
 
 import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryMagicTaskRepository;
-import com.seasonplan.lifecycle.adapter.fake.InMemoryPollenReservationRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemorySeasonPlanRepository;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;
@@ -25,7 +26,7 @@ import java.util.Map;
 
 public class SeasonPlanTestFixture {
     private final SeasonPlanService seasonPlanService;
-    private final PollenReservationService pollenReservationService;
+    private final PollenService pollenService;
     private final MagicTaskService magicTaskService;
     private final FairyAssignmentService fairyAssignmentService;
     private final ReadinessChecklistService readinessChecklistService;
@@ -34,7 +35,7 @@ public class SeasonPlanTestFixture {
 
     private SeasonPlanTestFixture(
             SeasonPlanService seasonPlanService,
-            PollenReservationService pollenReservationService,
+            PollenService pollenService,
             MagicTaskService magicTaskService,
             FairyAssignmentService fairyAssignmentService,
             ReadinessChecklistService readinessChecklistService,
@@ -42,7 +43,7 @@ public class SeasonPlanTestFixture {
             NotificationService notificationService
     ) {
         this.seasonPlanService = seasonPlanService;
-        this.pollenReservationService = pollenReservationService;
+        this.pollenService = pollenService;
         this.magicTaskService = magicTaskService;
         this.fairyAssignmentService = fairyAssignmentService;
         this.readinessChecklistService = readinessChecklistService;
@@ -53,21 +54,23 @@ public class SeasonPlanTestFixture {
     public static SeasonPlanTestFixture create() {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
         InMemorySeasonPlanRepository plans = new InMemorySeasonPlanRepository();
-        InMemoryPollenReservationRepository pollenReservations = new InMemoryPollenReservationRepository();
+        FakePollenTreeClient tree = new FakePollenTreeClient(new java.math.BigDecimal("10000"));
         InMemoryMagicTaskRepository magicTasks = new InMemoryMagicTaskRepository();
         InMemoryFairyAssignmentRepository fairyAssignments = new InMemoryFairyAssignmentRepository();
         AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
         NotificationService notificationService = new NotificationService();
-        ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService(plans, pollenReservations,
+        Map<String, NotificationOutbox.Event> pollenEvents = new java.util.LinkedHashMap<>();
+        PollenService pollenService = new PollenService(plans, tree,
+                () -> event -> pollenEvents.putIfAbsent(event.deduplicationKey(), event), new DirectTestTransaction(), auditLogService, clock);
+        ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService(plans, pollenService,
                 magicTasks, fairyAssignments, clock);
-        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenReservations, auditLogService,
+        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, auditLogService,
                 notificationService, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
-        PollenReservationService pollenReservationService = new PollenReservationService(pollenReservations, plans, auditLogService);
         MagicTaskService magicTaskService = new MagicTaskService(magicTasks, plans, auditLogService);
         FairySchedulePolicy fairySchedulePolicy = new FairySchedulePolicy(fairyAssignments, magicTasks);
         FairyAssignmentService fairyAssignmentService = new FairyAssignmentService(fairyAssignments, magicTasks,
                 fairySchedulePolicy, auditLogService);
-        return new SeasonPlanTestFixture(seasonPlanService, pollenReservationService, magicTaskService,
+        return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService,
                 fairyAssignmentService, readinessChecklistService, auditLogService, notificationService);
     }
 
@@ -100,8 +103,8 @@ public class SeasonPlanTestFixture {
         return seasonPlanService;
     }
 
-    public PollenReservationService pollenReservationService() {
-        return pollenReservationService;
+    public PollenService pollenService() {
+        return pollenService;
     }
 
     public MagicTaskService magicTaskService() {

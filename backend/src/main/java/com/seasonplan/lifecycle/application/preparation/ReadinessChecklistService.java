@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.application.preparation;
 
 import com.seasonplan.lifecycle.application.port.*;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.shared.*;
 
 import com.seasonplan.lifecycle.domain.ActorRole;
@@ -19,20 +20,20 @@ import java.util.UUID;
 
 public class ReadinessChecklistService {
     private final SeasonPlanRepository plans;
-    private final PollenReservationRepository pollenReservations;
+    private final PollenService pollen;
     private final MagicTaskRepository magicTasks;
     private final FairyAssignmentRepository fairyAssignments;
     private final Clock clock;
 
     public ReadinessChecklistService(
             SeasonPlanRepository plans,
-            PollenReservationRepository pollenReservations,
+            PollenService pollen,
             MagicTaskRepository magicTasks,
             FairyAssignmentRepository fairyAssignments,
             Clock clock
     ) {
         this.plans = plans;
-        this.pollenReservations = pollenReservations;
+        this.pollen = pollen;
         this.magicTasks = magicTasks;
         this.fairyAssignments = fairyAssignments;
         this.clock = clock;
@@ -41,7 +42,7 @@ public class ReadinessChecklistService {
     public Map<String, List<String>> calculateChecklist(UUID seasonPlanId) {
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
         SeasonPlan plan = plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
-        if (pollenReservations.findLatestBySeasonPlanId(seasonPlanId)
+        if (pollen.findLatestBySeasonPlanId(seasonPlanId)
                 .filter(reservation -> reservation.status() == PollenReservationStatus.CONFIRMED)
                 .isEmpty()) {
             ValidationSupport.add(errors, "pollenReservation", "confirmed pollen reservation is required");

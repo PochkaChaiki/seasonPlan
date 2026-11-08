@@ -2,7 +2,7 @@ package com.seasonplan.lifecycle.application.approval;
 
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.port.PlannerNotifications;
-import com.seasonplan.lifecycle.application.port.PollenReservationRepository;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 import com.seasonplan.lifecycle.application.shared.*;
 
@@ -14,12 +14,12 @@ import java.util.UUID;
 /** UC-2: review decisions. Existing public behavior is retained by the facade. */
 public class ApprovalService {
     private final SeasonPlanRepository plans;
-    private final PollenReservationRepository pollen;
+    private final PollenService pollen;
     private final AuditLogService audit;
     private final PlannerNotifications notifications;
     private final Clock clock;
 
-    public ApprovalService(SeasonPlanRepository plans, PollenReservationRepository pollen, AuditLogService audit,
+    public ApprovalService(SeasonPlanRepository plans, PollenService pollen, AuditLogService audit,
                            PlannerNotifications notifications, Clock clock) {
         this.plans = plans;
         this.pollen = pollen;
@@ -31,13 +31,13 @@ public class ApprovalService {
     public SeasonPlan approve(UUID id, String comment, ActorRole role, String actorId) {
         ValidationSupport.requireRole(role, ActorRole.CHIEF_GUARDIAN);
         SeasonPlan plan = requireSubmitted(id);
-        pollen.findLatestBySeasonPlanId(id)
-                .filter(reservation -> reservation.status() == PollenReservationStatus.REJECTED)
-                .ifPresent(reservation -> {
-                    throw new DomainValidationException(new LinkedHashMap<>() {{
-                        put("pollenReservation", List.of("rejected pollen reservation blocks approval"));
-                    }});
-                });
+        if (pollen.findLatestBySeasonPlanId(id)
+                .filter(reservation -> reservation.status() == PollenReservationStatus.CONFIRMED)
+                .isEmpty()) {
+            throw new DomainValidationException(new LinkedHashMap<>() {{
+                put("pollenReservation", List.of("confirmed pollen reservation is required"));
+            }});
+        }
         plan.approve(comment, actorId, clock.instant());
         audit.append(id, AuditAction.SEASON_PLAN_APPROVED, actorId, comment);
         notifications.notifyPlannerApprovalResult(plan.createdBy(), "APPROVED", comment);

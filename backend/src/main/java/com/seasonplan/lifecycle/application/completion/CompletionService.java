@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.application.completion;
 
 import com.seasonplan.lifecycle.application.UseCaseSupport;
+import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.shared.*;
@@ -21,7 +22,7 @@ public class CompletionService {
     private final ExecutionPorts.Metrics metrics;
     private final ExecutionPorts.Incidents incidents;
     private final ExecutionPorts.Corrections actions;
-    private final PollenTree pollen;
+    private final PollenService pollen;
     private final CompletionPorts.Reports reports;
     private final CompletionPorts.CatalogVersion catalog;
     private final CompletionPorts.Exporter exporter;
@@ -31,7 +32,7 @@ public class CompletionService {
 
     public CompletionService(SeasonPlanRepository plans, CompletionPorts.Tasks tasks, ExecutionPorts.Rituals rituals,
                              ExecutionPorts.Metrics metrics, ExecutionPorts.Incidents incidents, ExecutionPorts.Corrections actions,
-                             PollenTree pollen, CompletionPorts.Reports reports, CompletionPorts.CatalogVersion catalog,
+                             PollenService pollen, CompletionPorts.Reports reports, CompletionPorts.CatalogVersion catalog,
                              CompletionPorts.Exporter exporter, CommandTransaction transactions, AuditLogService audit, Clock clock) {
         this.plans = plans; this.tasks = tasks; this.rituals = rituals; this.metrics = metrics; this.incidents = incidents;
         this.actions = actions; this.pollen = pollen; this.reports = reports; this.catalog = catalog;
@@ -122,6 +123,6 @@ public class CompletionService {
                 incidents.forPlan(id).stream().sorted(Comparator.comparing(MagicIncident::id)).toList(),
                 actions.forPlan(id).stream().sorted(Comparator.comparing(CorrectionAction::id)).toList(),
                 rituals.forPlan(id).stream().sorted(Comparator.comparing(RitualSession::id)).toList(),
-                pollen.summary(id).map(PollenTree.Summary::snapshot).orElse(null));
+                pollen.usage(id).orElse(null));
     }
 }

@@ -88,7 +88,7 @@ record FairyAssignmentResponse(UUID id, UUID magicTaskId, String fairyId, String
 record DecisionRequest(String comment) {
 }
 
-record ReservationRequest(int requestedAmount) {
+record ReservationRequest(int requestedAmount, UUID requestId) {
 }
 
 record ReservationDecisionRequest(int confirmedAmount, String comment) {

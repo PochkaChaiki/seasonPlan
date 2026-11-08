@@ -23,6 +23,11 @@ public class AuditLogService {
         return auditLogRepository.append(entry);
     }
 
+    /** Replays preserve the originally appended record, including its timestamp. */
+    public AuditLogEntry appendOnce(UUID eventId, UUID seasonPlanId, AuditAction action, String actorId, String comment) {
+        return auditLogRepository.append(new AuditLogEntry(eventId, seasonPlanId, action, actorId, clock.instant(), comment));
+    }
+
     public List<AuditLogEntry> entriesFor(UUID seasonPlanId) {
         return auditLogRepository.entriesFor(seasonPlanId);
     }

@@ -22,9 +22,10 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
 
     @Override
     public AuditLogEntry append(AuditLogEntry entry) {
-        jdbc.update("""
+        int inserted = jdbc.update("""
                 insert into audit_log_entries (id, season_plan_id, action, actor_id, created_at, comment)
                 values (?, ?, ?, ?, ?, ?)
+                on conflict (id) do nothing
                 """,
                 entry.id(),
                 entry.seasonPlanId(),
@@ -32,6 +33,16 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
                 entry.actorId(),
                 Timestamp.from(entry.createdAt()),
                 entry.comment());
+        if (inserted == 0) {
+            AuditLogEntry existing = jdbc.query("select * from audit_log_entries where id = ?", this::mapEntry, entry.id())
+                    .stream().findFirst().orElseThrow(() -> new IllegalStateException("audit replay record missing"));
+            if (!java.util.Objects.equals(existing.seasonPlanId(), entry.seasonPlanId()) || existing.action() != entry.action()
+                    || !java.util.Objects.equals(existing.actorId(), entry.actorId())
+                    || !java.util.Objects.equals(existing.comment(), entry.comment())) {
+                throw new IllegalStateException("audit event identity cannot be reused with different content");
+            }
+            return existing;
+        }
         return entry;
     }
 
