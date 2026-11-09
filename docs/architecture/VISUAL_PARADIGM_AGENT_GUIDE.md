@@ -342,3 +342,58 @@ Remove only your own temporary installed plugin IDs and generated scratch backup
 ## Reference deliverable from this work
 
 See [UC-4 project and notes](uc-4/README.md) and [its validation record](uc-4/validation.json). The UC-4 counts and filenames are examples, not fixed requirements for later tasks. This guide is self-contained; authoring helpers previously kept under the Windows temporary directory are **not** guaranteed to exist in later sessions.
+
+## 11. UML 2 activity diagrams: UC-2 findings
+
+The [UC-2 activity delivery](uc-2/README.md) adds a reusable [Open API plugin and PowerShell runner](uc-2/tools), source-model regression tests and a saved/reopened model validator. The earlier class-diagram abstraction table does **not** define activity-diagram detail: follow the requested business / package-interaction / method-and-object levels instead.
+
+### Correct native model families
+
+References: [OMG UML 2.5.1](https://www.omg.org/spec/UML/2.5.1), Visual Paradigm's [activity Open API example](https://knowhow.visual-paradigm.com/openapi/activity-diagram/) and [swimlane Open API example](https://knowhow.visual-paradigm.com/openapi/activity-diagram-swimlane/). Confirm API signatures against the installed `openapi.jar`; the examples are not a substitute for save/reopen checks.
+
+Use `IActivity`, `IActivityAction`, `IInitialNode`, `IActivityFinalNode`, `IDecisionNode`, `IMergeNode`, `IForkNode`, `IJoinNode`, `IObjectNode` and `IControlFlow`. Do not substitute legacy `IActionState`, `IInitialState` or `ITransition` models. In this API, the UML 2 object-flow interface is **`IActivityObjectFlow`**; `IObjectFlow` exposes the older trigger/effect/guard representation.
+
+A method invocation is an `IActivityAction` whose `setActionType(...)` receives an `ICallOperationAction`; the latter references a real `IOperation` with typed `IParameter` models. An object result should originate from a typed `IOutputPin`, not an untyped arrow from a method name. Keep the pin/ObjectNode type consistent with the operation's return type: `Optional<T>` is not `T`. Displaying a projected, unwrapped result requires a separate operation/opaque composite that actually returns that type.
+
+Do not confuse lifecycle status data with UML State nodes. Decision guards should be mutually exclusive; use MergeNode for alternatives and JoinNode only for synchronization. Custom styling must preserve **black initial/fork/join nodes and the final-node bullseye**: setting every non-action fill white removes their standard notation.
+
+### Real partitions and package correspondence
+
+The tested swimlane authoring pattern is:
+
+1. Create `IActivitySwimlane2` under the activity and an `IActivitySwimlane2NewUIModel` view.
+2. Create `IActivityPartition` models; add them with both `addVerticalPartition(...)` and `addChild(...)` on the swimlane.
+3. Create `IActivityPartitionHeaderUIModel` shapes. Set `setHorizontal(false)`, `setSwimlane(swimlaneShape)` and add each header to the swimlane shape.
+4. Create `IActivitySwimlane2CompartmentUIModel` shapes using `SHAPE_TYPE_ACTIVITY_SWIMLANE2_COMPARTMENT`. Their `setVerticalPartitionId(...)` takes the **header shape ID**, not the partition model ID.
+5. Register header IDs through `setVerticalPartitionIds(...)` and compartment IDs through `setCompartmentIds(...)` on the swimlane shape. For a single dimension, empty horizontal IDs worked.
+6. Add each node model to the swimlane, register membership with `partition.addContainedElement(node)`, and add its shape to the matching compartment. Geometric containment alone does not establish semantic membership.
+7. `partition.setRepresents(packageModel)` provides a real native link to a package reference. Locate actions according to the owner of the operation, not merely the type of data it manipulates.
+
+For structured exception-handler bodies, move internal node/edge ownership to the structured node and move their shapes into its view; partition membership may still identify their responsibility.
+
+### Transactions, failures and asynchronous work
+
+A normal control-flow chain `audit → save → outbox → success?` does **not** model write exceptions: a throwing action never emits its normal completion token. Include real exception semantics, not only a note saying rollback.
+
+UC-2 uses native `IExceptionHandler` relationships from protected executable nodes to a shared, Exception-typed `IInputPin` owned by an `IStructuredActivityNode` handler body. Add the catch type through `addExceptionType(...)`. The handler body has **no external normal control edges**; internally it rolls back and reaches ActivityFinal, preventing the failed write sequence from resuming. There is an explicit successful COMMIT action. Also protect the deliberate missing-resource exception: a normal guard-rejection path must not silently exit an open transaction.
+
+Native handler relationships must remain ExceptionHandler models, not named ControlFlows. The saved routes include a small lightning zigzag and use oblique connector presentation for that segment; normal control/object flows remain orthogonal. Geometry validation must account for this intentional exception to the orthogonal-only rule.
+
+Do not bind rollback cleanup to `CommandTransaction.execute`: that inaccurately depicts starting another command. Show cleanup as an opaque action or link a clearly proposed cleanup operation.
+
+Separate HTTP response presentation from background notification delivery. A fork after COMMIT can return the API response independently of the delivery branch; a later join belongs to the complete business activity, not the HTTP-request lifetime. Delivery failures never undo a committed transition.
+
+### Additional VP 18.1 persistence/layout traps
+
+- `setDescription(...)` and `setDocumentation(...)` aliased the same persisted field in this workflow. Writing identity metadata to the former and explanatory prose to the latter **lost the identity metadata after saving**. UC-2 puts a short ID prefix and prose in one documentation value; do not assume those fields are independent.
+- `com.vp.cmd.Plugin -pluginargs` consumed one argument value, not all following shell tokens. The runner passes one `mode|source-path|output-path` token and splits it explicitly in `invoke(...)`. Validate the resulting argument count; paths with spaces still need normal shell quoting.
+- `IConnectorUIModel` exposes `clearPoints()` / `addPoint(...)`, not `setPoints(...)` in this installation.
+- Hide autogenerated control-node names such as `DecisionNode7` after shape creation, while preserving action/object text. Otherwise correct UML diamonds acquire distracting default captions.
+- Guard labels need padding for brackets and the native caption renderer. Too-small boxes split `CONFIRMED` mid-word. Place the most constrained short-route labels first; keep each label beside **its own route**, not merely near the source diamond. Avoid node/label overlaps and inspect native exports.
+- View-specific preconditions are real model properties. Changing only a visible note does not correct a stale native `IActivity.precondition`.
+
+### Target design versus current code
+
+Before linking calls, compare application orchestration and entity mutations with the authoritative transition matrix. In UC-2, the enum matrix forbade direct SUBMITTED → APPROVED while the existing command and its tests still used that transition. A correct enum diagram was not proof that the command complied.
+
+It is valid to deliver a target design when the requested behavior is not implemented, but mark proposed methods, request fields, condition models, transaction wiring and adapters explicitly. Do not fabricate an existing method to make the activity appear complete. Keep real method signatures separate from proposed overloads and document the differences in the delivery README.

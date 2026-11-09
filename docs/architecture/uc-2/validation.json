@@ -1,0 +1,60 @@
+{
+  "status": "PASS",
+  "projectSHA256": "da87c0fa72caf20ca96fe9c0b4fa5d6854c5f733638d654cf009bac79679def5",
+  "diagrams": [
+    {
+      "diagram": "01-use-case",
+      "nodes": 26,
+      "controlFlows": 31,
+      "objectFlows": 0,
+      "exceptionHandlers": 0,
+      "partitions": 3,
+      "nativeCallOperationActions": 0
+    },
+    {
+      "diagram": "02-logical",
+      "nodes": 51,
+      "controlFlows": 56,
+      "objectFlows": 0,
+      "exceptionHandlers": 11,
+      "partitions": 5,
+      "nativeCallOperationActions": 0
+    },
+    {
+      "diagram": "03-implementation",
+      "nodes": 54,
+      "controlFlows": 56,
+      "objectFlows": 3,
+      "exceptionHandlers": 11,
+      "partitions": 5,
+      "nativeCallOperationActions": 16
+    }
+  ],
+  "checks": [
+    "UML2 node/control-flow model types",
+    "action texts and bounds after separate-process reopen",
+    "model and shape endpoints",
+    "perimeter attachment and obstacle clearance; orthogonal normal flows, lightning exception handlers",
+    "real partition membership and package represents links",
+    "native CallOperationAction operation references",
+    "registered nonempty notes",
+    "native reopened SVG/PNG exports"
+  ],
+  "limits": [
+    "No full desktop GUI interaction automation",
+    "No live provider or application runtime verification",
+    "Target design includes explicitly marked unimplemented operations"
+  ],
+  "sha256": {
+    "00-packages.png": "31cecf7a8591f5dbf11548dc6cf9d931215f3f10b518e7ae147d2d32f43e1fc9",
+    "00-packages.svg": "a8491b9b07c5d3b05bbdb15fa77963b2307ea60aed216d8ac77be66f2fa8fee6",
+    "01-use-case.png": "4e4523fb515fa08954264dff32450020e6c2d38135990983079b7eed7e3bfcac",
+    "01-use-case.svg": "42d5e282b85cd101f2c7f4f038ee913d4952777d392a9f08c9b0b64e21f3e738",
+    "02-logical.png": "4d45d13662673d9a2311ff3bbb6039cc3dd3732190349c69727801aed472597d",
+    "02-logical.svg": "2a7b35f111127d0c9466cd595fa712c2e94776c26fe86b392fb4c2af06e43316",
+    "03-implementation.png": "1b918763f428c21dd49a2dd27d801084135a073fcf4dbe781fbdb0cb71b955b4",
+    "03-implementation.svg": "ff04115d547d03627e22edeecf56012e381d3b64798caee2bc00751df10a489b",
+    "native-reopened.xml": "7ec9f92fa3c7fe4ca555a30c194dda41fbeb390e249fba6feac400a91023ad8f",
+    "SeasonPlan-UC2-activities.vpp": "da87c0fa72caf20ca96fe9c0b4fa5d6854c5f733638d654cf009bac79679def5"
+  }
+}

@@ -4,6 +4,9 @@ Architecture notes and diagrams belong here.
 
 - [Visual Paradigm agent handoff guide](VISUAL_PARADIGM_AGENT_GUIDE.md): reusable
   native-project generation, layout, caption interaction and validation lessons.
+- [UC-2 UML 2 activity diagrams](uc-2/README.md): native Visual Paradigm project
+  with abstract, package-aligned logical and method/object-level implementation
+  activities, plus a package reference and reopened native previews.
 - [UC-4 class diagrams](uc-4/README.md): native Visual Paradigm project with
   use-case, logical and implementation class views, limited to season execution.
 
