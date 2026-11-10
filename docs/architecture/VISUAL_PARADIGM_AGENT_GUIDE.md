@@ -397,3 +397,340 @@ Separate HTTP response presentation from background notification delivery. A for
 Before linking calls, compare application orchestration and entity mutations with the authoritative transition matrix. In UC-2, the enum matrix forbade direct SUBMITTED → APPROVED while the existing command and its tests still used that transition. A correct enum diagram was not proof that the command complied.
 
 It is valid to deliver a target design when the requested behavior is not implemented, but mark proposed methods, request fields, condition models, transaction wiring and adapters explicitly. Do not fabricate an existing method to make the activity appear complete. Keep real method signatures separate from proposed overloads and document the differences in the delivery README.
+
+## 12. System package diagrams: source hierarchy and note metadata
+
+The [package-diagram delivery](packages/README.md) includes a reusable Open API
+plugin, source-import inventory, Graphviz geometry, regression tests and a
+PowerShell save/reopen runner. It uses native `IPackage`, `IDependency` and
+`IPackageDiagramUIModel`, not classes styled to resemble packages.
+
+- Preserve semantic package hierarchy with `parentPackage.addChild(childPackage)`.
+  Flat placement in a diagram need not change ownership. In one overview,
+  dependencies may be aggregated over descendant packages; say so explicitly.
+  A detailed view of the same parent can instead mean its direct source contents.
+- `IPackageUIModel.setShowOwnerOption(SHOW_OWNER_NONE)` avoids unexpectedly long
+  qualified-owner captions. Keep source paths in human-readable package notes.
+  Do not invent domain subpackages merely because requirements name domain concepts.
+- UML Dependency is not UML PackageImport. Java imports justify compile-time
+  package dependencies; frontend HTTP contracts are a different, explicitly named
+  dependency basis. Neither establishes runtime call order or provider readiness.
+- Graphviz `dot -Tjson`, fixed node dimensions, `splines=ortho` and disabled
+  Graphviz arrowheads supplied usable perimeter-reaching routes. Remove repeated
+  and collinear spline control points; check the transformed routes before VP
+  authoring and again after reopening. Graphviz is documentation tooling only.
+
+### NOTE documentation is visible text
+
+A registered native NOTE renders its **documentation**, not necessarily just its
+name. Adding an identity prefix to documentation made that prefix visible in
+native PNG/SVG exports, even though a validator checking only `getName()` passed.
+For notes, store only explanatory prose in **both** name and documentation.
+Use a real tagged value for identity instead:
+
+```java
+noteModel.setName(text);
+noteModel.setDocumentation(text);
+ITaggedValueContainer values = factory.createTaggedValueContainer();
+noteModel.setTaggedValues(values);
+ITaggedValue id = values.createTaggedValue();
+id.setName("sourceId");
+id.setType(ITaggedValue.TYPE_STRING);
+id.setValue(stableIdentity);
+```
+
+The `sourceId` value survived native save/reopen in VP 18.1 without appearing in
+the note body. Do not confuse `getName()` with the rendered prose: validate note
+name **and documentation**, and inspect reopened exports. The package tool hides
+qualified package owners and leaves ordinary tagged-value display disabled.
+Its normal caption mode is checked via Open API; it does not claim a desktop
+mouse-drag regression. Existing UC-2/UC-4 projects were not altered by this work.
+
+## 13. UML 2 sequence diagrams: UC-3 findings
+
+The [UC-3 delivery](uc-3/README.md) supplies three sequence abstraction levels,
+linked implementation details and a map of the existing system packages. Its
+[generator and native validator](uc-3/tools) are reusable. References:
+[VP sequence Open API example](https://knowhow.visual-paradigm.com/openapi/sequence-diagram/)
+and [OMG UML 2.5.1](https://www.omg.org/spec/UML/2.5.1).
+The class-diagram member policy in section 1 does not prescribe sequence detail.
+
+### Native model families and ownership
+
+- Use `IInteractionDiagramUIModel` with
+  `DIAGRAM_TYPE_INTERACTION_DIAGRAM`; there is no `ISequenceDiagramUIModel` in
+  the tested jar. `getRootFrame(true)` returns the native `IFrame`. UC-3 also
+  creates an `IInteraction`, associates its diagram ID and owns the root frame.
+- Use `IInteractionLifeLine` with `setBaseClassifier(...)`; runtime participants
+  are instances of classifiers, **not instances of UML Package**. For a
+  package-level view, own representative subsystem classifiers in real packages.
+  When the user references an existing package project, reuse its package
+  identities and aggregation level, not invented service-responsibility packages.
+  UC-3 now reads `packages/packages.xml`'s `01-system` selection directly:
+  `frontend/src` is displayed as `frontend`, `application.*` stays aggregated,
+  and `fake`/`config` are excluded. PostgreSQL and the provider are explicitly
+  additional runtime participants, not source Java packages. Logical initiation
+  is `frontend → api`; no actors belong in this logical view.
+- `IInteractionActor` with a referenced `IActor` is a native actor participant,
+  but giving that shape full interaction height produced an unwanted continuous
+  actor bar. The repaired UC-3 uses an `IInteractionLifeLine` classified by an
+  actual `IActor`, plus a compact native Actor-symbol view above its header.
+  The symbol is a child of the lifeline view and shares its classifier model;
+  its 40×50 bounds do not grow with the dashed tail. Merely classifying a
+  lifeline by Actor did **not** render a stick figure, even with the robustness
+  icon flag enabled: inspect exports, not just model types. Keep all requested
+  actors to the left of the system; omit their execution bars.
+- `IMessage` model `setFrom(...)`/`setTo(...)` and connector shape endpoints
+  must both refer to the intended participants. Create real `IActivation`
+  models with `lifeline.addActivation(...)` and native `IActivationUIModel`
+  views (`BODY_WIDTH` is 8 in this jar); link message `setFromActivation(...)`
+  and `setToActivation(...)`. UC-3 shows bounded local processing segments on
+  every system participant, including covered `ref` participants. These are
+  not elapsed method durations or one continuous execution across HTTP
+  requests. Set `setShowActivations(true)` and disable auto-extension; verify
+  saved activation ownership, bounds and message links, not only visibility.
+- Calls use `IActionTypeCall.setOperation(realOperation)`, with typed
+  `IOperation`/`IParameter` models. Replies use `IActionTypeReturn`, and the
+  originating call links the reply through `setReturnMessage(reply)`.
+  `IMessage.TYPE_SELF_MESSAGE` provides native self-call presentation.
+  In this rendering, the linked action can append a short operation label even
+  with operation-signature display hidden: size captions for the rendered text,
+  not only `IMessage.getName()`.
+- Use `IInteractionOccurrence.setRefersTo(targetFrame)` for genuine `ref`
+  InteractionUse, not a note that resembles a ref. Create all target frames
+  before linking. Its covered participants must include all participants shared
+  with the enclosing interaction; UC-3 readiness also uses the enclosing pollen
+  object. Detail-only participants need not exist in the overview.
+
+### Combined fragments and persisted geometry
+
+- Use `ICombinedFragment`, `IInteractionOperand` and `IInteractionConstraint`.
+  Set the operator, add covered lifelines and operands, and register messages
+  using `operand.addMessage(message)`. Geometric containment alone is not
+  semantic membership.
+- `CombinedFragment.setName("")` throws **Not allow no name** in VP 18.1.
+  Keep a stable nonempty model name; the visible tab still shows the operator.
+- Create operand shapes as children of their fragment shape. VP anchors the
+  first operand directly below the operator tab (21 diagram units in this
+  workflow), then lays out subsequent operands using their heights. Arbitrary
+  independent operand Y coordinates are not retained. Compute contiguous heights
+  from the fragment top, allowing a guard band before each operand's messages.
+  Otherwise a saved separator can cross a message even when all counts pass.
+- A nested fragment belongs to its parent operand through
+  `addCombinedFragment(...)`/`addChild(...)`, with the shape also inside the
+  operand shape. Validate semantic parent and message/guard clearance after
+  reopening; check parent bounds include the nested fragment.
+- Messages can remain owned by VP's relationship container even after
+  `operand.addChild(message)`. Their persisted `getParent()` need not be the
+  operand. Validate `operand.toMessageArray()` membership instead. An operand
+  containing only a nested fragment can return **null**, not an empty array;
+  handle this when inspecting outer `opt`/`alt` wrappers.
+- For filled synchronous-call arrowheads, use an ink-colored connector
+  **background** as well as foreground. The white background recommended for
+  hollow realization arrows produces an unwanted hollow call triangle here.
+  Keep native reply line/arrow notation; inspect reopened exports.
+- Pin message ends to the lifeline center at the intended Y, not the participant
+  header rectangle's perimeter. Activation edges can offset the endpoint by
+  four diagram units in this workflow; use a bounded activation-aware tolerance.
+- `project.toAllLevelModelElementArray()` does not enumerate embedded class
+  operations. Iterate each `IClass.toOperationArray()` to inspect persisted
+  signatures and parameters. Native call links still resolve those operations.
+
+### Trace correctness is separate from layout correctness
+
+- Manual checklist completion and `/mark-ritual-ready` are distinct commands.
+  Show the explicit transition request; a completion ref must not implicitly
+  trigger a lifecycle transition.
+- Validation errors must bypass mutation. A guarded `break` can end the
+  enclosing interaction before save. A conflict check must branch or break
+  before a proposed confirmation saves `CONFIRMED`.
+- An error operand containing only rollback is not a failed-write trace when
+  every attempted write occurs exclusively in another operand. Show attempted
+  persistence in the error trace, identify the throwing call, and ensure success
+  is returned only in the successful-commit branch. Do not append an optional
+  error branch after an already returned success.
+- Define pre/postconditions for **each interaction**. Resource/task/assignment
+  details keep the plan APPROVED; they do not independently establish
+  RITUAL_READY. Distinguish target contracts/transaction wiring from existing
+  operations, especially when a current checklist requires READY but normative
+  rules require completed mandatory tasks.
+
+The UC-3 verification is native model/geometry/export validation plus independent
+semantic review, not full desktop interaction automation. Evaluation watermarks
+remain present. Existing source package and UC-2/UC-4 projects were preserved.
+
+## 14. UML 2 communication / cooperation diagrams: UC-5 findings
+
+The [UC-5 delivery](uc-5/README.md) contains six genuine Communication diagrams
+across the abstract, package and method/object levels. Modern UML 2 calls these
+**Communication diagrams**; do not silently deliver sequence diagrams or use the
+legacy Collaboration diagram family when cooperation is requested. Reference:
+[VP Communication Open API example](https://knowhow.visual-paradigm.com/openapi/create-communication-diagram/).
+The example's `setTo(from_lifeline_model)` is a typo; select the intended target.
+
+### Native participants, links and message views
+
+- Create `ICommunicationDiagramUIModel` with
+  `DIAGRAM_TYPE_COMMUNICATION_DIAGRAM`. Use `IInteractionLifeLine` typed by a
+  real classifier, and `IInteractionActor.setReferencedActor(realActor)` for
+  compact native communication actors. There are no sequence-style dashed tails
+  or execution bars in this notation. Keep interaction pre/postconditions on a
+  real `IInteraction` associated with the diagram/root frame.
+- Communication messages are **shapes owned by a link connector**, not sequence
+  message connectors between lifeline tails. Create `IInteractionLifeLineLink`,
+  its from/to models and explicitly routed connector. Register every real
+  `IMessage` with `link.addMessage(message)` and add its view as a child of that
+  connector. Validate both model endpoints and shape/parent-link membership.
+- The tested explicit-direction authoring path creates a
+  `SHAPE_TYPE_COMMUNICATION_MESSAGE` or
+  `SHAPE_TYPE_COMMUNICATION_REVERSE_MESSAGE` view, obtains its already registered
+  `IMessage`, sets its properties, then registers it with the link and parents
+  the view. Reassert intended from/to after parenting. Do not replace the
+  registered message with an unrelated model.
+- Compare endpoints by `getId()` (or reliable model equality), **not Java `==`**:
+  Open API can return different proxy instances for the same saved endpoint.
+  An identity comparison classified every forward message as reverse in a failed
+  prototype. Validate the persisted `getShapeType()` against the expected
+  forward/reverse view; native marker-interface `instanceof` is not that check.
+- For single-message views, leave `IBaseCommunicationMessageUIModel.messageIds`
+  alone. Setting it to the message model ID in the prototype produced repeated
+  **Cannot find grouped communication message shape when reassociate** warnings
+  after reopening. UC-5 disables per-direction grouping and uses independent
+  native message views; it does not claim a tested grouped-message recipe.
+- A self-call uses the same participant at both link endpoints. A simple
+  four-point rectangular self-link persisted reliably; longer out-and-back
+  routes were normalized and could leave a diagonal last segment. Keep both
+  endpoints on the participant perimeter. UC-5 uses ordinary communication
+  message presentation with the self-link, not sequence-only self-message styling.
+
+### UML semantics and readable presentation
+
+- Enable native sequence numbers. Numbering supplies order, not Y position.
+  Use nested sequence expressions for nested calls: calls made inside the
+  `execute` callback are `1.1.*` when `execute` is `1.1`; the successful caller
+  response is outside that scope. Include every audit append before COMMIT.
+- Use real `IActionTypeCall` with an `IOperation`, typed parameters and visibility;
+  use `IActionTypeReturn` for replies. Guard/iteration properties are
+  `setRecurrenceCondition(...)` / `setIteration(...)` on these action types.
+  VP 18.1 did not visibly print the Return recurrence condition in this view;
+  UC-5 also includes that guard explicitly in the reply name while retaining
+  the native property. Conditional writes must not execute on a failed trace.
+- A message view's actual fill color, as well as its foreground/background,
+  controls filled synchronous arrowheads. Ink fill worked; a white fill left
+  hollow triangles. Native message captions can append a short linked operation
+  name even with signature display disabled: reserve space for it, guards and
+  sequence numbers, not only `IMessage.name`.
+- Keep message shapes and caption bounds sufficiently wide. A prototype with
+  tiny arrow shapes and wide independent captions clipped/obscured leading text
+  in reopened exports despite passing model-bound checks; it was rejected.
+  Inspect actual exports, including multiline labels and both arrow directions.
+  The native renderer also centered multiline names across the message arrow,
+  overlaying their lower row. The accepted UC-5 generator therefore keeps
+  message names single-line and enlarges the reserved caption width instead;
+  this visual regression has its own automated source-model test.
+- Graphviz `splines=ortho` does not reliably avoid other edges' label rectangles.
+  UC-5 reserves explicit label blocks, simplifies paths, repairs two constrained
+  package-view corridors, and tests that routes avoid unrelated nodes **and
+  unrelated message text**. Native save/reopen endpoint checks remain necessary.
+- A package-level participant is a subsystem representative classifier owned by
+  an existing package, not an instance of `IPackage`. UC-5 retains the native
+  `object : classifier` captions and documents the representatives. Setting
+  generic `customText` did not hide classifier text in the tested renderer;
+  do not claim otherwise from an in-memory property assignment alone.
+
+### Detail navigation and bounded runtime claims
+
+`IOperation.addSubDiagram(...)` was rejected with **Composite model ... does not
+allow containing sub diagram**. A native subdiagram link on the owning
+`CompletionService` classifier worked and survived reopening. Name that actual
+navigation mechanism in the README; do not call it an InteractionUse/ref.
+
+Separate incompatible port objects even when their method names match:
+`Metrics.forPlan(UUID)` and `Incidents.forPlan(UUID)` cannot be implemented as
+one Java method with unrelated return types. A dedicated source-snapshot detail
+is clearer than inventing a universal implemented source service.
+
+The authoring entry point drains pending EDT work before the final native save.
+Without that drain, queued actor/model updates in an early prototype ran during
+command-line shutdown and reported **database connection closed**. The accepted
+run saved after the deferred updates, reopened in another VP process and passed
+all checks. This is not a substitute for full desktop interaction testing.
+
+UC-5 distinguishes existing core services/ports from target REST/UI, source and
+report JDBC adapters, composition and PDF/HTML rendering. Local locking cannot
+provide an atomic snapshot across the remote Pollen Tree and PostgreSQL. Native
+verification and independent review do not certify those missing runtime slices.
+
+## 15. UML 2 deployment diagrams: native FreeBSD findings
+
+The [deployment delivery](deployment/README.md) supplies one detailed native
+DeploymentDiagram, machine characteristics, an interface register, regression
+checks and a separate-process save/reopen runner. References:
+[VP deployment Open API](https://knowhow.visual-paradigm.com/openapi/deployment-diagram/)
+and [OMG UML 2.5.1](https://www.omg.org/spec/UML/2.5.1).
+
+### Native types and relationships
+
+- Use `IDeploymentDiagramUIModel` / `DIAGRAM_TYPE_DEPLOYMENT_DIAGRAM`.
+  The tested `openapi.jar` exposes **neither `IDevice` nor
+  `IExecutionEnvironment`**. Use real `INode` models with standard `device` /
+  `executionEnvironment` stereotypes. Generic external Nodes need not assert an
+  unknown hardware platform. Use `IArtifact` and `IDeploymentSpecification` for
+  real files and runtime configuration, not classes styled as deployed files.
+- Nest Nodes with `parentNode.addNode(childNode)` and artifacts with
+  `parentNode.addArtifact(artifact)`; deployment specs have their own
+  `addDeploymentSpecification(...)`. Separately call `parentShape.addChild(...)`.
+  Check **both** semantic owner and parent shape after reopening. UML allows
+  nested artifact notation instead of drawing a redundant deploy-arrow.
+- **VP 18.1 Deployment endpoint convention:** the accepted native API ordering
+  is `deployment.setFrom(targetNode); deployment.setTo(artifact)` (supplier →
+  client). `setTo(node)` failed with **Invalid connection. Node is not allowed
+  with Deployment**. Do not interpret API ordering as the visual direction of
+  the UML dependency arrow. The delivery uses nested notation and stores the
+  actual Deployment models without duplicate arrows; its validator checks this
+  API convention explicitly.
+- A UML CommunicationPath is an Association between deployment Nodes: use
+  `IAssociation`, including both native ends and shape endpoints. Ordinary
+  dependencies between artifact names are not substitutes for network paths.
+  Connections are not sequence messages; describe the connection initiator and
+  data direction in an interface register/documentation when they differ (a
+  standby connects to primary, but receives primary WAL).
+- `IDeploymentDiagramUIModel` did **not** expose `setShowDiagramFrame(...)` in
+  this jar, unlike some other diagram families. Do not copy methods solely
+  because another family supports them. Use `javap` and compile for VP Java 11.
+
+### Deployment correctness and scope
+
+- User constraint for Helios: **native FreeBSD deployment, no Docker runtime**.
+  Old Docker references in Vision/SRS and dev-compose files are not authority
+  to place containers on that server. Artifacts are manually published; Node.js
+  and Vite are build tools, not required production execution environments.
+- Host inventory is not an application allocation. Preserve documented physical
+  CPU/RAM/storage and mark quotas, proxy availability, :443 privileges, external
+  machines and replica sizing as unverified/proposed where appropriate.
+- Preserve real route boundaries. This frontend adds `/api`; backend mappings
+  are root-relative. A proposed proxy must strip `/api/`, including auth/admin
+  routes, and must not return SPA HTML for failed API requests.
+- An unprivileged non-owner runtime role cannot also own schema migrations.
+  Explicitly separate a privileged one-shot migration release step from runtime
+  startup (proposed `SPRING_LIQUIBASE_ENABLED=false` override), or define a
+  separate migration connection. Do not imply that this repository already
+  supplies that production release wiring. Likewise, a management loopback bind
+  does not prove health access: the current security chain denies actuator URLs.
+- Four-hour backups alone cannot guarantee zero audit loss. A synchronous
+  off-host replica can protect acknowledged **local** commits against one-host
+  loss; label the failure model, degraded availability and lack of distributed
+  atomicity with Pollen Tree. Do not claim a replica solves malicious DBA access,
+  simultaneous loss of both hosts, restore automation or immutable retention.
+
+### Validation and presentation
+
+The deployment validator checks native model families/stereotypes, Deployment
+models, semantic/shape containment, persisted note text, normal relation captions,
+exact saved bounds and perimeter-attached routes. Hierarchical geometry checks
+must permit intentional containment while rejecting sibling overlaps and routes
+through unrelated shapes. Keep explanatory notes below the full node header:
+long headers can wrap under the stereotype and overlap an otherwise nonoverlapping
+child note. Inspect reopened exports, not only rectangle counts. This delivery
+checks Open API caption mode; it does **not** claim a desktop drag test or live
+production/backup/failover certification.

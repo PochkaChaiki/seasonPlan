@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "projectSHA256": "8aa0bcce62e3041cc7cf26c910390e08c21baef85877a6700430b79e0c0590ae",
+  "diagram": {
+    "nodes": 16,
+    "artifacts": 7,
+    "deploymentSpecifications": 3,
+    "notes": 16,
+    "communicationPaths": 10
+  },
+  "checks": [
+    "Native UML DeploymentDiagram; Node device/executionEnvironment stereotypes; actual Artifact and DeploymentSpecification models",
+    "Native Deployment relations (VP API target -> artifact convention) and semantic + shape containment",
+    "CommunicationPaths are native Associations between deployment targets, with source-backed interface documentation",
+    "Separate-process save/reopen: names, exact bounds, ownership, registered note text, connector model and shape endpoints",
+    "Attached orthogonal routes; no unrelated shape intersections; clear normal SIDE_NONE name captions",
+    "SVG and PNG exported from separately reopened native project; source SHA-256 unchanged"
+  ],
+  "limits": [
+    "Target architecture, not a live deployment or load/TLS/provider/backup/failover test",
+    "Proposed native nginx, PostgreSQL placement, recovery host, SMTP and adapters require infrastructure approval/implementation",
+    "RPO=0 limited to acknowledged local transactions under single-primary-host failure; no distributed Pollen Tree/audit atomicity",
+    "No full desktop GUI drag test; normal caption mode and native model editability checked via Open API",
+    "Native exports retain Visual Paradigm evaluation watermarks"
+  ],
+  "sha256": {
+    "01-deployment.png": "ba50693e61ea6c66479c01b89f7e2e1435c67e3ca4ecc76e8f39c22adccc486e",
+    "01-deployment.svg": "bce54cee7374da1308429ab17721c7a78ce4f4de7e69d63f4ce64049d4e5ce90",
+    "deployment.xml": "1ac777a8bbb53bd91d89b5a20f09b7dd1e438b5f19e70cc0a157480f956ecc67",
+    "native-reopened.xml": "b6ca30cf6be7723868622f4b06fbe6f8958a3122c51c55480cf837608879bca3",
+    "SeasonPlan-deployment.vpp": "8aa0bcce62e3041cc7cf26c910390e08c21baef85877a6700430b79e0c0590ae",
+    "source-manifest.json": "73b34f01003123745d71b5997b87f6bf013ff6ab1a1e6aff7721e264a67e30b3",
+    "tools/deployment_model.py": "c7250f7581988f223f0ea34be84f3718bc51076e7900cb35bdd49ad6617380f9",
+    "tools/DeploymentProjectPlugin.java": "3dc73e6910d1be08a1459d653ad896fd604ba0d975bd6a6d332c9ae7ad609dff",
+    "tools/Generate-Deployment.ps1": "2f0602658f75f33d1a9a895cc76589dbc701675a8b7978434b7e8f18f19e10fe",
+    "tools/test_deployment.py": "7a8f8f9311338beed3fc37a355a1b7c3af8b82992154b6bfda96bae365f68207",
+    "tools/test_native.py": "81b1585de5da94b250f9038ca6c628f0a072ba8cb31b762a2c6906c17a089e69",
+    "tools/validate_native.py": "eb57a998b38e356fc106e25bce535f96de8e2c1e625977f3463733b17bed7115"
+  }
+}

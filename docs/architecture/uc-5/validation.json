@@ -1,0 +1,60 @@
+{
+  "result": "PASS",
+  "project": "SeasonPlan-UC5-communications.vpp",
+  "sha256": "8db35e4e6fc3607b2a8eb3e6d7410833c2ee908769e975ed233ef79a78c87f36",
+  "specificationSha256": "7bb2dd929da7dbc0594582834684dea4514c2b3720c6e3d82e2380bd91feb94a",
+  "reopenedInspectionSha256": "cc048880dc26ba6e59ebf898b7cb90d51be29b77b48ef711208328b225c79b59",
+  "diagrams": {
+    "01-use-case": {
+      "participants": 4,
+      "links": 4,
+      "messages": 11
+    },
+    "02-logical": {
+      "participants": 8,
+      "links": 7,
+      "messages": 16
+    },
+    "03-generation": {
+      "participants": 6,
+      "links": 6,
+      "messages": 9
+    },
+    "03a-sources": {
+      "participants": 11,
+      "links": 10,
+      "messages": 11
+    },
+    "03b-approval": {
+      "participants": 9,
+      "links": 9,
+      "messages": 14
+    },
+    "03c-publication": {
+      "participants": 9,
+      "links": 9,
+      "messages": 20
+    }
+  },
+  "typedOperationCount": 30,
+  "checks": [
+    "separate-process native save/reopen",
+    "native CommunicationDiagram (not legacy Collaboration or sequence)",
+    "real typed participants and Actor symbols",
+    "IInteractionLifeLineLink endpoint/shape agreement and perimeter geometry",
+    "native IMessage membership, forward/reverse views, sequence numbers, guards, iteration and call operations",
+    "native reply actions and first-success reply linkage",
+    "typed operation signatures, visibility and source evidence",
+    "persisted bounds and nonoverlapping nodes/message labels",
+    "native classifier subdiagram navigation to source-snapshot detail",
+    "registered notes with persisted prose",
+    "native reopened PNG/SVG exports",
+    "input source SHA-256 provenance"
+  ],
+  "limits": [
+    "No full desktop mouse drag/move automation; native Open API/persistence checks only.",
+    "Target API/UI, report/source persistence adapters, composition and real PDF/HTML renderers are not implemented.",
+    "Local transaction does not guarantee an atomic snapshot across Pollen Tree and local sources.",
+    "Provider contract/deployment not certified; VP evaluation watermarks retained."
+  ]
+}

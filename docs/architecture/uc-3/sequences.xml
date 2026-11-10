@@ -1,0 +1,641 @@
+<?xml version='1.0' encoding='utf-8'?>
+<uc3-sequences version="1" scope="APPROVED → RITUAL_READY">
+  <packages source="docs/architecture/packages/packages.xml">
+    <package id="frontend" name="frontend" body="React 18 · browser client&#10;auth / components / api&#10;features: seasonPlanning,&#10;planReview, preparation&#10;HTTP client: lifecycleApi.js&#10;No direct database access" source="frontend" />
+    <package id="api" name="api" body="com.seasonplan.lifecycle.api&#10;LifecycleController&#10;LifecycleApiModels / errors&#10;REST routes: planning, approval,&#10;pollen reservations, preparation&#10;UC-4 / UC-5 routes absent" source="com.seasonplan.lifecycle.api" />
+    <package id="security" name="security" body="com.seasonplan.security&#10;AuthController / AdminUserController&#10;LocalUserAdministrationService&#10;SecurityCurrentActorProvider&#10;Session authentication / CSRF&#10;JDBC users and administration" source="com.seasonplan.security" />
+    <package id="service" name="service" body="com.seasonplan.lifecycle.service&#10;SeasonPlanService&#10;Compatibility facade&#10;Delegates UC-1 / UC-2 / UC-3&#10;Not an independent domain module" source="com.seasonplan.lifecycle.service" />
+    <package id="application" name="application" body="com.seasonplan.lifecycle.application.*&#10;UC-1 planning / UC-2 approval&#10;UC-3 preparation / UC-4 execution&#10;UC-5 completion / pollen&#10;port / shared / UseCaseSupport&#10;UC-4 / UC-5: core-only services&#10;PollenService is the pollen boundary" source="com.seasonplan.lifecycle.application" />
+    <package id="domain" name="domain" body="com.seasonplan.lifecycle.domain&#10;SeasonPlan / PollenReservation&#10;MagicTask / FairyAssignment&#10;RitualSession / ClimateMetric&#10;MagicIncident / CorrectionAction&#10;SeasonReport / AuditLogEntry&#10;Rules, enums, immutable snapshots&#10;Only JDK dependencies" source="com.seasonplan.lifecycle.domain" />
+    <package id="persistence" name="persistence" body="com.seasonplan.lifecycle.persistence&#10;Jdbc*Repository / JdbcCommandTransaction&#10;Plans, tasks, assignments, audit&#10;JDBC → PostgreSQL 14 / Liquibase&#10;Append-only audit protections&#10;No local pollen reservation writes&#10;UC-4 / UC-5 adapters absent" source="com.seasonplan.lifecycle.persistence" />
+    <package id="pollentree" name="pollentree" body="lifecycle.adapter.pollentree&#10;RestPollenTreeClient&#10;Implements PollenTreeClient&#10;HTTPS / JSON → external Pollen Tree&#10;Proposed provider contract&#10;Live provider compatibility unverified&#10;No domain → adapter dependency" source="com.seasonplan.lifecycle.adapter.pollentree" />
+    <package id="database" name="PostgreSQL" body="База данных: season_plans, magic_tasks, fairy_assignments, audit_log; целевой outbox. Не Java-пакет. Прямых записей пыльцы нет." source="" />
+    <package id="provider" name="Pollen Tree" body="Внешняя система: HTTPS / JSON, API key или mTLS. Единственный владелец резерва/лимитов; не Java-пакет." source="" />
+  </packages>
+  <operations>
+    <operation id="apiReady" owner="LifecycleController" name="markRitualReady" returns="SeasonPlanResponse" parameters="UUID id" source="backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java" evidence="public SeasonPlanResponse markRitualReady(" status="existing" package="api" />
+    <operation id="facadeReady" owner="SeasonPlanService" name="markRitualReady" returns="SeasonPlan" parameters="UUID id;ActorRole role;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java" evidence="public SeasonPlan markRitualReady(" status="existing" package="service" />
+    <operation id="ready" owner="PreparationService" name="markRitualReady" returns="SeasonPlan" parameters="UUID id;ActorRole role;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java" evidence="public SeasonPlan markRitualReady(" status="existing" package="application" />
+    <operation id="assert" owner="ReadinessChecklistService" name="assertReadyForRitual" returns="void" parameters="UUID seasonPlanId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java" evidence="public void assertReadyForRitual(" status="existing" package="application" />
+    <operation id="calculate" owner="ReadinessChecklistService" name="calculateChecklist" returns="Map&lt;String, List&lt;String&gt;&gt;" parameters="UUID seasonPlanId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java" evidence="public Map&lt;String, List&lt;String&gt;&gt; calculateChecklist(" status="existing" package="application" />
+    <operation id="complete" owner="ReadinessChecklistService" name="completeItem" returns="void" parameters="UUID seasonPlanId;String key;ActorRole actorRole;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java" evidence="public void completeItem(" status="existing" package="application" />
+    <operation id="planFind" owner="JdbcSeasonPlanRepository" name="findById" returns="Optional&lt;SeasonPlan&gt;" parameters="UUID id" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java" evidence="public Optional&lt;SeasonPlan&gt; findById(" status="existing" package="persistence" />
+    <operation id="planSave" owner="JdbcSeasonPlanRepository" name="save" returns="SeasonPlan" parameters="SeasonPlan plan" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java" evidence="public SeasonPlan save(" status="existing" package="persistence" />
+    <operation id="planReady" owner="SeasonPlan" name="markRitualReady" returns="void" parameters="String actorId;Instant now" source="backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java" evidence="public void markRitualReady(" status="existing" package="domain" />
+    <operation id="planComplete" owner="SeasonPlan" name="completeReadinessChecklistItem" returns="void" parameters="String key;String actorId;Instant now" source="backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java" evidence="public void completeReadinessChecklistItem(" status="existing" package="domain" />
+    <operation id="request" owner="PollenService" name="requestReservation" returns="PollenReservation" parameters="UUID planId;UUID requestId;int requestedAmount;ActorRole role;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java" evidence="public PollenReservation requestReservation(UUID planId, UUID requestId," status="existing" package="application" />
+    <operation id="confirm" owner="PollenService" name="confirmReservation" returns="PollenReservation" parameters="UUID id;int confirmedAmount;String comment;ActorRole role;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java" evidence="public PollenReservation confirmReservation(" status="existing" package="application" />
+    <operation id="reject" owner="PollenService" name="rejectReservation" returns="PollenReservation" parameters="UUID id;String comment;ActorRole role;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java" evidence="public PollenReservation rejectReservation(" status="existing" package="application" />
+    <operation id="latest" owner="PollenService" name="findLatestBySeasonPlanId" returns="Optional&lt;PollenReservation&gt;" parameters="UUID planId" source="backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java" evidence="public Optional&lt;PollenReservation&gt; findLatestBySeasonPlanId(" status="existing" package="application" />
+    <operation id="capacity" owner="PollenService" name="capacity" returns="PollenCapacity" parameters="" source="backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java" evidence="public PollenCapacity capacity()" status="existing" package="application" />
+    <operation id="clientCapacity" owner="RestPollenTreeClient" name="capacity" returns="PollenCapacity" parameters="" source="backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java" evidence="public PollenCapacity capacity()" status="existing" package="pollentree" />
+    <operation id="clientLatest" owner="RestPollenTreeClient" name="findLatestBySeasonPlanId" returns="Optional&lt;PollenReservation&gt;" parameters="UUID planId" source="backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java" evidence="public Optional&lt;PollenReservation&gt; findLatestBySeasonPlanId(" status="existing" package="pollentree" />
+    <operation id="clientConfirm" owner="RestPollenTreeClient" name="confirmReservation" returns="PollenReservation" parameters="UUID id;int confirmedAmount;String comment;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java" evidence="public PollenReservation confirmReservation(" status="existing" package="pollentree" />
+    <operation id="clientReject" owner="RestPollenTreeClient" name="rejectReservation" returns="PollenReservation" parameters="UUID id;String comment;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java" evidence="public PollenReservation rejectReservation(" status="existing" package="pollentree" />
+    <operation id="audit" owner="AuditLogService" name="append" returns="AuditLogEntry" parameters="UUID seasonPlanId;AuditAction action;String actorId;String comment" source="backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java" evidence="public AuditLogEntry append(" status="existing" package="application" />
+    <operation id="auditOnce" owner="AuditLogService" name="appendOnce" returns="AuditLogEntry" parameters="UUID eventId;UUID seasonPlanId;AuditAction action;String actorId;String comment" source="backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java" evidence="public AuditLogEntry appendOnce(" status="existing" package="application" />
+    <operation id="auditRepo" owner="JdbcAuditLogRepository" name="append" returns="AuditLogEntry" parameters="AuditLogEntry entry" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java" evidence="public AuditLogEntry append(" status="existing" package="persistence" />
+    <operation id="taskCreate" owner="MagicTaskService" name="createTask" returns="MagicTask" parameters="UUID seasonPlanId;MagicTask draft;ActorRole actorRole;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java" evidence="public MagicTask createTask(" status="existing" package="application" />
+    <operation id="taskUpdate" owner="MagicTaskService" name="updateTask" returns="MagicTask" parameters="UUID taskId;MagicTask draft;ActorRole actorRole;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java" evidence="public MagicTask updateTask(" status="existing" package="application" />
+    <operation id="taskValidate" owner="MagicTaskService" name="validateTask" returns="void" parameters="MagicTask task" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java" evidence="private void validateTask(" status="existing" package="application" />
+    <operation id="taskMutate" owner="MagicTask" name="updateFrom" returns="void" parameters="MagicTask draft" source="backend/src/main/java/com/seasonplan/lifecycle/domain/MagicTask.java" evidence="public void updateFrom(" status="existing" package="domain" />
+    <operation id="taskSave" owner="JdbcMagicTaskRepository" name="save" returns="MagicTask" parameters="MagicTask task;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java" evidence="public MagicTask save(" status="existing" package="persistence" />
+    <operation id="taskFind" owner="JdbcMagicTaskRepository" name="findById" returns="Optional&lt;MagicTask&gt;" parameters="UUID id" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java" evidence="public Optional&lt;MagicTask&gt; findById(" status="existing" package="persistence" />
+    <operation id="taskList" owner="JdbcMagicTaskRepository" name="findBySeasonPlanId" returns="List&lt;MagicTask&gt;" parameters="UUID seasonPlanId" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java" evidence="public List&lt;MagicTask&gt; findBySeasonPlanId(" status="existing" package="persistence" />
+    <operation id="assign" owner="FairyAssignmentService" name="assignFairy" returns="FairyAssignment" parameters="UUID magicTaskId;String fairyId;String role;String talent;AssignmentStatus status;ActorRole actorRole;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java" evidence="public FairyAssignment assignFairy(" status="existing" package="application" />
+    <operation id="talent" owner="FairyAssignmentService" name="validateTalentCompatibility" returns="boolean" parameters="MagicTask task;String talent" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java" evidence="public boolean validateTalentCompatibility(" status="existing" package="application" />
+    <operation id="conflict" owner="FairySchedulePolicy" name="hasScheduleConflict" returns="boolean" parameters="MagicTask task;String fairyId" source="backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java" evidence="public boolean hasScheduleConflict(" status="existing" package="application" />
+    <operation id="assignmentList" owner="JdbcFairyAssignmentRepository" name="findByMagicTaskId" returns="List&lt;FairyAssignment&gt;" parameters="UUID magicTaskId" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java" evidence="public List&lt;FairyAssignment&gt; findByMagicTaskId(" status="existing" package="persistence" />
+    <operation id="fairyList" owner="JdbcFairyAssignmentRepository" name="findConfirmedByFairyId" returns="List&lt;FairyAssignment&gt;" parameters="String fairyId" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java" evidence="public List&lt;FairyAssignment&gt; findConfirmedByFairyId(" status="existing" package="persistence" />
+    <operation id="assignmentSave" owner="JdbcFairyAssignmentRepository" name="save" returns="FairyAssignment" parameters="FairyAssignment assignment;String actorId" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java" evidence="public FairyAssignment save(" status="existing" package="persistence" />
+    <operation id="transaction" owner="JdbcCommandTransaction" name="execute" returns="T" parameters="UUID seasonPlanId;Supplier&lt;T&gt; command" source="backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcCommandTransaction.java" evidence="public &lt;T&gt; T execute(" status="existing" package="persistence" />
+    <operation id="throw" owner="ValidationSupport" name="throwIfAny" returns="void" parameters="Map&lt;String, List&lt;String&gt;&gt; errors" source="backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java" evidence="public static void throwIfAny(" status="existing" package="application" />
+    <operation id="amend" owner="PollenService" name="requestAmendment" returns="PollenReservation" parameters="UUID planId;UUID priorId;UUID requestId;BigDecimal grams" status="proposed" package="application" />
+    <operation id="clientAmend" owner="RestPollenTreeClient" name="requestAmendment" returns="PollenReservation" parameters="UUID planId;UUID priorId;UUID requestId;BigDecimal grams" status="proposed" package="pollentree" />
+    <operation id="participation" owner="ParticipationService" name="confirmParticipation" returns="FairyAssignment" parameters="UUID assignmentId;Instant confirmedAt;CurrentActor actor" status="proposed" package="application" />
+    <operation id="rules" owner="SeasonReadinessPolicy" name="evaluate" returns="Map&lt;String, List&lt;String&gt;&gt;" parameters="SeasonPlan plan;List&lt;MagicTask&gt; tasks;List&lt;FairyAssignment&gt; assignments;PollenReservation reservation" status="proposed" package="application" />
+    <operation id="outbox" owner="PreparationNotifications" name="enqueue" returns="void" parameters="UUID planId;String event;Set&lt;String&gt; recipients" status="proposed" package="application" />
+  </operations>
+  <diagram id="01-use-case" name="1. UC-3 — Абстрактное описание" notes="Предусловие: SeasonPlan APPROVED; роли авторизованы; сведения актуальны. Фея-планировщик читает результаты и корректирует план только в отдельном UC-1/UC-2.&#10;Постусловие: RITUAL_READY, но НЕ запуск ритуала. Древо — единственный владелец пыльцы. Каждый критический успех фиксируется в неизменяемом AuditLog. Целевой процесс по ST-00." width="2000" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="On successful commit: RITUAL_READY iff every readiness rule passes; otherwise APPROVED; immutable audit. Ritual start excluded." height="2114">
+    <lifeline id="coordinator" name="Координатор талантов" type="" package="frontend" kind="actor" x="120" y="170" w="290" h="1734" />
+    <actor-symbol id="01-use-case:actor-type:coordinator" lifeline="coordinator" x="245" y="110" w="40" h="50" />
+    <lifeline id="guardian" name="Хранитель Древа Пыльцы" type="" package="frontend" kind="actor" x="490" y="170" w="290" h="1734" />
+    <actor-symbol id="01-use-case:actor-type:guardian" lifeline="guardian" x="615" y="110" w="40" h="50" />
+    <lifeline id="planner" name="Фея-планировщик" type="" package="frontend" kind="actor" x="860" y="170" w="290" h="1734" />
+    <actor-symbol id="01-use-case:actor-type:planner" lifeline="planner" x="985" y="110" w="40" h="50" />
+    <lifeline id="system" name="система" type="SeasonPlanSystem" package="application" kind="object" x="1230" y="170" w="290" h="1734" />
+    <lifeline id="tree" name="древо" type="PollenTree" package="provider" kind="object" x="1600" y="170" w="290" h="1734" />
+    <message id="01-use-case-m1" from="coordinator" to="system" text="Открыть подготовку утверждённого сезона" operation="" operand="" kind="call" y="260" replyTo="" toActivation="01-use-case:execution:system:1" />
+    <message id="01-use-case-m2" from="system" to="tree" text="Получить подтверждённый резерв и лимиты" operation="" operand="" kind="call" y="336" replyTo="" fromActivation="01-use-case:execution:system:2" toActivation="01-use-case:execution:tree:1" />
+    <message id="01-use-case-m3" from="system" to="coordinator" text="Резерв, задачи, роли, доступность, чек-лист" operation="" operand="" kind="reply" y="412" replyTo="01-use-case-m1" fromActivation="01-use-case:execution:system:3" />
+    <fragment id="u-amend" operator="opt" parent="" x="65" y="450" w="1900" h="456">
+      <operand id="u-amend-yes" guard="Требуется уточнение резерва" y="471" h="435" />
+    </fragment>
+    <message id="01-use-case-m4" from="guardian" to="system" text="Уточнить объём: создать связанный резерв-замену" operation="" operand="u-amend-yes" kind="call" y="612" replyTo="" toActivation="01-use-case:execution:system:4" />
+    <message id="01-use-case-m5" from="system" to="tree" text="Проверить лимиты и запросить DRAFT; старый CONFIRMED неизменяем" operation="" operand="u-amend-yes" kind="call" y="688" replyTo="" fromActivation="01-use-case:execution:system:5" toActivation="01-use-case:execution:tree:2" />
+    <message id="01-use-case-m6" from="guardian" to="system" text="Подтвердить либо отклонить замену с причиной" operation="" operand="u-amend-yes" kind="call" y="764" replyTo="" toActivation="01-use-case:execution:system:6" />
+    <message id="01-use-case-m7" from="system" to="tree" text="Зафиксировать решение; без прямой записи в локальную БД" operation="" operand="u-amend-yes" kind="call" y="840" replyTo="" fromActivation="01-use-case:execution:system:7" toActivation="01-use-case:execution:tree:3" />
+    <fragment id="u-work" operator="loop" parent="" x="65" y="926" w="1900" h="380">
+      <operand id="u-work-each" guard="Для каждой задачи и требуемой роли; до устранения замечаний" y="947" h="359" />
+    </fragment>
+    <message id="01-use-case-m8" from="coordinator" to="system" text="Создать / уточнить MagicTask: талант, срок, категория" operation="" operand="u-work-each" kind="call" y="1088" replyTo="" toActivation="01-use-case:execution:system:8" />
+    <message id="01-use-case-m9" from="coordinator" to="system" text="Назначить фею и роль; зафиксировать подтверждение участия" operation="" operand="u-work-each" kind="call" y="1164" replyTo="" toActivation="01-use-case:execution:system:9" />
+    <message id="01-use-case-m10" from="system" to="coordinator" text="Совместимость, роли, расписание; предупреждения и нехватка исполнителей" operation="" operand="u-work-each" kind="call" y="1240" replyTo="" fromActivation="01-use-case:execution:system:10" />
+    <message id="01-use-case-m11" from="coordinator" to="system" text="Завершить обязательные задачи и условия; проверить готовность" operation="" operand="" kind="call" y="1364" replyTo="" toActivation="01-use-case:execution:system:11" />
+    <fragment id="u-result" operator="alt" parent="" x="65" y="1402" w="1900" h="444">
+      <operand id="u-block" guard="Есть дефицит / неподтверждённая замена / конфликт / невыполненный чек-лист" y="1423" h="257" />
+      <operand id="u-ok" guard="else: все условия готовности выполнены" y="1680" h="166" />
+    </fragment>
+    <message id="01-use-case-m12" from="system" to="coordinator" text="Блокировать RITUAL_READY; причины; SeasonPlan остаётся APPROVED" operation="" operand="u-block" kind="call" y="1564" replyTo="" fromActivation="01-use-case:execution:system:12" />
+    <message id="01-use-case-m13" from="system" to="planner" text="Показать замечания: корректировка через отдельное согласование" operation="" operand="u-block" kind="call" y="1640" replyTo="" fromActivation="01-use-case:execution:system:13" />
+    <message id="01-use-case-m14" from="system" to="coordinator" text="Сохранить RITUAL_READY и неизменяемый аудит атомарно" operation="" operand="u-ok" kind="call" y="1780" replyTo="" fromActivation="01-use-case:execution:system:14" />
+    <activation id="01-use-case:execution:system:1" lifeline="system" operand="" x="1371" y="260" w="8" h="30" />
+    <activation id="01-use-case:execution:system:2" lifeline="system" operand="" x="1371" y="336" w="8" h="30" />
+    <activation id="01-use-case:execution:system:3" lifeline="system" operand="" x="1371" y="412" w="8" h="30" />
+    <activation id="01-use-case:execution:system:4" lifeline="system" operand="u-amend-yes" x="1371" y="612" w="8" h="30" />
+    <activation id="01-use-case:execution:system:5" lifeline="system" operand="u-amend-yes" x="1371" y="688" w="8" h="30" />
+    <activation id="01-use-case:execution:system:6" lifeline="system" operand="u-amend-yes" x="1371" y="764" w="8" h="30" />
+    <activation id="01-use-case:execution:system:7" lifeline="system" operand="u-amend-yes" x="1371" y="840" w="8" h="30" />
+    <activation id="01-use-case:execution:system:8" lifeline="system" operand="u-work-each" x="1371" y="1088" w="8" h="30" />
+    <activation id="01-use-case:execution:system:9" lifeline="system" operand="u-work-each" x="1371" y="1164" w="8" h="30" />
+    <activation id="01-use-case:execution:system:10" lifeline="system" operand="u-work-each" x="1371" y="1240" w="8" h="30" />
+    <activation id="01-use-case:execution:system:11" lifeline="system" operand="" x="1371" y="1364" w="8" h="30" />
+    <activation id="01-use-case:execution:system:12" lifeline="system" operand="u-block" x="1371" y="1564" w="8" h="30" />
+    <activation id="01-use-case:execution:system:13" lifeline="system" operand="u-block" x="1371" y="1640" w="8" h="30" />
+    <activation id="01-use-case:execution:system:14" lifeline="system" operand="u-ok" x="1371" y="1780" w="8" h="30" />
+    <activation id="01-use-case:execution:tree:1" lifeline="tree" operand="" x="1741" y="336" w="8" h="30" />
+    <activation id="01-use-case:execution:tree:2" lifeline="tree" operand="u-amend-yes" x="1741" y="688" w="8" h="30" />
+    <activation id="01-use-case:execution:tree:3" lifeline="tree" operand="u-amend-yes" x="1741" y="840" w="8" h="30" />
+  </diagram>
+  <diagram id="02-logical" name="2. UC-3 — Взаимодействие пакетов" notes="Точные пакеты из packages/01-system: frontend (frontend/src), api, security, service, application, domain, persistence, pollentree. Акторов нет; первый запрос инициирует frontend.&#10;application агрегирует preparation, pollen, shared и port как в системной диаграмме пакетов. Отдельных пакетов для сервисов, портов, fake и config нет. PostgreSQL и внешнее Pollen Tree — добавленные участники, не Java-пакеты.&#10;Проверки ST-00, подтверждение участия, атомарные записи и outbox — целевой процесс с явными пометками «проект». Древо и PostgreSQL не участвуют в общей распределённой транзакции." width="3850" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="On successful commit: RITUAL_READY iff every readiness rule passes; otherwise APPROVED; immutable audit. Ritual start excluded." height="4762">
+    <lifeline id="frontend" name="frontend" type="Frontend" package="frontend" kind="object" x="120" y="170" w="290" h="4382" />
+    <lifeline id="api" name="api" type="ApiSubsystem" package="api" kind="object" x="490" y="170" w="290" h="4382" />
+    <lifeline id="security" name="security" type="SecuritySubsystem" package="security" kind="object" x="860" y="170" w="290" h="4382" />
+    <lifeline id="service" name="service" type="ServiceSubsystem" package="service" kind="object" x="1230" y="170" w="290" h="4382" />
+    <lifeline id="application" name="application" type="ApplicationSubsystem" package="application" kind="object" x="1600" y="170" w="290" h="4382" />
+    <lifeline id="domain" name="domain" type="DomainSubsystem" package="domain" kind="object" x="1970" y="170" w="290" h="4382" />
+    <lifeline id="persistence" name="persistence" type="PersistenceSubsystem" package="persistence" kind="object" x="2340" y="170" w="290" h="4382" />
+    <lifeline id="pollentree" name="pollentree" type="PollenTreeAdapter" package="pollentree" kind="object" x="2710" y="170" w="290" h="4382" />
+    <lifeline id="db" name="PostgreSQL" type="PostgreSQL" package="database" kind="object" x="3080" y="170" w="290" h="4382" />
+    <lifeline id="tree" name="Pollen Tree" type="PollenTree" package="provider" kind="object" x="3450" y="170" w="290" h="4382" />
+    <message id="02-logical-m1" from="frontend" to="api" text="GET: открыть подготовку APPROVED" operation="" operand="" kind="call" y="260" replyTo="" fromActivation="02-logical:execution:frontend:1" toActivation="02-logical:execution:api:1" />
+    <message id="02-logical-m2" from="api" to="security" text="Проверить сессию и RBAC; получить CurrentActor" operation="" operand="" kind="call" y="336" replyTo="" fromActivation="02-logical:execution:api:2" toActivation="02-logical:execution:security:1" />
+    <message id="02-logical-m3" from="api" to="service" text="Загрузить SeasonPlan через совместимый фасад" operation="" operand="" kind="call" y="412" replyTo="" fromActivation="02-logical:execution:api:3" toActivation="02-logical:execution:service:1" />
+    <message id="02-logical-m4" from="service" to="application" text="Загрузить план / данные подготовки" operation="" operand="" kind="call" y="488" replyTo="" fromActivation="02-logical:execution:service:2" toActivation="02-logical:execution:application:1" />
+    <message id="02-logical-m5" from="application" to="persistence" text="Прочитать план, задачи, назначения и чек-лист" operation="" operand="" kind="call" y="564" replyTo="" fromActivation="02-logical:execution:application:2" toActivation="02-logical:execution:persistence:1" />
+    <message id="02-logical-m6" from="persistence" to="db" text="SELECT: актуальные локальные данные" operation="" operand="" kind="call" y="640" replyTo="" fromActivation="02-logical:execution:persistence:2" toActivation="02-logical:execution:db:1" />
+    <message id="02-logical-m7" from="api" to="application" text="Получить ресурс через PollenService" operation="" operand="" kind="call" y="716" replyTo="" fromActivation="02-logical:execution:api:4" toActivation="02-logical:execution:application:3" />
+    <message id="02-logical-m8" from="application" to="pollentree" text="PollenTreeClient: резерв и лимиты" operation="" operand="" kind="call" y="792" replyTo="" fromActivation="02-logical:execution:application:4" toActivation="02-logical:execution:pollentree:1" />
+    <message id="02-logical-m9" from="pollentree" to="tree" text="HTTPS / JSON: авторитетное состояние" operation="" operand="" kind="call" y="868" replyTo="" fromActivation="02-logical:execution:pollentree:2" toActivation="02-logical:execution:tree:1" />
+    <message id="02-logical-m10" from="api" to="frontend" text="Карточка подготовки, резерв и чек-лист" operation="" operand="" kind="reply" y="944" replyTo="02-logical-m1" toActivation="02-logical:execution:frontend:2" fromActivation="02-logical:execution:api:5" />
+    <fragment id="l-amend" operator="opt" parent="" x="65" y="982" w="3750" h="684">
+      <operand id="l-amend-yes" guard="Запрошено уточнение ресурса" y="1003" h="663" />
+    </fragment>
+    <message id="02-logical-m11" from="frontend" to="api" text="Команды хранителя: связанная замена; решение с причиной" operation="" operand="l-amend-yes" kind="call" y="1144" replyTo="" fromActivation="02-logical:execution:frontend:3" toActivation="02-logical:execution:api:6" />
+    <message id="02-logical-m12" from="api" to="application" text="«проект»: запросить / подтвердить / отклонить замену через PollenService" operation="" operand="l-amend-yes" kind="call" y="1220" replyTo="" fromActivation="02-logical:execution:api:7" toActivation="02-logical:execution:application:5" />
+    <message id="02-logical-m13" from="application" to="pollentree" text="«проект»: проверить лимит; запросить связанный DRAFT / решение" operation="" operand="l-amend-yes" kind="call" y="1296" replyTo="" fromActivation="02-logical:execution:application:6" toActivation="02-logical:execution:pollentree:3" />
+    <message id="02-logical-m14" from="pollentree" to="tree" text="HTTPS: решение; прежний CONFIRMED неизменяем до supersession" operation="" operand="l-amend-yes" kind="call" y="1372" replyTo="" fromActivation="02-logical:execution:pollentree:4" toActivation="02-logical:execution:tree:2" />
+    <message id="02-logical-m15" from="application" to="application" text="AuditLogService: appendOnce с тем же eventId" operation="" operand="l-amend-yes" kind="call" y="1448" replyTo="" fromActivation="02-logical:execution:application:7" toActivation="02-logical:execution:application:7" />
+    <message id="02-logical-m16" from="application" to="persistence" text="Добавить событие решения; без локальной записи пыльцы" operation="" operand="l-amend-yes" kind="call" y="1524" replyTo="" fromActivation="02-logical:execution:application:8" toActivation="02-logical:execution:persistence:3" />
+    <message id="02-logical-m17" from="persistence" to="db" text="INSERT AuditLog; никаких UPDATE / DELETE аудита" operation="" operand="l-amend-yes" kind="call" y="1600" replyTo="" fromActivation="02-logical:execution:persistence:4" toActivation="02-logical:execution:db:2" />
+    <fragment id="l-work" operator="loop" parent="" x="65" y="1686" w="3750" h="760">
+      <operand id="l-each" guard="Для каждой команды задачи / назначения / подтверждения участия" y="1707" h="739" />
+    </fragment>
+    <message id="02-logical-m18" from="frontend" to="api" text="Создать / уточнить MagicTask; назначить фею / подтвердить участие" operation="" operand="l-each" kind="call" y="1848" replyTo="" fromActivation="02-logical:execution:frontend:4" toActivation="02-logical:execution:api:8" />
+    <message id="02-logical-m19" from="api" to="application" text="Проверить APPROVED, талант, срок, роли и расписание" operation="" operand="l-each" kind="call" y="1924" replyTo="" fromActivation="02-logical:execution:api:9" toActivation="02-logical:execution:application:9" />
+    <message id="02-logical-m20" from="application" to="persistence" text="Прочитать текущие задачи и подтверждённые назначения" operation="" operand="l-each" kind="call" y="2000" replyTo="" fromActivation="02-logical:execution:application:10" toActivation="02-logical:execution:persistence:5" />
+    <message id="02-logical-m21" from="persistence" to="db" text="SELECT: данные для проверки конфликтов" operation="" operand="l-each" kind="call" y="2076" replyTo="" fromActivation="02-logical:execution:persistence:6" toActivation="02-logical:execution:db:3" />
+    <message id="02-logical-m22" from="application" to="domain" text="Изменить допустимую задачу / назначение; «проект»: датированное участие" operation="" operand="l-each" kind="call" y="2152" replyTo="" fromActivation="02-logical:execution:application:11" toActivation="02-logical:execution:domain:1" />
+    <message id="02-logical-m23" from="application" to="persistence" text="«проект»: атомарные save + audit (+ outbox при уведомлении)" operation="" operand="l-each" kind="call" y="2228" replyTo="" fromActivation="02-logical:execution:application:12" toActivation="02-logical:execution:persistence:7" />
+    <message id="02-logical-m24" from="persistence" to="db" text="«проект»: локальные изменения и INSERT AuditLog; COMMIT" operation="" operand="l-each" kind="call" y="2304" replyTo="" fromActivation="02-logical:execution:persistence:8" toActivation="02-logical:execution:db:4" />
+    <message id="02-logical-m25" from="api" to="frontend" text="Результат команды; ошибки не сохраняют недопустимые данные" operation="" operand="l-each" kind="call" y="2380" replyTo="" toActivation="02-logical:execution:frontend:5" fromActivation="02-logical:execution:api:10" />
+    <message id="02-logical-m26" from="frontend" to="api" text="POST /season-plans/{id}/mark-ritual-ready [отдельная команда]" operation="" operand="" kind="call" y="2504" replyTo="" fromActivation="02-logical:execution:frontend:6" toActivation="02-logical:execution:api:11" />
+    <message id="02-logical-m27" from="api" to="service" text="Запросить переход APPROVED → RITUAL_READY" operation="" operand="" kind="call" y="2580" replyTo="" fromActivation="02-logical:execution:api:12" toActivation="02-logical:execution:service:3" />
+    <message id="02-logical-m28" from="service" to="application" text="PreparationService: проверить готовность и выполнить переход" operation="" operand="" kind="call" y="2656" replyTo="" fromActivation="02-logical:execution:service:4" toActivation="02-logical:execution:application:13" />
+    <message id="02-logical-m29" from="application" to="persistence" text="«проект»: BEGIN, блокировка SeasonPlan; прочитать актуальные данные" operation="" operand="" kind="call" y="2732" replyTo="" fromActivation="02-logical:execution:application:14" toActivation="02-logical:execution:persistence:9" />
+    <message id="02-logical-m30" from="persistence" to="db" text="«проект»: lock / SELECT плана, задач, назначений и условий" operation="" operand="" kind="call" y="2808" replyTo="" fromActivation="02-logical:execution:persistence:10" toActivation="02-logical:execution:db:5" />
+    <message id="02-logical-m31" from="application" to="pollentree" text="PollenService: повторно проверить CONFIRMED и ожидающую замену" operation="" operand="" kind="call" y="2884" replyTo="" fromActivation="02-logical:execution:application:15" toActivation="02-logical:execution:pollentree:5" />
+    <message id="02-logical-m32" from="pollentree" to="tree" text="HTTPS: актуальное состояние резерва" operation="" operand="" kind="call" y="2960" replyTo="" fromActivation="02-logical:execution:pollentree:6" toActivation="02-logical:execution:tree:3" />
+    <message id="02-logical-m33" from="application" to="application" text="«проект»: категории, COMPLETED, RITUAL_LEAD, подтверждения,&#10;отсутствие конфликтов / CRITICAL и дополнительные условия" operation="" operand="" kind="call" y="3036" replyTo="" fromActivation="02-logical:execution:application:16" toActivation="02-logical:execution:application:16" />
+    <fragment id="l-result" operator="alt" parent="" x="65" y="3074" w="3750" h="1420">
+      <operand id="l-errors" guard="Есть ошибки готовности" y="3095" h="409" />
+      <operand id="l-success" guard="Нет ошибок готовности; все записи успешны" y="3504" h="520" />
+      <operand id="l-failure" guard="Готовность пройдена; запись аудита бросает исключение" y="4024" h="470" />
+    </fragment>
+    <message id="02-logical-m34" from="application" to="persistence" text="«проект»: rollback; статус APPROVED без изменений" operation="" operand="l-errors" kind="call" y="3236" replyTo="" fromActivation="02-logical:execution:application:17" toActivation="02-logical:execution:persistence:11" />
+    <message id="02-logical-m35" from="persistence" to="db" text="ROLLBACK" operation="" operand="l-errors" kind="call" y="3312" replyTo="" fromActivation="02-logical:execution:persistence:12" toActivation="02-logical:execution:db:6" />
+    <message id="02-logical-m36" from="application" to="api" text="Вернуть все ключи блокировки; нехватка ролей / ресурсов" operation="" operand="l-errors" kind="call" y="3388" replyTo="" toActivation="02-logical:execution:api:13" fromActivation="02-logical:execution:application:18" />
+    <message id="02-logical-m37" from="api" to="frontend" text="Ошибки готовности; исправить данные и повторить" operation="" operand="l-errors" kind="call" y="3464" replyTo="" toActivation="02-logical:execution:frontend:7" fromActivation="02-logical:execution:api:14" />
+    <message id="02-logical-m38" from="application" to="domain" text="Выполнить допустимый доменный переход; изменить статус в памяти" operation="" operand="l-success" kind="call" y="3604" replyTo="" fromActivation="02-logical:execution:application:19" toActivation="02-logical:execution:domain:2" />
+    <message id="02-logical-m39" from="application" to="application" text="AuditLogService: добавить SEASON_MARKED_RITUAL_READY" operation="" operand="l-success" kind="call" y="3680" replyTo="" fromActivation="02-logical:execution:application:20" toActivation="02-logical:execution:application:20" />
+    <message id="02-logical-m40" from="application" to="persistence" text="«проект»: сохранить план, неизменяемый аудит и outbox" operation="" operand="l-success" kind="call" y="3756" replyTo="" fromActivation="02-logical:execution:application:21" toActivation="02-logical:execution:persistence:13" />
+    <message id="02-logical-m41" from="persistence" to="db" text="«проект»: UPDATE SeasonPlan + INSERT AuditLog / outbox; COMMIT" operation="" operand="l-success" kind="call" y="3832" replyTo="" fromActivation="02-logical:execution:persistence:14" toActivation="02-logical:execution:db:7" />
+    <message id="02-logical-m42" from="application" to="api" text="Результат после COMMIT; доставка уведомлений отдельно" operation="" operand="l-success" kind="call" y="3908" replyTo="" toActivation="02-logical:execution:api:15" fromActivation="02-logical:execution:application:22" />
+    <message id="02-logical-m43" from="api" to="frontend" text="SeasonPlanResponse RITUAL_READY" operation="" operand="l-success" kind="call" y="3984" replyTo="" toActivation="02-logical:execution:frontend:8" fromActivation="02-logical:execution:api:16" />
+    <message id="02-logical-m44" from="application" to="persistence" text="Попытка append SEASON_MARKED_RITUAL_READY" operation="" operand="l-failure" kind="call" y="4124" replyTo="" fromActivation="02-logical:execution:application:23" toActivation="02-logical:execution:persistence:15" />
+    <message id="02-logical-m45" from="persistence" to="db" text="INSERT AuditLog бросает исключение; переход не сохранён" operation="" operand="l-failure" kind="call" y="4200" replyTo="" fromActivation="02-logical:execution:persistence:16" toActivation="02-logical:execution:db:8" />
+    <message id="02-logical-m46" from="application" to="persistence" text="«проект»: rollback; ошибки других записей аналогичны" operation="" operand="l-failure" kind="call" y="4276" replyTo="" fromActivation="02-logical:execution:application:24" toActivation="02-logical:execution:persistence:17" />
+    <message id="02-logical-m47" from="persistence" to="db" text="ROLLBACK" operation="" operand="l-failure" kind="call" y="4352" replyTo="" fromActivation="02-logical:execution:persistence:18" toActivation="02-logical:execution:db:9" />
+    <message id="02-logical-m48" from="api" to="frontend" text="Ошибка записи; не возвращать успех" operation="" operand="l-failure" kind="call" y="4428" replyTo="" toActivation="02-logical:execution:frontend:9" fromActivation="02-logical:execution:api:17" />
+    <activation id="02-logical:execution:frontend:1" lifeline="frontend" operand="" x="261" y="260" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:2" lifeline="frontend" operand="" x="261" y="944" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:3" lifeline="frontend" operand="l-amend-yes" x="261" y="1144" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:4" lifeline="frontend" operand="l-each" x="261" y="1848" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:5" lifeline="frontend" operand="l-each" x="261" y="2380" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:6" lifeline="frontend" operand="" x="261" y="2504" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:7" lifeline="frontend" operand="l-errors" x="261" y="3464" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:8" lifeline="frontend" operand="l-success" x="261" y="3984" w="8" h="30" />
+    <activation id="02-logical:execution:frontend:9" lifeline="frontend" operand="l-failure" x="261" y="4428" w="8" h="30" />
+    <activation id="02-logical:execution:api:1" lifeline="api" operand="" x="631" y="260" w="8" h="30" />
+    <activation id="02-logical:execution:api:2" lifeline="api" operand="" x="631" y="336" w="8" h="30" />
+    <activation id="02-logical:execution:api:3" lifeline="api" operand="" x="631" y="412" w="8" h="30" />
+    <activation id="02-logical:execution:api:4" lifeline="api" operand="" x="631" y="716" w="8" h="30" />
+    <activation id="02-logical:execution:api:5" lifeline="api" operand="" x="631" y="944" w="8" h="30" />
+    <activation id="02-logical:execution:api:6" lifeline="api" operand="l-amend-yes" x="631" y="1144" w="8" h="30" />
+    <activation id="02-logical:execution:api:7" lifeline="api" operand="l-amend-yes" x="631" y="1220" w="8" h="30" />
+    <activation id="02-logical:execution:api:8" lifeline="api" operand="l-each" x="631" y="1848" w="8" h="30" />
+    <activation id="02-logical:execution:api:9" lifeline="api" operand="l-each" x="631" y="1924" w="8" h="30" />
+    <activation id="02-logical:execution:api:10" lifeline="api" operand="l-each" x="631" y="2380" w="8" h="30" />
+    <activation id="02-logical:execution:api:11" lifeline="api" operand="" x="631" y="2504" w="8" h="30" />
+    <activation id="02-logical:execution:api:12" lifeline="api" operand="" x="631" y="2580" w="8" h="30" />
+    <activation id="02-logical:execution:api:13" lifeline="api" operand="l-errors" x="631" y="3388" w="8" h="30" />
+    <activation id="02-logical:execution:api:14" lifeline="api" operand="l-errors" x="631" y="3464" w="8" h="30" />
+    <activation id="02-logical:execution:api:15" lifeline="api" operand="l-success" x="631" y="3908" w="8" h="30" />
+    <activation id="02-logical:execution:api:16" lifeline="api" operand="l-success" x="631" y="3984" w="8" h="30" />
+    <activation id="02-logical:execution:api:17" lifeline="api" operand="l-failure" x="631" y="4428" w="8" h="30" />
+    <activation id="02-logical:execution:security:1" lifeline="security" operand="" x="1001" y="336" w="8" h="30" />
+    <activation id="02-logical:execution:service:1" lifeline="service" operand="" x="1371" y="412" w="8" h="30" />
+    <activation id="02-logical:execution:service:2" lifeline="service" operand="" x="1371" y="488" w="8" h="30" />
+    <activation id="02-logical:execution:service:3" lifeline="service" operand="" x="1371" y="2580" w="8" h="30" />
+    <activation id="02-logical:execution:service:4" lifeline="service" operand="" x="1371" y="2656" w="8" h="30" />
+    <activation id="02-logical:execution:application:1" lifeline="application" operand="" x="1741" y="488" w="8" h="30" />
+    <activation id="02-logical:execution:application:2" lifeline="application" operand="" x="1741" y="564" w="8" h="30" />
+    <activation id="02-logical:execution:application:3" lifeline="application" operand="" x="1741" y="716" w="8" h="30" />
+    <activation id="02-logical:execution:application:4" lifeline="application" operand="" x="1741" y="792" w="8" h="30" />
+    <activation id="02-logical:execution:application:5" lifeline="application" operand="l-amend-yes" x="1741" y="1220" w="8" h="30" />
+    <activation id="02-logical:execution:application:6" lifeline="application" operand="l-amend-yes" x="1741" y="1296" w="8" h="30" />
+    <activation id="02-logical:execution:application:7" lifeline="application" operand="l-amend-yes" x="1741" y="1448" w="8" h="48" />
+    <activation id="02-logical:execution:application:8" lifeline="application" operand="l-amend-yes" x="1741" y="1524" w="8" h="30" />
+    <activation id="02-logical:execution:application:9" lifeline="application" operand="l-each" x="1741" y="1924" w="8" h="30" />
+    <activation id="02-logical:execution:application:10" lifeline="application" operand="l-each" x="1741" y="2000" w="8" h="30" />
+    <activation id="02-logical:execution:application:11" lifeline="application" operand="l-each" x="1741" y="2152" w="8" h="30" />
+    <activation id="02-logical:execution:application:12" lifeline="application" operand="l-each" x="1741" y="2228" w="8" h="30" />
+    <activation id="02-logical:execution:application:13" lifeline="application" operand="" x="1741" y="2656" w="8" h="30" />
+    <activation id="02-logical:execution:application:14" lifeline="application" operand="" x="1741" y="2732" w="8" h="30" />
+    <activation id="02-logical:execution:application:15" lifeline="application" operand="" x="1741" y="2884" w="8" h="30" />
+    <activation id="02-logical:execution:application:16" lifeline="application" operand="" x="1741" y="3036" w="8" h="48" />
+    <activation id="02-logical:execution:application:17" lifeline="application" operand="l-errors" x="1741" y="3236" w="8" h="30" />
+    <activation id="02-logical:execution:application:18" lifeline="application" operand="l-errors" x="1741" y="3388" w="8" h="30" />
+    <activation id="02-logical:execution:application:19" lifeline="application" operand="l-success" x="1741" y="3604" w="8" h="30" />
+    <activation id="02-logical:execution:application:20" lifeline="application" operand="l-success" x="1741" y="3680" w="8" h="48" />
+    <activation id="02-logical:execution:application:21" lifeline="application" operand="l-success" x="1741" y="3756" w="8" h="30" />
+    <activation id="02-logical:execution:application:22" lifeline="application" operand="l-success" x="1741" y="3908" w="8" h="30" />
+    <activation id="02-logical:execution:application:23" lifeline="application" operand="l-failure" x="1741" y="4124" w="8" h="30" />
+    <activation id="02-logical:execution:application:24" lifeline="application" operand="l-failure" x="1741" y="4276" w="8" h="30" />
+    <activation id="02-logical:execution:domain:1" lifeline="domain" operand="l-each" x="2111" y="2152" w="8" h="30" />
+    <activation id="02-logical:execution:domain:2" lifeline="domain" operand="l-success" x="2111" y="3604" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:1" lifeline="persistence" operand="" x="2481" y="564" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:2" lifeline="persistence" operand="" x="2481" y="640" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:3" lifeline="persistence" operand="l-amend-yes" x="2481" y="1524" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:4" lifeline="persistence" operand="l-amend-yes" x="2481" y="1600" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:5" lifeline="persistence" operand="l-each" x="2481" y="2000" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:6" lifeline="persistence" operand="l-each" x="2481" y="2076" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:7" lifeline="persistence" operand="l-each" x="2481" y="2228" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:8" lifeline="persistence" operand="l-each" x="2481" y="2304" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:9" lifeline="persistence" operand="" x="2481" y="2732" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:10" lifeline="persistence" operand="" x="2481" y="2808" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:11" lifeline="persistence" operand="l-errors" x="2481" y="3236" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:12" lifeline="persistence" operand="l-errors" x="2481" y="3312" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:13" lifeline="persistence" operand="l-success" x="2481" y="3756" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:14" lifeline="persistence" operand="l-success" x="2481" y="3832" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:15" lifeline="persistence" operand="l-failure" x="2481" y="4124" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:16" lifeline="persistence" operand="l-failure" x="2481" y="4200" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:17" lifeline="persistence" operand="l-failure" x="2481" y="4276" w="8" h="30" />
+    <activation id="02-logical:execution:persistence:18" lifeline="persistence" operand="l-failure" x="2481" y="4352" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:1" lifeline="pollentree" operand="" x="2851" y="792" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:2" lifeline="pollentree" operand="" x="2851" y="868" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:3" lifeline="pollentree" operand="l-amend-yes" x="2851" y="1296" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:4" lifeline="pollentree" operand="l-amend-yes" x="2851" y="1372" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:5" lifeline="pollentree" operand="" x="2851" y="2884" w="8" h="30" />
+    <activation id="02-logical:execution:pollentree:6" lifeline="pollentree" operand="" x="2851" y="2960" w="8" h="30" />
+    <activation id="02-logical:execution:db:1" lifeline="db" operand="" x="3221" y="640" w="8" h="30" />
+    <activation id="02-logical:execution:db:2" lifeline="db" operand="l-amend-yes" x="3221" y="1600" w="8" h="30" />
+    <activation id="02-logical:execution:db:3" lifeline="db" operand="l-each" x="3221" y="2076" w="8" h="30" />
+    <activation id="02-logical:execution:db:4" lifeline="db" operand="l-each" x="3221" y="2304" w="8" h="30" />
+    <activation id="02-logical:execution:db:5" lifeline="db" operand="" x="3221" y="2808" w="8" h="30" />
+    <activation id="02-logical:execution:db:6" lifeline="db" operand="l-errors" x="3221" y="3312" w="8" h="30" />
+    <activation id="02-logical:execution:db:7" lifeline="db" operand="l-success" x="3221" y="3832" w="8" h="30" />
+    <activation id="02-logical:execution:db:8" lifeline="db" operand="l-failure" x="3221" y="4200" w="8" h="30" />
+    <activation id="02-logical:execution:db:9" lifeline="db" operand="l-failure" x="3221" y="4352" w="8" h="30" />
+    <activation id="02-logical:execution:tree:1" lifeline="tree" operand="" x="3591" y="868" w="8" h="30" />
+    <activation id="02-logical:execution:tree:2" lifeline="tree" operand="l-amend-yes" x="3591" y="1372" w="8" h="30" />
+    <activation id="02-logical:execution:tree:3" lifeline="tree" operand="" x="3591" y="2960" w="8" h="30" />
+  </diagram>
+  <diagram id="03-implementation" name="3. UC-3 — Полное описание: композиция взаимодействий" notes="ref — реальные InteractionUse со ссылкой на подробную последовательность. Каждый ref раскрывается отдельной диаграммой 3a–3d; вместе это полное описание UC-3.&#10;Показаны экземпляры классов, реальные операции и типизированные параметры в модели. «проект» обозначает отсутствующие методы или изменяемую обвязку, а не существующий код.&#10;API берёт CurrentActor из сессии, не из тела запроса; requiredRole проверяет координатора/хранителя. Фея-планировщик — только чтение в UC-3. Старт RitualSession вне границ." width="2370" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="On successful commit: RITUAL_READY iff every readiness rule passes; otherwise APPROVED; immutable audit. Ritual start excluded." height="1526">
+    <lifeline id="ui" name="page" type="PreparationPage" package="frontend" kind="object" x="120" y="170" w="290" h="1146" />
+    <lifeline id="api" name="controller" type="LifecycleController" package="api" kind="object" x="490" y="170" w="290" h="1146" />
+    <lifeline id="pollen" name="pollen" type="PollenService" package="application" kind="object" x="860" y="170" w="290" h="1146" />
+    <lifeline id="tasks" name="tasks" type="MagicTaskService" package="application" kind="object" x="1230" y="170" w="290" h="1146" />
+    <lifeline id="assign" name="assignments" type="FairyAssignmentService" package="application" kind="object" x="1600" y="170" w="290" h="1146" />
+    <lifeline id="ready" name="preparation" type="PreparationService" package="application" kind="object" x="1970" y="170" w="290" h="1146" />
+    <message id="03-implementation-m1" from="ui" to="api" text="GET /season-plans/{id}; /tasks; /readiness; /tasks/{taskId}/assignments" operation="" operand="" kind="call" y="260" replyTo="" fromActivation="03-implementation:execution:ui:1" toActivation="03-implementation:execution:api:1" />
+    <ref target="03a-resources" text="3a. Обзор и уточнение ресурса; Хранитель Древа Пыльцы" covered="api,pollen" x="465" y="316" w="710" h="100" />
+    <message id="03-implementation-m2" from="ui" to="api" text="POST /season-plans/{id}/tasks или PATCH /tasks/{id}" operation="" operand="" kind="call" y="486" replyTo="" fromActivation="03-implementation:execution:ui:2" toActivation="03-implementation:execution:api:3" />
+    <ref target="03b-tasks" text="3b. MagicTask: createTask / updateTask; проверки и сохранение" covered="api,tasks" x="465" y="542" w="1080" h="100" />
+    <message id="03-implementation-m3" from="ui" to="api" text="POST /tasks/{id}/assignments; Подтверждение участия" operation="" operand="" kind="call" y="712" replyTo="" fromActivation="03-implementation:execution:ui:3" toActivation="03-implementation:execution:api:5" />
+    <ref target="03c-assignments" text="3c. FairyAssignment, FairySchedulePolicy; роли и конфликты" covered="api,assign" x="465" y="768" w="1450" h="100" />
+    <message id="03-implementation-m4" from="ui" to="api" text="POST /season-plans/{id}/readiness-checklist/{key}/complete [опционально]" operation="" operand="" kind="call" y="938" replyTo="" fromActivation="03-implementation:execution:ui:4" toActivation="03-implementation:execution:api:7" />
+    <message id="03-implementation-m5" from="ui" to="api" text="POST /season-plans/{id}/mark-ritual-ready [отдельная команда]" operation="" operand="" kind="call" y="1014" replyTo="" fromActivation="03-implementation:execution:ui:5" toActivation="03-implementation:execution:api:8" />
+    <ref target="03d-readiness" text="3d. Чек-лист; markRitualReady; аудит; целевая транзакция" covered="api,pollen,ready" x="465" y="1070" w="1820" h="100" />
+    <message id="03-implementation-m6" from="api" to="ui" text="SeasonPlanResponse RITUAL_READY либо ошибки по ключам; не запуск ритуала" operation="" operand="" kind="call" y="1240" replyTo="" toActivation="03-implementation:execution:ui:6" fromActivation="03-implementation:execution:api:10" />
+    <activation id="03-implementation:execution:ui:1" lifeline="ui" operand="" x="261" y="260" w="8" h="30" />
+    <activation id="03-implementation:execution:ui:2" lifeline="ui" operand="" x="261" y="486" w="8" h="30" />
+    <activation id="03-implementation:execution:ui:3" lifeline="ui" operand="" x="261" y="712" w="8" h="30" />
+    <activation id="03-implementation:execution:ui:4" lifeline="ui" operand="" x="261" y="938" w="8" h="30" />
+    <activation id="03-implementation:execution:ui:5" lifeline="ui" operand="" x="261" y="1014" w="8" h="30" />
+    <activation id="03-implementation:execution:ui:6" lifeline="ui" operand="" x="261" y="1240" w="8" h="30" />
+    <activation id="03-implementation:execution:api:1" lifeline="api" operand="" x="631" y="260" w="8" h="30" />
+    <activation id="03-implementation:execution:api:2" lifeline="api" operand="" x="631" y="316" w="8" h="100" />
+    <activation id="03-implementation:execution:api:3" lifeline="api" operand="" x="631" y="486" w="8" h="30" />
+    <activation id="03-implementation:execution:api:4" lifeline="api" operand="" x="631" y="542" w="8" h="100" />
+    <activation id="03-implementation:execution:api:5" lifeline="api" operand="" x="631" y="712" w="8" h="30" />
+    <activation id="03-implementation:execution:api:6" lifeline="api" operand="" x="631" y="768" w="8" h="100" />
+    <activation id="03-implementation:execution:api:7" lifeline="api" operand="" x="631" y="938" w="8" h="30" />
+    <activation id="03-implementation:execution:api:8" lifeline="api" operand="" x="631" y="1014" w="8" h="30" />
+    <activation id="03-implementation:execution:api:9" lifeline="api" operand="" x="631" y="1070" w="8" h="100" />
+    <activation id="03-implementation:execution:api:10" lifeline="api" operand="" x="631" y="1240" w="8" h="30" />
+    <activation id="03-implementation:execution:pollen:1" lifeline="pollen" operand="" x="1001" y="316" w="8" h="100" />
+    <activation id="03-implementation:execution:pollen:2" lifeline="pollen" operand="" x="1001" y="1070" w="8" h="100" />
+    <activation id="03-implementation:execution:tasks:1" lifeline="tasks" operand="" x="1371" y="542" w="8" h="100" />
+    <activation id="03-implementation:execution:assign:1" lifeline="assign" operand="" x="1741" y="768" w="8" h="100" />
+    <activation id="03-implementation:execution:ready:1" lifeline="ready" operand="" x="2111" y="1070" w="8" h="100" />
+  </diagram>
+  <diagram id="03a-resources" name="3a. Реализация — обзор и ресурс пыльцы" notes="plans = SeasonPlanRepository → JdbcSeasonPlanRepository; client = PollenTreeClient → RestPollenTreeClient (fake заменяем через тот же контракт).&#10;Контроллер вызывает SeasonPlanService.get и сервисы списков для карточки; фасад делегирует репозиторию. Чтение назначений повторяется для каждой задачи.&#10;Связанные замены CONFIRMED, расчёт BigDecimal g scale=3 и supersession — «проект» ST-00: текущий requestReservation использует int и не связывает замену. HTTPS-вызовы только через PollenService/его расширение; локально хранится только аудит.&#10;Сбой аудита после принятого Древом решения НЕ откатывает удалённый резерв: повтор appendOnce с детерминированным eventId; надёжное восстановление требует доработки." width="2000" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="Resource snapshot / immutable provider decision and local audit; plan stays APPROVED." height="2806">
+    <lifeline id="api" name="controller" type="LifecycleController" package="api" kind="object" x="120" y="170" w="290" h="2426" />
+    <lifeline id="plans" name="plans" type="JdbcSeasonPlanRepository" package="persistence" kind="object" x="490" y="170" w="290" h="2426" />
+    <lifeline id="pollen" name="pollen" type="PollenService" package="application" kind="object" x="860" y="170" w="290" h="2426" />
+    <lifeline id="client" name="client" type="RestPollenTreeClient" package="pollentree" kind="object" x="1230" y="170" w="290" h="2426" />
+    <lifeline id="audit" name="audit" type="AuditLogService" package="application" kind="object" x="1600" y="170" w="290" h="2426" />
+    <message id="03a-resources-m1" from="api" to="plans" text="findById(id) : Optional&lt;SeasonPlan&gt; [через SeasonPlanService.get]" operation="planFind" operand="" kind="call" y="260" replyTo="" fromActivation="03a-resources:execution:api:1" toActivation="03a-resources:execution:plans:1" />
+    <message id="03a-resources-m2" from="api" to="pollen" text="findLatestBySeasonPlanId(id)" operation="latest" operand="" kind="call" y="336" replyTo="" fromActivation="03a-resources:execution:api:2" toActivation="03a-resources:execution:pollen:1" />
+    <message id="03a-resources-m3" from="pollen" to="client" text="findLatestBySeasonPlanId(planId) [HTTPS]" operation="clientLatest" operand="" kind="call" y="412" replyTo="" fromActivation="03a-resources:execution:pollen:2" toActivation="03a-resources:execution:client:1" />
+    <message id="03a-resources-m4" from="pollen" to="api" text="Optional&lt;PollenReservation&gt;; status=CONFIRMED" operation="" operand="" kind="reply" y="488" replyTo="03a-resources-m2" toActivation="03a-resources:execution:api:3" fromActivation="03a-resources:execution:pollen:3" />
+    <fragment id="r-amend" operator="opt" parent="" x="65" y="526" w="1900" h="768">
+      <operand id="r-amend-yes" guard="Нужна корректировка объёма" y="547" h="747" />
+    </fragment>
+    <message id="03a-resources-m5" from="api" to="pollen" text="«проект» requestAmendment(planId, priorId, requestId, grams)&#10;расширение единой границы PollenService" operation="amend" operand="r-amend-yes" kind="call" y="688" replyTo="" fromActivation="03a-resources:execution:api:4" toActivation="03a-resources:execution:pollen:4" />
+    <message id="03a-resources-m6" from="pollen" to="client" text="capacity() : PollenCapacity; HTTPS: лимит Древа" operation="clientCapacity" operand="r-amend-yes" kind="call" y="764" replyTo="" fromActivation="03a-resources:execution:pollen:5" toActivation="03a-resources:execution:client:2" />
+    <fragment id="r-capacity-error" operator="break" parent="r-amend-yes" x="85" y="802" w="1860" h="228">
+      <operand id="r-capacity-error-yes" guard="Лимит превышен / capacity недоступна" y="823" h="207" />
+    </fragment>
+    <message id="03a-resources-m7" from="pollen" to="api" text="«проект»: ошибка ресурса; замена не запрошена, прежний резерв сохранён" operation="" operand="r-capacity-error-yes" kind="call" y="964" replyTo="" toActivation="03a-resources:execution:api:5" fromActivation="03a-resources:execution:pollen:6" />
+    <message id="03a-resources-m8" from="pollen" to="client" text="«проект» requestAmendment(planId, priorId, requestId, grams)&#10;HTTPS: связанный DRAFT создаёт Древо, не локальная БД" operation="clientAmend" operand="r-amend-yes" kind="call" y="1152" replyTo="" fromActivation="03a-resources:execution:pollen:7" toActivation="03a-resources:execution:client:3" />
+    <message id="03a-resources-m9" from="pollen" to="api" text="Связанный DRAFT; прежний CONFIRMED сохранён; готовность блокируется" operation="" operand="r-amend-yes" kind="reply" y="1228" replyTo="03a-resources-m5" toActivation="03a-resources:execution:api:6" fromActivation="03a-resources:execution:pollen:8" />
+    <fragment id="r-decision-opt" operator="opt" parent="" x="65" y="1314" w="1900" h="1224">
+      <operand id="r-decision-requested" guard="Есть DRAFT и хранитель принимает решение; иначе только чтение" y="1335" h="1203" />
+    </fragment>
+    <fragment id="r-decision" operator="alt" parent="r-decision-requested" x="85" y="1374" w="1860" h="1116">
+      <operand id="r-confirm" guard="Подтверждение успешно; объём допустим" y="1395" h="409" />
+      <operand id="r-reject" guard="Отклонение с причиной успешно" y="1804" h="368" />
+      <operand id="r-bad" guard="Подтверждение отклонено лимитом или недоступностью Древа" y="2172" h="318" />
+    </fragment>
+    <message id="03a-resources-m10" from="api" to="pollen" text="confirmReservation(id, amount, comment, POLLEN_GUARDIAN, actorId)" operation="confirm" operand="r-confirm" kind="call" y="1536" replyTo="" fromActivation="03a-resources:execution:api:7" toActivation="03a-resources:execution:pollen:9" />
+    <message id="03a-resources-m11" from="pollen" to="client" text="confirmReservation(id, confirmedAmount, comment, actorId)" operation="clientConfirm" operand="r-confirm" kind="call" y="1612" replyTo="" fromActivation="03a-resources:execution:pollen:10" toActivation="03a-resources:execution:client:4" />
+    <message id="03a-resources-m12" from="pollen" to="audit" text="appendOnce(eventId, planId, POLLEN_RESERVATION_CONFIRMED, actorId, comment)" operation="auditOnce" operand="r-confirm" kind="call" y="1688" replyTo="" fromActivation="03a-resources:execution:pollen:11" toActivation="03a-resources:execution:audit:1" />
+    <message id="03a-resources-m13" from="pollen" to="api" text="PollenReservation CONFIRMED; «проект»: атомарный supersession в Древе" operation="" operand="r-confirm" kind="reply" y="1764" replyTo="03a-resources-m10" toActivation="03a-resources:execution:api:8" fromActivation="03a-resources:execution:pollen:12" />
+    <message id="03a-resources-m14" from="api" to="pollen" text="rejectReservation(id, reason, POLLEN_GUARDIAN, actorId)" operation="reject" operand="r-reject" kind="call" y="1904" replyTo="" fromActivation="03a-resources:execution:api:9" toActivation="03a-resources:execution:pollen:13" />
+    <message id="03a-resources-m15" from="pollen" to="client" text="rejectReservation(id, reason, actorId)" operation="clientReject" operand="r-reject" kind="call" y="1980" replyTo="" fromActivation="03a-resources:execution:pollen:14" toActivation="03a-resources:execution:client:5" />
+    <message id="03a-resources-m16" from="pollen" to="audit" text="appendOnce(eventId, planId, POLLEN_RESERVATION_REJECTED, actorId, reason)" operation="auditOnce" operand="r-reject" kind="call" y="2056" replyTo="" fromActivation="03a-resources:execution:pollen:15" toActivation="03a-resources:execution:audit:2" />
+    <message id="03a-resources-m17" from="pollen" to="api" text="«проект»: отклонённая замена не отменяет прежний авторитетный CONFIRMED" operation="" operand="r-reject" kind="call" y="2132" replyTo="" toActivation="03a-resources:execution:api:10" fromActivation="03a-resources:execution:pollen:16" />
+    <message id="03a-resources-m18" from="api" to="pollen" text="confirmReservation(id, amount, comment, POLLEN_GUARDIAN, actorId)" operation="confirm" operand="r-bad" kind="call" y="2272" replyTo="" fromActivation="03a-resources:execution:api:11" toActivation="03a-resources:execution:pollen:17" />
+    <message id="03a-resources-m19" from="pollen" to="client" text="confirmReservation(id, amount, comment, actorId) → исключение" operation="clientConfirm" operand="r-bad" kind="call" y="2348" replyTo="" fromActivation="03a-resources:execution:pollen:18" toActivation="03a-resources:execution:client:6" />
+    <message id="03a-resources-m20" from="pollen" to="api" text="Ошибка; без локального успешного аудита, RITUAL_READY не устанавливать" operation="" operand="r-bad" kind="call" y="2424" replyTo="" toActivation="03a-resources:execution:api:12" fromActivation="03a-resources:execution:pollen:19" />
+    <activation id="03a-resources:execution:api:1" lifeline="api" operand="" x="261" y="260" w="8" h="30" />
+    <activation id="03a-resources:execution:api:2" lifeline="api" operand="" x="261" y="336" w="8" h="30" />
+    <activation id="03a-resources:execution:api:3" lifeline="api" operand="" x="261" y="488" w="8" h="30" />
+    <activation id="03a-resources:execution:api:4" lifeline="api" operand="r-amend-yes" x="261" y="688" w="8" h="30" />
+    <activation id="03a-resources:execution:api:5" lifeline="api" operand="r-capacity-error-yes" x="261" y="964" w="8" h="30" />
+    <activation id="03a-resources:execution:api:6" lifeline="api" operand="r-amend-yes" x="261" y="1228" w="8" h="30" />
+    <activation id="03a-resources:execution:api:7" lifeline="api" operand="r-confirm" x="261" y="1536" w="8" h="30" />
+    <activation id="03a-resources:execution:api:8" lifeline="api" operand="r-confirm" x="261" y="1764" w="8" h="30" />
+    <activation id="03a-resources:execution:api:9" lifeline="api" operand="r-reject" x="261" y="1904" w="8" h="30" />
+    <activation id="03a-resources:execution:api:10" lifeline="api" operand="r-reject" x="261" y="2132" w="8" h="30" />
+    <activation id="03a-resources:execution:api:11" lifeline="api" operand="r-bad" x="261" y="2272" w="8" h="30" />
+    <activation id="03a-resources:execution:api:12" lifeline="api" operand="r-bad" x="261" y="2424" w="8" h="30" />
+    <activation id="03a-resources:execution:plans:1" lifeline="plans" operand="" x="631" y="260" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:1" lifeline="pollen" operand="" x="1001" y="336" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:2" lifeline="pollen" operand="" x="1001" y="412" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:3" lifeline="pollen" operand="" x="1001" y="488" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:4" lifeline="pollen" operand="r-amend-yes" x="1001" y="688" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:5" lifeline="pollen" operand="r-amend-yes" x="1001" y="764" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:6" lifeline="pollen" operand="r-capacity-error-yes" x="1001" y="964" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:7" lifeline="pollen" operand="r-amend-yes" x="1001" y="1152" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:8" lifeline="pollen" operand="r-amend-yes" x="1001" y="1228" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:9" lifeline="pollen" operand="r-confirm" x="1001" y="1536" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:10" lifeline="pollen" operand="r-confirm" x="1001" y="1612" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:11" lifeline="pollen" operand="r-confirm" x="1001" y="1688" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:12" lifeline="pollen" operand="r-confirm" x="1001" y="1764" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:13" lifeline="pollen" operand="r-reject" x="1001" y="1904" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:14" lifeline="pollen" operand="r-reject" x="1001" y="1980" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:15" lifeline="pollen" operand="r-reject" x="1001" y="2056" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:16" lifeline="pollen" operand="r-reject" x="1001" y="2132" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:17" lifeline="pollen" operand="r-bad" x="1001" y="2272" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:18" lifeline="pollen" operand="r-bad" x="1001" y="2348" w="8" h="30" />
+    <activation id="03a-resources:execution:pollen:19" lifeline="pollen" operand="r-bad" x="1001" y="2424" w="8" h="30" />
+    <activation id="03a-resources:execution:client:1" lifeline="client" operand="" x="1371" y="412" w="8" h="30" />
+    <activation id="03a-resources:execution:client:2" lifeline="client" operand="r-amend-yes" x="1371" y="764" w="8" h="30" />
+    <activation id="03a-resources:execution:client:3" lifeline="client" operand="r-amend-yes" x="1371" y="1152" w="8" h="30" />
+    <activation id="03a-resources:execution:client:4" lifeline="client" operand="r-confirm" x="1371" y="1612" w="8" h="30" />
+    <activation id="03a-resources:execution:client:5" lifeline="client" operand="r-reject" x="1371" y="1980" w="8" h="30" />
+    <activation id="03a-resources:execution:client:6" lifeline="client" operand="r-bad" x="1371" y="2348" w="8" h="30" />
+    <activation id="03a-resources:execution:audit:1" lifeline="audit" operand="r-confirm" x="1741" y="1688" w="8" h="30" />
+    <activation id="03a-resources:execution:audit:2" lifeline="audit" operand="r-reject" x="1741" y="2056" w="8" h="30" />
+  </diagram>
+  <diagram id="03b-tasks" name="3b. Реализация — MagicTask" notes="Пакеты соответствуют системному обзору: сервисы — application, доменные объекты — domain, JDBC-репозитории — persistence. Порты свёрнуты в application. Инъекции: SeasonPlanRepository → plans; MagicTaskRepository → taskRepository.&#10;createTask проверяет APPROVED, title / requiredTalent / start &lt; end; UUID и seasonPlanId задаются перед save. updateTask сейчас НЕ проверяет статус плана, начатость и неизменяемость завершённой задачи и НЕ пишет аудит — целевые изменения явно отмечены.&#10;Новая задача по текущему коду получает READY, если статус null. Обязательная категория и COMPLETED обязательных работ — целевые данные/правила ST-00, не доказательство наличия полей в исходниках.&#10;Каждая критическая команда требует транзакционной обвязки сохранение + аудит (пока отсутствует). Ошибка валидации: 400; нет объекта: 404; роль: 403. После ошибки UI исправляет запрос." width="2370" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="Valid MagicTask saved with audit, or no local command changes on failure; plan stays APPROVED." height="2330">
+    <lifeline id="api" name="controller" type="LifecycleController" package="api" kind="object" x="120" y="170" w="290" h="1950" />
+    <lifeline id="svc" name="tasks" type="MagicTaskService" package="application" kind="object" x="490" y="170" w="290" h="1950" />
+    <lifeline id="plans" name="plans" type="JdbcSeasonPlanRepository" package="persistence" kind="object" x="860" y="170" w="290" h="1950" />
+    <lifeline id="task" name="draft / existing" type="MagicTask" package="domain" kind="object" x="1230" y="170" w="290" h="1950" />
+    <lifeline id="repo" name="taskRepository" type="JdbcMagicTaskRepository" package="persistence" kind="object" x="1600" y="170" w="290" h="1950" />
+    <lifeline id="audit" name="audit" type="AuditLogService" package="application" kind="object" x="1970" y="170" w="290" h="1950" />
+    <fragment id="t-command" operator="alt" parent="" x="65" y="222" w="2270" h="608">
+      <operand id="t-create" guard="Создание" y="243" h="269" />
+      <operand id="t-update" guard="Изменение существующей задачи" y="512" h="318" />
+    </fragment>
+    <message id="03b-tasks-m1" from="api" to="svc" text="createTask(planId, request.toDraft(), TALENT_COORDINATOR, actorId)" operation="taskCreate" operand="t-create" kind="call" y="320" replyTo="" fromActivation="03b-tasks:execution:api:1" toActivation="03b-tasks:execution:svc:1" />
+    <message id="03b-tasks-m2" from="svc" to="plans" text="findById(planId); status должен быть APPROVED" operation="planFind" operand="t-create" kind="call" y="396" replyTo="" fromActivation="03b-tasks:execution:svc:2" toActivation="03b-tasks:execution:plans:1" />
+    <message id="03b-tasks-m3" from="svc" to="svc" text="validateTask(draft); title, requiredTalent, timeWindow" operation="taskValidate" operand="t-create" kind="call" y="472" replyTo="" fromActivation="03b-tasks:execution:svc:3" toActivation="03b-tasks:execution:svc:3" />
+    <message id="03b-tasks-m4" from="api" to="svc" text="updateTask(taskId, request.toDraft(), TALENT_COORDINATOR, actorId)" operation="taskUpdate" operand="t-update" kind="call" y="612" replyTo="" fromActivation="03b-tasks:execution:api:2" toActivation="03b-tasks:execution:svc:4" />
+    <message id="03b-tasks-m5" from="svc" to="repo" text="findById(taskId) : Optional&lt;MagicTask&gt;" operation="taskFind" operand="t-update" kind="call" y="688" replyTo="" fromActivation="03b-tasks:execution:svc:5" toActivation="03b-tasks:execution:repo:1" />
+    <message id="03b-tasks-m6" from="svc" to="svc" text="validateTask(draft); «проект»: проверить APPROVED / unstarted / stale" operation="taskValidate" operand="t-update" kind="call" y="764" replyTo="" fromActivation="03b-tasks:execution:svc:6" toActivation="03b-tasks:execution:svc:6" />
+    <fragment id="t-invalid" operator="break" parent="" x="65" y="850" w="2270" h="228">
+      <operand id="t-invalid-yes" guard="Проверка выбранной команды не пройдена / объект не найден / нет прав" y="871" h="207" />
+    </fragment>
+    <message id="03b-tasks-m7" from="svc" to="api" text="Ошибка 400 / 403 / 404; без мутации, save и успешного ответа" operation="" operand="t-invalid-yes" kind="call" y="1012" replyTo="" toActivation="03b-tasks:execution:api:3" fromActivation="03b-tasks:execution:svc:7" />
+    <message id="03b-tasks-m8" from="svc" to="task" text="updateFrom(draft) для update; default READY при create status=null;&#10;для create: setId(UUID), setSeasonPlanId(planId)" operation="taskMutate" operand="" kind="call" y="1136" replyTo="" fromActivation="03b-tasks:execution:svc:8" toActivation="03b-tasks:execution:task:1" />
+    <fragment id="t-persist" operator="alt" parent="" x="65" y="1174" w="2270" h="888">
+      <operand id="t-saved" guard="save и audit завершаются нормально" y="1195" h="333" />
+      <operand id="t-save-failed" guard="save бросает исключение" y="1528" h="216" />
+      <operand id="t-audit-failed" guard="save успешен, audit бросает исключение" y="1744" h="318" />
+    </fragment>
+    <message id="03b-tasks-m9" from="svc" to="repo" text="save(task, actorId) : MagicTask [JDBC upsert]" operation="taskSave" operand="t-saved" kind="call" y="1336" replyTo="" fromActivation="03b-tasks:execution:svc:9" toActivation="03b-tasks:execution:repo:2" />
+    <message id="03b-tasks-m10" from="svc" to="audit" text="append(planId, MAGIC_TASK_CREATED, actorId, title);&#10;«проект» audit для updateTask в той же транзакции" operation="audit" operand="t-saved" kind="call" y="1412" replyTo="" fromActivation="03b-tasks:execution:svc:10" toActivation="03b-tasks:execution:audit:1" />
+    <message id="03b-tasks-m11" from="svc" to="api" text="«проект»: COMMIT; MagicTask → MagicTaskResponse" operation="" operand="t-saved" kind="call" y="1488" replyTo="" toActivation="03b-tasks:execution:api:4" fromActivation="03b-tasks:execution:svc:11" />
+    <message id="03b-tasks-m12" from="svc" to="repo" text="save(task, actorId) → исключение" operation="taskSave" operand="t-save-failed" kind="call" y="1628" replyTo="" fromActivation="03b-tasks:execution:svc:12" toActivation="03b-tasks:execution:repo:3" />
+    <message id="03b-tasks-m13" from="svc" to="api" text="«проект»: rollback; ошибка записи; нет успешного ответа" operation="" operand="t-save-failed" kind="call" y="1704" replyTo="" toActivation="03b-tasks:execution:api:5" fromActivation="03b-tasks:execution:svc:13" />
+    <message id="03b-tasks-m14" from="svc" to="repo" text="save(task, actorId) : MagicTask" operation="taskSave" operand="t-audit-failed" kind="call" y="1844" replyTo="" fromActivation="03b-tasks:execution:svc:14" toActivation="03b-tasks:execution:repo:4" />
+    <message id="03b-tasks-m15" from="svc" to="audit" text="append(planId, action, actorId, details) → исключение" operation="audit" operand="t-audit-failed" kind="call" y="1920" replyTo="" fromActivation="03b-tasks:execution:svc:15" toActivation="03b-tasks:execution:audit:2" />
+    <message id="03b-tasks-m16" from="svc" to="api" text="«проект»: rollback включая задачу; нет успешного ответа" operation="" operand="t-audit-failed" kind="call" y="1996" replyTo="" toActivation="03b-tasks:execution:api:6" fromActivation="03b-tasks:execution:svc:16" />
+    <activation id="03b-tasks:execution:api:1" lifeline="api" operand="t-create" x="261" y="320" w="8" h="30" />
+    <activation id="03b-tasks:execution:api:2" lifeline="api" operand="t-update" x="261" y="612" w="8" h="30" />
+    <activation id="03b-tasks:execution:api:3" lifeline="api" operand="t-invalid-yes" x="261" y="1012" w="8" h="30" />
+    <activation id="03b-tasks:execution:api:4" lifeline="api" operand="t-saved" x="261" y="1488" w="8" h="30" />
+    <activation id="03b-tasks:execution:api:5" lifeline="api" operand="t-save-failed" x="261" y="1704" w="8" h="30" />
+    <activation id="03b-tasks:execution:api:6" lifeline="api" operand="t-audit-failed" x="261" y="1996" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:1" lifeline="svc" operand="t-create" x="631" y="320" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:2" lifeline="svc" operand="t-create" x="631" y="396" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:3" lifeline="svc" operand="t-create" x="631" y="472" w="8" h="48" />
+    <activation id="03b-tasks:execution:svc:4" lifeline="svc" operand="t-update" x="631" y="612" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:5" lifeline="svc" operand="t-update" x="631" y="688" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:6" lifeline="svc" operand="t-update" x="631" y="764" w="8" h="48" />
+    <activation id="03b-tasks:execution:svc:7" lifeline="svc" operand="t-invalid-yes" x="631" y="1012" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:8" lifeline="svc" operand="" x="631" y="1136" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:9" lifeline="svc" operand="t-saved" x="631" y="1336" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:10" lifeline="svc" operand="t-saved" x="631" y="1412" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:11" lifeline="svc" operand="t-saved" x="631" y="1488" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:12" lifeline="svc" operand="t-save-failed" x="631" y="1628" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:13" lifeline="svc" operand="t-save-failed" x="631" y="1704" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:14" lifeline="svc" operand="t-audit-failed" x="631" y="1844" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:15" lifeline="svc" operand="t-audit-failed" x="631" y="1920" w="8" h="30" />
+    <activation id="03b-tasks:execution:svc:16" lifeline="svc" operand="t-audit-failed" x="631" y="1996" w="8" h="30" />
+    <activation id="03b-tasks:execution:plans:1" lifeline="plans" operand="t-create" x="1001" y="396" w="8" h="30" />
+    <activation id="03b-tasks:execution:task:1" lifeline="task" operand="" x="1371" y="1136" w="8" h="30" />
+    <activation id="03b-tasks:execution:repo:1" lifeline="repo" operand="t-update" x="1741" y="688" w="8" h="30" />
+    <activation id="03b-tasks:execution:repo:2" lifeline="repo" operand="t-saved" x="1741" y="1336" w="8" h="30" />
+    <activation id="03b-tasks:execution:repo:3" lifeline="repo" operand="t-save-failed" x="1741" y="1628" w="8" h="30" />
+    <activation id="03b-tasks:execution:repo:4" lifeline="repo" operand="t-audit-failed" x="1741" y="1844" w="8" h="30" />
+    <activation id="03b-tasks:execution:audit:1" lifeline="audit" operand="t-saved" x="2111" y="1412" w="8" h="30" />
+    <activation id="03b-tasks:execution:audit:2" lifeline="audit" operand="t-audit-failed" x="2111" y="1920" w="8" h="30" />
+  </diagram>
+  <diagram id="03c-assignments" name="3c. Реализация — назначения и расписание" notes="assignFairy: роль координатора; идентификатор феи / роль обязательны; талант совпадает; проверка расписания только при CONFIRMED. Текущий hasScheduleConflict ограничен тем же SeasonPlan; межсезонная проверка требует расширения.&#10;Цикл проверки конфликтов читает MagicTask для каждого подтверждённого назначения феи и сравнивает TimeWindow.overlaps. При несовместимости/конфликте ValidationSupport.throwIfAny бросает DomainValidationException до save.&#10;Текущий API позволяет координатору передать статус CONFIRMED, не хранит confirmedAt и не имеет команды самостоятельного подтверждения. ParticipationService — явно проектируемый контракт, не существующий класс.&#10;Цель: атомарные save + аудит + outbox, защита устаревших назначений и подтверждение участия. При нехватке ролей блокируется готовность, предупреждение не заменяет проверку. Уведомления FR-88/89 требуют outbox/планировщика." width="2740" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="Valid assignment and participation saved with audit, or no command changes on failure; plan stays APPROVED." height="2502">
+    <lifeline id="api" name="controller" type="LifecycleController" package="api" kind="object" x="120" y="170" w="290" h="2122" />
+    <lifeline id="svc" name="assignments" type="FairyAssignmentService" package="application" kind="object" x="490" y="170" w="290" h="2122" />
+    <lifeline id="schedule" name="schedule" type="FairySchedulePolicy" package="application" kind="object" x="860" y="170" w="290" h="2122" />
+    <lifeline id="tasks" name="tasks" type="JdbcMagicTaskRepository" package="persistence" kind="object" x="1230" y="170" w="290" h="2122" />
+    <lifeline id="repo" name="assignmentRepository" type="JdbcFairyAssignmentRepository" package="persistence" kind="object" x="1600" y="170" w="290" h="2122" />
+    <lifeline id="participation" name="participation «проект»" type="ParticipationService" package="application" kind="object" x="1970" y="170" w="290" h="2122" />
+    <lifeline id="audit" name="audit" type="AuditLogService" package="application" kind="object" x="2340" y="170" w="290" h="2122" />
+    <message id="03c-assignments-m1" from="api" to="svc" text="assignFairy(taskId, fairyId, role, talent, status, TALENT_COORDINATOR, actorId)" operation="assign" operand="" kind="call" y="260" replyTo="" fromActivation="03c-assignments:execution:api:1" toActivation="03c-assignments:execution:svc:1" />
+    <message id="03c-assignments-m2" from="svc" to="tasks" text="findById(taskId) : Optional&lt;MagicTask&gt;" operation="taskFind" operand="" kind="call" y="336" replyTo="" fromActivation="03c-assignments:execution:svc:2" toActivation="03c-assignments:execution:tasks:1" />
+    <message id="03c-assignments-m3" from="svc" to="svc" text="validateTalentCompatibility(task, talent) : boolean" operation="talent" operand="" kind="call" y="412" replyTo="" fromActivation="03c-assignments:execution:svc:3" toActivation="03c-assignments:execution:svc:3" />
+    <fragment id="a-conflict" operator="opt" parent="" x="65" y="450" w="2640" h="456">
+      <operand id="a-confirmed" guard="status=CONFIRMED" y="471" h="435" />
+    </fragment>
+    <message id="03c-assignments-m4" from="svc" to="schedule" text="hasScheduleConflict(task, fairyId)" operation="conflict" operand="a-confirmed" kind="call" y="612" replyTo="" fromActivation="03c-assignments:execution:svc:4" toActivation="03c-assignments:execution:schedule:1" />
+    <message id="03c-assignments-m5" from="schedule" to="repo" text="findConfirmedByFairyId(fairyId)" operation="fairyList" operand="a-confirmed" kind="call" y="688" replyTo="" fromActivation="03c-assignments:execution:schedule:2" toActivation="03c-assignments:execution:repo:1" />
+    <message id="03c-assignments-m6" from="schedule" to="tasks" text="findById(assignment.magicTaskId()) для каждого назначения" operation="taskFind" operand="a-confirmed" kind="call" y="764" replyTo="" fromActivation="03c-assignments:execution:schedule:3" toActivation="03c-assignments:execution:tasks:2" />
+    <message id="03c-assignments-m7" from="schedule" to="svc" text="boolean: тот же план и пересечение окон; «проект» межсезонная проверка" operation="" operand="a-confirmed" kind="call" y="840" replyTo="" toActivation="03c-assignments:execution:svc:5" fromActivation="03c-assignments:execution:schedule:4" />
+    <fragment id="a-result" operator="alt" parent="" x="65" y="926" w="2640" h="520">
+      <operand id="a-invalid" guard="talent mismatch / пустые поля / конфликт расписания" y="947" h="181" />
+      <operand id="a-valid" guard="else: данные допустимы" y="1128" h="318" />
+    </fragment>
+    <message id="03c-assignments-m8" from="svc" to="api" text="DomainValidationException(errors); ничего не сохранять" operation="" operand="a-invalid" kind="call" y="1088" replyTo="" toActivation="03c-assignments:execution:api:2" fromActivation="03c-assignments:execution:svc:6" />
+    <message id="03c-assignments-m9" from="svc" to="repo" text="save(new FairyAssignment(...), actorId)" operation="assignmentSave" operand="a-valid" kind="call" y="1228" replyTo="" fromActivation="03c-assignments:execution:svc:7" toActivation="03c-assignments:execution:repo:2" />
+    <message id="03c-assignments-m10" from="svc" to="audit" text="append(planId, FAIRY_ASSIGNED, actorId, fairyId)" operation="audit" operand="a-valid" kind="call" y="1304" replyTo="" fromActivation="03c-assignments:execution:svc:8" toActivation="03c-assignments:execution:audit:1" />
+    <message id="03c-assignments-m11" from="svc" to="api" text="FairyAssignment → FairyAssignmentResponse" operation="" operand="a-valid" kind="call" y="1380" replyTo="" toActivation="03c-assignments:execution:api:3" fromActivation="03c-assignments:execution:svc:9" />
+    <fragment id="a-participation" operator="opt" parent="" x="65" y="1466" w="2640" h="768">
+      <operand id="a-pending" guard="Назначение создано, но участие ещё не подтверждено" y="1487" h="747" />
+    </fragment>
+    <message id="03c-assignments-m12" from="api" to="participation" text="«проект» confirmParticipation(assignmentId, confirmedAt, currentActor)" operation="participation" operand="a-pending" kind="call" y="1628" replyTo="" fromActivation="03c-assignments:execution:api:4" toActivation="03c-assignments:execution:participation:1" />
+    <message id="03c-assignments-m13" from="participation" to="schedule" text="hasScheduleConflict(task, fairyId) при подтверждении" operation="conflict" operand="a-pending" kind="call" y="1704" replyTo="" toActivation="03c-assignments:execution:schedule:5" fromActivation="03c-assignments:execution:participation:2" />
+    <fragment id="a-confirm-conflict" operator="break" parent="a-pending" x="85" y="1742" w="2600" h="228">
+      <operand id="a-confirm-conflict-yes" guard="conflict=true: прекратить подтверждение без save" y="1763" h="207" />
+    </fragment>
+    <message id="03c-assignments-m14" from="participation" to="api" text="«проект»: ошибка конфликта; участие НЕ подтверждено; никаких записей" operation="" operand="a-confirm-conflict-yes" kind="call" y="1904" replyTo="" toActivation="03c-assignments:execution:api:5" fromActivation="03c-assignments:execution:participation:3" />
+    <message id="03c-assignments-m15" from="participation" to="repo" text="«проект» save(assignment CONFIRMED + confirmedAt, actorId)" operation="assignmentSave" operand="a-pending" kind="call" y="2092" replyTo="" toActivation="03c-assignments:execution:repo:3" fromActivation="03c-assignments:execution:participation:4" />
+    <message id="03c-assignments-m16" from="participation" to="audit" text="«проект» append(planId, action, actorId, confirmationEvidence)" operation="audit" operand="a-pending" kind="call" y="2168" replyTo="" fromActivation="03c-assignments:execution:participation:5" toActivation="03c-assignments:execution:audit:2" />
+    <activation id="03c-assignments:execution:api:1" lifeline="api" operand="" x="261" y="260" w="8" h="30" />
+    <activation id="03c-assignments:execution:api:2" lifeline="api" operand="a-invalid" x="261" y="1088" w="8" h="30" />
+    <activation id="03c-assignments:execution:api:3" lifeline="api" operand="a-valid" x="261" y="1380" w="8" h="30" />
+    <activation id="03c-assignments:execution:api:4" lifeline="api" operand="a-pending" x="261" y="1628" w="8" h="30" />
+    <activation id="03c-assignments:execution:api:5" lifeline="api" operand="a-confirm-conflict-yes" x="261" y="1904" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:1" lifeline="svc" operand="" x="631" y="260" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:2" lifeline="svc" operand="" x="631" y="336" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:3" lifeline="svc" operand="" x="631" y="412" w="8" h="48" />
+    <activation id="03c-assignments:execution:svc:4" lifeline="svc" operand="a-confirmed" x="631" y="612" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:5" lifeline="svc" operand="a-confirmed" x="631" y="840" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:6" lifeline="svc" operand="a-invalid" x="631" y="1088" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:7" lifeline="svc" operand="a-valid" x="631" y="1228" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:8" lifeline="svc" operand="a-valid" x="631" y="1304" w="8" h="30" />
+    <activation id="03c-assignments:execution:svc:9" lifeline="svc" operand="a-valid" x="631" y="1380" w="8" h="30" />
+    <activation id="03c-assignments:execution:schedule:1" lifeline="schedule" operand="a-confirmed" x="1001" y="612" w="8" h="30" />
+    <activation id="03c-assignments:execution:schedule:2" lifeline="schedule" operand="a-confirmed" x="1001" y="688" w="8" h="30" />
+    <activation id="03c-assignments:execution:schedule:3" lifeline="schedule" operand="a-confirmed" x="1001" y="764" w="8" h="30" />
+    <activation id="03c-assignments:execution:schedule:4" lifeline="schedule" operand="a-confirmed" x="1001" y="840" w="8" h="30" />
+    <activation id="03c-assignments:execution:schedule:5" lifeline="schedule" operand="a-pending" x="1001" y="1704" w="8" h="30" />
+    <activation id="03c-assignments:execution:tasks:1" lifeline="tasks" operand="" x="1371" y="336" w="8" h="30" />
+    <activation id="03c-assignments:execution:tasks:2" lifeline="tasks" operand="a-confirmed" x="1371" y="764" w="8" h="30" />
+    <activation id="03c-assignments:execution:repo:1" lifeline="repo" operand="a-confirmed" x="1741" y="688" w="8" h="30" />
+    <activation id="03c-assignments:execution:repo:2" lifeline="repo" operand="a-valid" x="1741" y="1228" w="8" h="30" />
+    <activation id="03c-assignments:execution:repo:3" lifeline="repo" operand="a-pending" x="1741" y="2092" w="8" h="30" />
+    <activation id="03c-assignments:execution:participation:1" lifeline="participation" operand="a-pending" x="2111" y="1628" w="8" h="30" />
+    <activation id="03c-assignments:execution:participation:2" lifeline="participation" operand="a-pending" x="2111" y="1704" w="8" h="30" />
+    <activation id="03c-assignments:execution:participation:3" lifeline="participation" operand="a-confirm-conflict-yes" x="2111" y="1904" w="8" h="30" />
+    <activation id="03c-assignments:execution:participation:4" lifeline="participation" operand="a-pending" x="2111" y="2092" w="8" h="30" />
+    <activation id="03c-assignments:execution:participation:5" lifeline="participation" operand="a-pending" x="2111" y="2168" w="8" h="30" />
+    <activation id="03c-assignments:execution:audit:1" lifeline="audit" operand="a-valid" x="2481" y="1304" w="8" h="30" />
+    <activation id="03c-assignments:execution:audit:2" lifeline="audit" operand="a-pending" x="2481" y="2168" w="8" h="30" />
+  </diagram>
+  <diagram id="03d-readiness" name="3d. Реализация — чек-лист и RITUAL_READY" notes="Типы репозиториев — реальные JDBC-реализации инъецируемых интерфейсов. У каждого сервиса/домена своя линия жизни; рекурсия calculateChecklist показана self-call.&#10;Текущий calculateChecklist: latest.status=CONFIRMED, tasks непусты и все READY; на каждую задачу хотя бы одно CONFIRMED с подходящим талантом; все ручные ChecklistItem complete.&#10;«проект» расширение calculateChecklist заменяет READY-предикат на завершённость обязательных задач по каталогу; проверяет категории, RITUAL_LEAD и сезонные роли, подтверждения с датой, конфликты, CRITICAL, условия approval и незавершённые замены. Нет ручного обхода правил.&#10;JdbcCommandTransaction.execute существует, но UC-3 его не вызывает. Ниже показана целевая обвязка: блокировка плана, аудит + save + outbox в одной транзакции; rollback при исключении. Нет атомарности с удалённым Древом.&#10;completeItem сейчас сохраняет ручную отметку без аудита; целевой аудит/доказательства требуют изменения. Существующий PreparationService допускает POLLEN_GUARDIAN, хотя API/ST-00 разрешают переход только координатору; целевая проверка должна совпадать с API." width="4590" precondition="SeasonPlan APPROVED; authenticated authorized roles; current source data." postcondition="On successful commit: RITUAL_READY iff every readiness rule passes; otherwise APPROVED; immutable audit. Ritual start excluded." height="3318">
+    <lifeline id="api" name="controller" type="LifecycleController" package="api" kind="object" x="120" y="170" w="290" h="2938" />
+    <lifeline id="facade" name="facade" type="SeasonPlanService" package="service" kind="object" x="490" y="170" w="290" h="2938" />
+    <lifeline id="prep" name="preparation" type="PreparationService" package="application" kind="object" x="860" y="170" w="290" h="2938" />
+    <lifeline id="check" name="checklist" type="ReadinessChecklistService" package="application" kind="object" x="1230" y="170" w="290" h="2938" />
+    <lifeline id="repo" name="plans" type="JdbcSeasonPlanRepository" package="persistence" kind="object" x="1600" y="170" w="290" h="2938" />
+    <lifeline id="pollen" name="pollen" type="PollenService" package="application" kind="object" x="1970" y="170" w="290" h="2938" />
+    <lifeline id="tasks" name="tasks" type="JdbcMagicTaskRepository" package="persistence" kind="object" x="2340" y="170" w="290" h="2938" />
+    <lifeline id="assign" name="assignments" type="JdbcFairyAssignmentRepository" package="persistence" kind="object" x="2710" y="170" w="290" h="2938" />
+    <lifeline id="rules" name="rules «проект»" type="SeasonReadinessPolicy" package="application" kind="object" x="3080" y="170" w="290" h="2938" />
+    <lifeline id="plan" name="plan" type="SeasonPlan" package="domain" kind="object" x="3450" y="170" w="290" h="2938" />
+    <lifeline id="audit" name="audit" type="AuditLogService" package="application" kind="object" x="3820" y="170" w="290" h="2938" />
+    <lifeline id="tx" name="transaction «проект: обвязка»" type="JdbcCommandTransaction" package="persistence" kind="object" x="4190" y="170" w="290" h="2938" />
+    <fragment id="c-item" operator="opt" parent="" x="65" y="222" w="4490" h="392">
+      <operand id="c-item-yes" guard="Есть подтверждённые доказательства для ручного пункта" y="243" h="371" />
+    </fragment>
+    <message id="03d-readiness-m1" from="api" to="check" text="completeItem(planId, key, actorRole, actorId)" operation="complete" operand="c-item-yes" kind="call" y="320" replyTo="" fromActivation="03d-readiness:execution:api:1" toActivation="03d-readiness:execution:check:1" />
+    <message id="03d-readiness-m2" from="check" to="repo" text="findById(planId)" operation="planFind" operand="c-item-yes" kind="call" y="396" replyTo="" fromActivation="03d-readiness:execution:check:2" toActivation="03d-readiness:execution:repo:1" />
+    <message id="03d-readiness-m3" from="check" to="plan" text="completeReadinessChecklistItem(key, actorId, clock.instant())" operation="planComplete" operand="c-item-yes" kind="call" y="472" replyTo="" fromActivation="03d-readiness:execution:check:3" toActivation="03d-readiness:execution:plan:1" />
+    <message id="03d-readiness-m4" from="check" to="repo" text="save(plan); «проект»: аудит доказательств в этой же транзакции" operation="planSave" operand="c-item-yes" kind="call" y="548" replyTo="" fromActivation="03d-readiness:execution:check:4" toActivation="03d-readiness:execution:repo:2" />
+    <message id="03d-readiness-m5" from="api" to="facade" text="markRitualReady(id, TALENT_COORDINATOR, actorId)" operation="facadeReady" operand="" kind="call" y="672" replyTo="" fromActivation="03d-readiness:execution:api:2" toActivation="03d-readiness:execution:facade:1" />
+    <message id="03d-readiness-m6" from="facade" to="tx" text="«проект» execute(planId, command) — обвязка UC-3; BEGIN + lock" operation="transaction" operand="" kind="call" y="748" replyTo="" fromActivation="03d-readiness:execution:facade:2" toActivation="03d-readiness:execution:tx:1" />
+    <message id="03d-readiness-m7" from="tx" to="prep" text="markRitualReady(id, role, actorId) [внутри command]" operation="ready" operand="" kind="call" y="824" replyTo="" toActivation="03d-readiness:execution:prep:1" fromActivation="03d-readiness:execution:tx:2" />
+    <message id="03d-readiness-m8" from="prep" to="repo" text="findById(id); «проект»: только APPROVED и TALENT_COORDINATOR" operation="planFind" operand="" kind="call" y="900" replyTo="" fromActivation="03d-readiness:execution:prep:2" toActivation="03d-readiness:execution:repo:3" />
+    <message id="03d-readiness-m9" from="prep" to="check" text="assertReadyForRitual(id)" operation="assert" operand="" kind="call" y="976" replyTo="" fromActivation="03d-readiness:execution:prep:3" toActivation="03d-readiness:execution:check:5" />
+    <message id="03d-readiness-m10" from="check" to="check" text="calculateChecklist(seasonPlanId)" operation="calculate" operand="" kind="call" y="1052" replyTo="" fromActivation="03d-readiness:execution:check:6" toActivation="03d-readiness:execution:check:6" />
+    <message id="03d-readiness-m11" from="check" to="repo" text="findById(seasonPlanId)" operation="planFind" operand="" kind="call" y="1128" replyTo="" fromActivation="03d-readiness:execution:check:7" toActivation="03d-readiness:execution:repo:4" />
+    <message id="03d-readiness-m12" from="check" to="pollen" text="findLatestBySeasonPlanId(seasonPlanId); authoritative CONFIRMED" operation="latest" operand="" kind="call" y="1204" replyTo="" fromActivation="03d-readiness:execution:check:8" toActivation="03d-readiness:execution:pollen:1" />
+    <message id="03d-readiness-m13" from="check" to="tasks" text="findBySeasonPlanId(seasonPlanId)" operation="taskList" operand="" kind="call" y="1280" replyTo="" fromActivation="03d-readiness:execution:check:9" toActivation="03d-readiness:execution:tasks:1" />
+    <fragment id="c-each" operator="loop" parent="" x="65" y="1318" w="4490" h="228">
+      <operand id="c-each-task" guard="Для каждого MagicTask" y="1339" h="207" />
+    </fragment>
+    <message id="03d-readiness-m14" from="check" to="assign" text="findByMagicTaskId(task.id()); CONFIRMED + подходящий talent" operation="assignmentList" operand="c-each-task" kind="call" y="1480" replyTo="" fromActivation="03d-readiness:execution:check:10" toActivation="03d-readiness:execution:assign:1" />
+    <message id="03d-readiness-m15" from="check" to="rules" text="«проект» evaluate(plan, tasks, assignments, reservation)&#10;COMPLETED обязательных задач; категории; роли; CRITICAL; условия" operation="rules" operand="" kind="call" y="1604" replyTo="" fromActivation="03d-readiness:execution:check:11" toActivation="03d-readiness:execution:rules:1" />
+    <fragment id="c-result" operator="alt" parent="" x="65" y="1642" w="4490" h="1408">
+      <operand id="c-errors" guard="errors не пусты / нет ресурса / нехватка ролей / конфликт" y="1663" h="257" />
+      <operand id="c-ok" guard="Нет ошибок готовности; все записи успешны" y="1920" h="444" />
+      <operand id="c-write" guard="Нет ошибок готовности; audit.append бросает исключение" y="2364" h="292" />
+      <operand id="c-save-error" guard="Нет ошибок готовности; аудит успешен, plans.save бросает исключение" y="2656" h="394" />
+    </fragment>
+    <message id="03d-readiness-m16" from="check" to="prep" text="DomainValidationException: все ключи; без markRitualReady/save" operation="" operand="c-errors" kind="call" y="1804" replyTo="" toActivation="03d-readiness:execution:prep:4" fromActivation="03d-readiness:execution:check:12" />
+    <message id="03d-readiness-m17" from="tx" to="facade" text="«проект»: rollback; SeasonPlan остаётся APPROVED" operation="" operand="c-errors" kind="call" y="1880" replyTo="" toActivation="03d-readiness:execution:facade:3" fromActivation="03d-readiness:execution:tx:3" />
+    <message id="03d-readiness-m18" from="prep" to="plan" text="markRitualReady(actorId, clock.instant())" operation="planReady" operand="c-ok" kind="call" y="2020" replyTo="" fromActivation="03d-readiness:execution:prep:5" toActivation="03d-readiness:execution:plan:2" />
+    <message id="03d-readiness-m19" from="prep" to="audit" text="append(id, SEASON_MARKED_RITUAL_READY, actorId, null)" operation="audit" operand="c-ok" kind="call" y="2096" replyTo="" fromActivation="03d-readiness:execution:prep:6" toActivation="03d-readiness:execution:audit:1" />
+    <message id="03d-readiness-m20" from="prep" to="repo" text="save(plan) : SeasonPlan" operation="planSave" operand="c-ok" kind="call" y="2172" replyTo="" fromActivation="03d-readiness:execution:prep:7" toActivation="03d-readiness:execution:repo:5" />
+    <message id="03d-readiness-m21" from="tx" to="facade" text="«проект»: COMMIT после save + audit (+ outbox при уведомлении)" operation="" operand="c-ok" kind="call" y="2248" replyTo="" toActivation="03d-readiness:execution:facade:4" fromActivation="03d-readiness:execution:tx:4" />
+    <message id="03d-readiness-m22" from="facade" to="api" text="SeasonPlan → SeasonPlanResponse(status=RITUAL_READY)" operation="" operand="c-ok" kind="call" y="2324" replyTo="" toActivation="03d-readiness:execution:api:3" fromActivation="03d-readiness:execution:facade:5" />
+    <message id="03d-readiness-m23" from="prep" to="plan" text="markRitualReady(actorId, clock.instant()) [изменение только в памяти]" operation="planReady" operand="c-write" kind="call" y="2464" replyTo="" fromActivation="03d-readiness:execution:prep:8" toActivation="03d-readiness:execution:plan:3" />
+    <message id="03d-readiness-m24" from="prep" to="audit" text="append(id, SEASON_MARKED_RITUAL_READY, actorId, null) → исключение" operation="audit" operand="c-write" kind="call" y="2540" replyTo="" fromActivation="03d-readiness:execution:prep:9" toActivation="03d-readiness:execution:audit:2" />
+    <message id="03d-readiness-m25" from="tx" to="api" text="«проект»: rollback; без save и успешного ответа" operation="" operand="c-write" kind="call" y="2616" replyTo="" toActivation="03d-readiness:execution:api:4" fromActivation="03d-readiness:execution:tx:5" />
+    <message id="03d-readiness-m26" from="prep" to="plan" text="markRitualReady(actorId, clock.instant()) [изменение только в памяти]" operation="planReady" operand="c-save-error" kind="call" y="2756" replyTo="" fromActivation="03d-readiness:execution:prep:10" toActivation="03d-readiness:execution:plan:4" />
+    <message id="03d-readiness-m27" from="prep" to="audit" text="append(id, SEASON_MARKED_RITUAL_READY, actorId, null)" operation="audit" operand="c-save-error" kind="call" y="2832" replyTo="" fromActivation="03d-readiness:execution:prep:11" toActivation="03d-readiness:execution:audit:3" />
+    <message id="03d-readiness-m28" from="prep" to="repo" text="save(plan) → исключение" operation="planSave" operand="c-save-error" kind="call" y="2908" replyTo="" fromActivation="03d-readiness:execution:prep:12" toActivation="03d-readiness:execution:repo:6" />
+    <message id="03d-readiness-m29" from="tx" to="api" text="«проект»: rollback включая аудит; вернуть ошибку" operation="" operand="c-save-error" kind="call" y="2984" replyTo="" toActivation="03d-readiness:execution:api:5" fromActivation="03d-readiness:execution:tx:6" />
+    <activation id="03d-readiness:execution:api:1" lifeline="api" operand="c-item-yes" x="261" y="320" w="8" h="30" />
+    <activation id="03d-readiness:execution:api:2" lifeline="api" operand="" x="261" y="672" w="8" h="30" />
+    <activation id="03d-readiness:execution:api:3" lifeline="api" operand="c-ok" x="261" y="2324" w="8" h="30" />
+    <activation id="03d-readiness:execution:api:4" lifeline="api" operand="c-write" x="261" y="2616" w="8" h="30" />
+    <activation id="03d-readiness:execution:api:5" lifeline="api" operand="c-save-error" x="261" y="2984" w="8" h="30" />
+    <activation id="03d-readiness:execution:facade:1" lifeline="facade" operand="" x="631" y="672" w="8" h="30" />
+    <activation id="03d-readiness:execution:facade:2" lifeline="facade" operand="" x="631" y="748" w="8" h="30" />
+    <activation id="03d-readiness:execution:facade:3" lifeline="facade" operand="c-errors" x="631" y="1880" w="8" h="30" />
+    <activation id="03d-readiness:execution:facade:4" lifeline="facade" operand="c-ok" x="631" y="2248" w="8" h="30" />
+    <activation id="03d-readiness:execution:facade:5" lifeline="facade" operand="c-ok" x="631" y="2324" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:1" lifeline="prep" operand="" x="1001" y="824" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:2" lifeline="prep" operand="" x="1001" y="900" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:3" lifeline="prep" operand="" x="1001" y="976" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:4" lifeline="prep" operand="c-errors" x="1001" y="1804" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:5" lifeline="prep" operand="c-ok" x="1001" y="2020" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:6" lifeline="prep" operand="c-ok" x="1001" y="2096" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:7" lifeline="prep" operand="c-ok" x="1001" y="2172" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:8" lifeline="prep" operand="c-write" x="1001" y="2464" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:9" lifeline="prep" operand="c-write" x="1001" y="2540" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:10" lifeline="prep" operand="c-save-error" x="1001" y="2756" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:11" lifeline="prep" operand="c-save-error" x="1001" y="2832" w="8" h="30" />
+    <activation id="03d-readiness:execution:prep:12" lifeline="prep" operand="c-save-error" x="1001" y="2908" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:1" lifeline="check" operand="c-item-yes" x="1371" y="320" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:2" lifeline="check" operand="c-item-yes" x="1371" y="396" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:3" lifeline="check" operand="c-item-yes" x="1371" y="472" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:4" lifeline="check" operand="c-item-yes" x="1371" y="548" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:5" lifeline="check" operand="" x="1371" y="976" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:6" lifeline="check" operand="" x="1371" y="1052" w="8" h="48" />
+    <activation id="03d-readiness:execution:check:7" lifeline="check" operand="" x="1371" y="1128" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:8" lifeline="check" operand="" x="1371" y="1204" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:9" lifeline="check" operand="" x="1371" y="1280" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:10" lifeline="check" operand="c-each-task" x="1371" y="1480" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:11" lifeline="check" operand="" x="1371" y="1604" w="8" h="30" />
+    <activation id="03d-readiness:execution:check:12" lifeline="check" operand="c-errors" x="1371" y="1804" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:1" lifeline="repo" operand="c-item-yes" x="1741" y="396" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:2" lifeline="repo" operand="c-item-yes" x="1741" y="548" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:3" lifeline="repo" operand="" x="1741" y="900" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:4" lifeline="repo" operand="" x="1741" y="1128" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:5" lifeline="repo" operand="c-ok" x="1741" y="2172" w="8" h="30" />
+    <activation id="03d-readiness:execution:repo:6" lifeline="repo" operand="c-save-error" x="1741" y="2908" w="8" h="30" />
+    <activation id="03d-readiness:execution:pollen:1" lifeline="pollen" operand="" x="2111" y="1204" w="8" h="30" />
+    <activation id="03d-readiness:execution:tasks:1" lifeline="tasks" operand="" x="2481" y="1280" w="8" h="30" />
+    <activation id="03d-readiness:execution:assign:1" lifeline="assign" operand="c-each-task" x="2851" y="1480" w="8" h="30" />
+    <activation id="03d-readiness:execution:rules:1" lifeline="rules" operand="" x="3221" y="1604" w="8" h="30" />
+    <activation id="03d-readiness:execution:plan:1" lifeline="plan" operand="c-item-yes" x="3591" y="472" w="8" h="30" />
+    <activation id="03d-readiness:execution:plan:2" lifeline="plan" operand="c-ok" x="3591" y="2020" w="8" h="30" />
+    <activation id="03d-readiness:execution:plan:3" lifeline="plan" operand="c-write" x="3591" y="2464" w="8" h="30" />
+    <activation id="03d-readiness:execution:plan:4" lifeline="plan" operand="c-save-error" x="3591" y="2756" w="8" h="30" />
+    <activation id="03d-readiness:execution:audit:1" lifeline="audit" operand="c-ok" x="3961" y="2096" w="8" h="30" />
+    <activation id="03d-readiness:execution:audit:2" lifeline="audit" operand="c-write" x="3961" y="2540" w="8" h="30" />
+    <activation id="03d-readiness:execution:audit:3" lifeline="audit" operand="c-save-error" x="3961" y="2832" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:1" lifeline="tx" operand="" x="4331" y="748" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:2" lifeline="tx" operand="" x="4331" y="824" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:3" lifeline="tx" operand="c-errors" x="4331" y="1880" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:4" lifeline="tx" operand="c-ok" x="4331" y="2248" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:5" lifeline="tx" operand="c-write" x="4331" y="2616" w="8" h="30" />
+    <activation id="03d-readiness:execution:tx:6" lifeline="tx" operand="c-save-error" x="4331" y="2984" w="8" h="30" />
+  </diagram>
+</uc3-sequences>

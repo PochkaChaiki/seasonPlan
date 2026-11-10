@@ -1,0 +1,1778 @@
+{
+  "packageInventory": {
+    "com.seasonplan.lifecycle.adapter.fake": [
+      "com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService",
+      "com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient",
+      "com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository",
+      "com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository",
+      "com.seasonplan.lifecycle.adapter.fake.InMemoryMagicTaskRepository",
+      "com.seasonplan.lifecycle.adapter.fake.InMemorySeasonPlanRepository",
+      "com.seasonplan.lifecycle.adapter.fake.NotificationService"
+    ],
+    "com.seasonplan.lifecycle.adapter.pollentree": [
+      "com.seasonplan.lifecycle.adapter.pollentree.RestPollenTreeClient"
+    ],
+    "com.seasonplan.lifecycle.api": [
+      "com.seasonplan.lifecycle.api.LifecycleApiModels",
+      "com.seasonplan.lifecycle.api.LifecycleController",
+      "com.seasonplan.lifecycle.api.LifecycleExceptionHandler"
+    ],
+    "com.seasonplan.lifecycle.application.approval": [
+      "com.seasonplan.lifecycle.application.approval.ApprovalService"
+    ],
+    "com.seasonplan.lifecycle.application.completion": [
+      "com.seasonplan.lifecycle.application.completion.CompletionService"
+    ],
+    "com.seasonplan.lifecycle.application.execution": [
+      "com.seasonplan.lifecycle.application.execution.IncidentResponseService",
+      "com.seasonplan.lifecycle.application.execution.MonitoringService",
+      "com.seasonplan.lifecycle.application.execution.RitualService"
+    ],
+    "com.seasonplan.lifecycle.application.planning": [
+      "com.seasonplan.lifecycle.application.planning.PlanningService"
+    ],
+    "com.seasonplan.lifecycle.application.pollen": [
+      "com.seasonplan.lifecycle.application.pollen.PollenService"
+    ],
+    "com.seasonplan.lifecycle.application.port": [
+      "com.seasonplan.lifecycle.application.port.AuditLogRepository",
+      "com.seasonplan.lifecycle.application.port.CommandTransaction",
+      "com.seasonplan.lifecycle.application.port.CompletionPorts",
+      "com.seasonplan.lifecycle.application.port.CurrentActorProvider",
+      "com.seasonplan.lifecycle.application.port.ExecutionPorts",
+      "com.seasonplan.lifecycle.application.port.FairyAssignmentRepository",
+      "com.seasonplan.lifecycle.application.port.MagicTaskRepository",
+      "com.seasonplan.lifecycle.application.port.NaturalCalendarService",
+      "com.seasonplan.lifecycle.application.port.NotificationOutbox",
+      "com.seasonplan.lifecycle.application.port.PlannerNotifications",
+      "com.seasonplan.lifecycle.application.port.PollenTreeClient",
+      "com.seasonplan.lifecycle.application.port.SeasonPlanRepository"
+    ],
+    "com.seasonplan.lifecycle.application.preparation": [
+      "com.seasonplan.lifecycle.application.preparation.FairyAssignmentService",
+      "com.seasonplan.lifecycle.application.preparation.FairySchedulePolicy",
+      "com.seasonplan.lifecycle.application.preparation.MagicTaskService",
+      "com.seasonplan.lifecycle.application.preparation.PreparationService",
+      "com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService"
+    ],
+    "com.seasonplan.lifecycle.application.shared": [
+      "com.seasonplan.lifecycle.application.shared.AccessDeniedForRoleException",
+      "com.seasonplan.lifecycle.application.shared.AuditLogService",
+      "com.seasonplan.lifecycle.application.shared.NotFoundException",
+      "com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException",
+      "com.seasonplan.lifecycle.application.shared.ValidationSupport"
+    ],
+    "com.seasonplan.lifecycle.application": [
+      "com.seasonplan.lifecycle.application.UseCaseSupport"
+    ],
+    "com.seasonplan.lifecycle.config": [
+      "com.seasonplan.lifecycle.config.LifecycleConfiguration",
+      "com.seasonplan.lifecycle.config.PollenTreeIntegrationConfiguration",
+      "com.seasonplan.lifecycle.config.SecurityConfiguration"
+    ],
+    "com.seasonplan.lifecycle.domain": [
+      "com.seasonplan.lifecycle.domain.ActorRole",
+      "com.seasonplan.lifecycle.domain.AssignmentStatus",
+      "com.seasonplan.lifecycle.domain.AuditAction",
+      "com.seasonplan.lifecycle.domain.AuditLogEntry",
+      "com.seasonplan.lifecycle.domain.ChecklistItem",
+      "com.seasonplan.lifecycle.domain.ClimateMetric",
+      "com.seasonplan.lifecycle.domain.CorrectionAction",
+      "com.seasonplan.lifecycle.domain.CurrentActor",
+      "com.seasonplan.lifecycle.domain.DomainValidationException",
+      "com.seasonplan.lifecycle.domain.FairyAssignment",
+      "com.seasonplan.lifecycle.domain.MagicIncident",
+      "com.seasonplan.lifecycle.domain.MagicTask",
+      "com.seasonplan.lifecycle.domain.MagicTaskStatus",
+      "com.seasonplan.lifecycle.domain.MetricDefinition",
+      "com.seasonplan.lifecycle.domain.PollenCapacity",
+      "com.seasonplan.lifecycle.domain.PollenReservation",
+      "com.seasonplan.lifecycle.domain.PollenReservationStatus",
+      "com.seasonplan.lifecycle.domain.PollenUsage",
+      "com.seasonplan.lifecycle.domain.RitualSession",
+      "com.seasonplan.lifecycle.domain.SeasonPlan",
+      "com.seasonplan.lifecycle.domain.SeasonPlanStatus",
+      "com.seasonplan.lifecycle.domain.SeasonReport",
+      "com.seasonplan.lifecycle.domain.TimeWindow"
+    ],
+    "com.seasonplan.lifecycle.persistence": [
+      "com.seasonplan.lifecycle.persistence.JdbcAuditLogRepository",
+      "com.seasonplan.lifecycle.persistence.JdbcCommandTransaction",
+      "com.seasonplan.lifecycle.persistence.JdbcFairyAssignmentRepository",
+      "com.seasonplan.lifecycle.persistence.JdbcJson",
+      "com.seasonplan.lifecycle.persistence.JdbcMagicTaskRepository",
+      "com.seasonplan.lifecycle.persistence.JdbcSeasonPlanRepository"
+    ],
+    "com.seasonplan.lifecycle.service": [
+      "com.seasonplan.lifecycle.service.SeasonPlanService"
+    ],
+    "com.seasonplan": [
+      "com.seasonplan.SeasonPlanApplication"
+    ],
+    "com.seasonplan.security": [
+      "com.seasonplan.security.AdminUserController",
+      "com.seasonplan.security.AuthController",
+      "com.seasonplan.security.DevelopmentAdministratorBootstrap",
+      "com.seasonplan.security.JdbcLocalUserDetailsService",
+      "com.seasonplan.security.JsonAuthenticationHandlers",
+      "com.seasonplan.security.LocalUserAdministration",
+      "com.seasonplan.security.LocalUserAdministrationService",
+      "com.seasonplan.security.LocalUserDetails",
+      "com.seasonplan.security.ManagedUser",
+      "com.seasonplan.security.SecurityCurrentActorProvider",
+      "com.seasonplan.security.UserAdministrationException",
+      "com.seasonplan.security.UserAdministrationExceptionHandler",
+      "com.seasonplan.security.UsernameNormalizer"
+    ]
+  },
+  "views": [
+    {
+      "id": "01-system",
+      "name": "1. SeasonPlan — Архитектура пакетов",
+      "nodes": {
+        "frontend": {
+          "name": "frontend/src",
+          "body": "React 18 · browser client\nauth / components / api\nfeatures: seasonPlanning,\nplanReview, preparation\nHTTP client: lifecycleApi.js\nNo direct database access",
+          "color": "E8F3FC",
+          "w": 420,
+          "h": 280,
+          "x": 322,
+          "y": 180
+        },
+        "com.seasonplan.lifecycle.api": {
+          "name": "api",
+          "body": "com.seasonplan.lifecycle.api\nLifecycleController\nLifecycleApiModels / errors\nREST routes: planning, approval,\npollen reservations, preparation\nUC-4 / UC-5 routes absent",
+          "color": "E8F3FC",
+          "w": 420,
+          "h": 280,
+          "x": 80,
+          "y": 539
+        },
+        "com.seasonplan.security": {
+          "name": "security",
+          "body": "com.seasonplan.security\nAuthController / AdminUserController\nLocalUserAdministrationService\nSecurityCurrentActorProvider\nSession authentication / CSRF\nJDBC users and administration",
+          "color": "F0EBF9",
+          "w": 420,
+          "h": 280,
+          "x": 719,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.service": {
+          "name": "service",
+          "body": "com.seasonplan.lifecycle.service\nSeasonPlanService\nCompatibility facade\nDelegates UC-1 / UC-2 / UC-3\nNot an independent domain module",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 234,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.application": {
+          "name": "application",
+          "body": "com.seasonplan.lifecycle.application.*\nUC-1 planning / UC-2 approval\nUC-3 preparation / UC-4 execution\nUC-5 completion / pollen\nport / shared / UseCaseSupport\nUC-4 / UC-5: core-only services\nPollenService is the pollen boundary",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 1027,
+          "y": 1257
+        },
+        "com.seasonplan.lifecycle.domain": {
+          "name": "domain",
+          "body": "com.seasonplan.lifecycle.domain\nSeasonPlan / PollenReservation\nMagicTask / FairyAssignment\nRitualSession / ClimateMetric\nMagicIncident / CorrectionAction\nSeasonReport / AuditLogEntry\nRules, enums, immutable snapshots\nOnly JDK dependencies",
+          "color": "F0F6E5",
+          "w": 420,
+          "h": 280,
+          "x": 1027,
+          "y": 1616
+        },
+        "com.seasonplan.lifecycle.persistence": {
+          "name": "persistence",
+          "body": "com.seasonplan.lifecycle.persistence\nJdbc*Repository / JdbcCommandTransaction\nPlans, tasks, assignments, audit\nJDBC → PostgreSQL 14 / Liquibase\nAppend-only audit protections\nNo local pollen reservation writes\nUC-4 / UC-5 adapters absent",
+          "color": "FFF2DF",
+          "w": 420,
+          "h": 280,
+          "x": 1335,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.adapter.fake": {
+          "name": "fake",
+          "body": "lifecycle.adapter.fake\nInMemory*Repository\nAllowingNaturalCalendarService: stub\nNotificationService: stub\nFakePollenTreeClient: dev/test only\nNot production provider adapters",
+          "color": "FFF2DF",
+          "w": 420,
+          "h": 280,
+          "x": 1820,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.adapter.pollentree": {
+          "name": "pollentree",
+          "body": "lifecycle.adapter.pollentree\nRestPollenTreeClient\nImplements PollenTreeClient\nHTTPS / JSON → external Pollen Tree\nProposed provider contract\nLive provider compatibility unverified\nNo domain → adapter dependency",
+          "color": "FFF2DF",
+          "w": 420,
+          "h": 280,
+          "x": 2305,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.config": {
+          "name": "config",
+          "body": "com.seasonplan.lifecycle.config\nLifecycleConfiguration\nSecurityConfiguration\nPollenTreeIntegrationConfiguration\nSpring composition / RBAC / profiles\nWires ports to implementations\nNot all core services are wired",
+          "color": "F0EBF9",
+          "w": 420,
+          "h": 280,
+          "x": 1071,
+          "y": 539
+        }
+      },
+      "edges": [
+        {
+          "id": "system-0",
+          "from": "com.seasonplan.lifecycle.adapter.fake",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/AllowingNaturalCalendarService.java: import com.seasonplan.lifecycle.application.port.NaturalCalendarService",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.application.port.PollenTreeClient",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryAuditLogRepository.java: import com.seasonplan.lifecycle.application.port.AuditLogRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryFairyAssignmentRepository.java: import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryMagicTaskRepository.java: import com.seasonplan.lifecycle.application.port.MagicTaskRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemorySeasonPlanRepository.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/NotificationService.java: import com.seasonplan.lifecycle.application.port.PlannerNotifications",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.application.shared.NotFoundException"
+          ],
+          "points": [
+            [
+              1960,
+              1178
+            ],
+            [
+              1960,
+              1350
+            ],
+            [
+              1447,
+              1350
+            ]
+          ]
+        },
+        {
+          "id": "system-1",
+          "from": "com.seasonplan.lifecycle.adapter.fake",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/AllowingNaturalCalendarService.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenCapacity",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.domain.DomainValidationException",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservationStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryAuditLogRepository.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryFairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryFairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryMagicTaskRepository.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemorySeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.SeasonPlan"
+          ],
+          "points": [
+            [
+              2100,
+              1178
+            ],
+            [
+              2100,
+              1756
+            ],
+            [
+              1447,
+              1756
+            ]
+          ]
+        },
+        {
+          "id": "system-2",
+          "from": "com.seasonplan.lifecycle.adapter.pollentree",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.application.port.PollenTreeClient",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.application.shared.NotFoundException",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException"
+          ],
+          "points": [
+            [
+              2445,
+              1178
+            ],
+            [
+              2445,
+              1444
+            ],
+            [
+              1447,
+              1444
+            ]
+          ]
+        },
+        {
+          "id": "system-3",
+          "from": "com.seasonplan.lifecycle.adapter.pollentree",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.domain.DomainValidationException",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenCapacity",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservationStatus"
+          ],
+          "points": [
+            [
+              2585,
+              1178
+            ],
+            [
+              2585,
+              1826
+            ],
+            [
+              1447,
+              1826
+            ]
+          ]
+        },
+        {
+          "id": "system-4",
+          "from": "com.seasonplan.lifecycle.api",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.application.preparation.MagicTaskService",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.application.pollen.PollenService",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.application.port.CurrentActorProvider",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java: import com.seasonplan.lifecycle.application.shared.AccessDeniedForRoleException",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java: import com.seasonplan.lifecycle.application.shared.NotFoundException",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java: import com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException"
+          ],
+          "points": [
+            [
+              183,
+              819
+            ],
+            [
+              183,
+              1444
+            ],
+            [
+              1027,
+              1444
+            ]
+          ]
+        },
+        {
+          "id": "system-5",
+          "from": "com.seasonplan.lifecycle.api",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.ChecklistItem",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.PollenReservationStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.SeasonPlanStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java: import com.seasonplan.lifecycle.domain.TimeWindow",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.CurrentActor",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java: import com.seasonplan.lifecycle.domain.DomainValidationException"
+          ],
+          "points": [
+            [
+              131,
+              819
+            ],
+            [
+              131,
+              1756
+            ],
+            [
+              1027,
+              1756
+            ]
+          ]
+        },
+        {
+          "id": "system-6",
+          "from": "com.seasonplan.lifecycle.api",
+          "to": "com.seasonplan.lifecycle.service",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java: import com.seasonplan.lifecycle.service.SeasonPlanService"
+          ],
+          "points": [
+            [
+              367,
+              819
+            ],
+            [
+              367,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-7",
+          "from": "com.seasonplan.lifecycle.application",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/AuditLogRepository.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/CompletionPorts.java: import com.seasonplan.lifecycle.domain.SeasonReport",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/CurrentActorProvider.java: import com.seasonplan.lifecycle.domain.CurrentActor",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/ExecutionPorts.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/FairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/MagicTaskRepository.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/NaturalCalendarService.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenCapacity",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenUsage",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.DomainValidationException",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.SeasonPlanStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.ChecklistItem",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.PollenReservationStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AccessDeniedForRoleException.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java: import com.seasonplan.lifecycle.domain.DomainValidationException",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              1237,
+              1537
+            ],
+            [
+              1237,
+              1616
+            ]
+          ]
+        },
+        {
+          "id": "system-8",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.lifecycle.adapter.fake",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.adapter.fake.NotificationService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/PollenTreeIntegrationConfiguration.java: import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient"
+          ],
+          "points": [
+            [
+              1491,
+              726
+            ],
+            [
+              2030,
+              726
+            ],
+            [
+              2030,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-9",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.lifecycle.adapter.pollentree",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/PollenTreeIntegrationConfiguration.java: import com.seasonplan.lifecycle.adapter.pollentree.RestPollenTreeClient"
+          ],
+          "points": [
+            [
+              1491,
+              632
+            ],
+            [
+              2515,
+              632
+            ],
+            [
+              2515,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-10",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.AuditLogRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.CommandTransaction",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.MagicTaskRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.NaturalCalendarService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.PollenTreeClient",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.NotificationOutbox",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.shared.AuditLogService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.preparation.FairySchedulePolicy",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.preparation.MagicTaskService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService",
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.application.pollen.PollenService"
+          ],
+          "points": [
+            [
+              1237,
+              819
+            ],
+            [
+              1237,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "system-11",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.lifecycle.persistence",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.persistence.JdbcCommandTransaction"
+          ],
+          "points": [
+            [
+              1413,
+              819
+            ],
+            [
+              1413,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-12",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.lifecycle.service",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java: import com.seasonplan.lifecycle.service.SeasonPlanService"
+          ],
+          "points": [
+            [
+              1071,
+              679
+            ],
+            [
+              577,
+              679
+            ],
+            [
+              577,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-13",
+          "from": "com.seasonplan.lifecycle.config",
+          "to": "com.seasonplan.security",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/config/SecurityConfiguration.java: import com.seasonplan.security.JsonAuthenticationHandlers"
+          ],
+          "points": [
+            [
+              1105,
+              819
+            ],
+            [
+              1105,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "system-14",
+          "from": "com.seasonplan.lifecycle.persistence",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java: import com.seasonplan.lifecycle.application.port.AuditLogRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcCommandTransaction.java: import com.seasonplan.lifecycle.application.port.CommandTransaction",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java: import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java: import com.seasonplan.lifecycle.application.port.MagicTaskRepository",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository"
+          ],
+          "points": [
+            [
+              1391,
+              1178
+            ],
+            [
+              1391,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "system-15",
+          "from": "com.seasonplan.lifecycle.persistence",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java: import com.seasonplan.lifecycle.domain.TimeWindow",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.ChecklistItem",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.SeasonPlanStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.TimeWindow"
+          ],
+          "points": [
+            [
+              1601,
+              1178
+            ],
+            [
+              1601,
+              1686
+            ],
+            [
+              1447,
+              1686
+            ]
+          ]
+        },
+        {
+          "id": "system-16",
+          "from": "com.seasonplan.lifecycle.service",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.approval.ApprovalService",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.pollen.PollenService",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.shared.AuditLogService",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.planning.PlanningService",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.preparation.PreparationService",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService"
+          ],
+          "points": [
+            [
+              514,
+              1178
+            ],
+            [
+              514,
+              1350
+            ],
+            [
+              1027,
+              1350
+            ]
+          ]
+        },
+        {
+          "id": "system-17",
+          "from": "com.seasonplan.lifecycle.service",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java: import com.seasonplan.lifecycle.domain.SeasonPlan"
+          ],
+          "points": [
+            [
+              374,
+              1178
+            ],
+            [
+              374,
+              1686
+            ],
+            [
+              1027,
+              1686
+            ]
+          ]
+        },
+        {
+          "id": "system-18",
+          "from": "com.seasonplan.security",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/security/AuthController.java: import com.seasonplan.lifecycle.application.port.CurrentActorProvider",
+            "backend/src/main/java/com/seasonplan/security/SecurityCurrentActorProvider.java: import com.seasonplan.lifecycle.application.port.CurrentActorProvider"
+          ],
+          "points": [
+            [
+              1083,
+              1178
+            ],
+            [
+              1083,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "system-19",
+          "from": "com.seasonplan.security",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/security/AdminUserController.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/AuthController.java: import com.seasonplan.lifecycle.domain.CurrentActor",
+            "backend/src/main/java/com/seasonplan/security/JdbcLocalUserDetailsService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/LocalUserAdministrationService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/LocalUserDetails.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/ManagedUser.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/SecurityCurrentActorProvider.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/security/SecurityCurrentActorProvider.java: import com.seasonplan.lifecycle.domain.CurrentActor"
+          ],
+          "points": [
+            [
+              873,
+              1178
+            ],
+            [
+              873,
+              1826
+            ],
+            [
+              1027,
+              1826
+            ]
+          ]
+        },
+        {
+          "id": "web-api",
+          "from": "frontend",
+          "to": "com.seasonplan.lifecycle.api",
+          "name": "REST / JSON",
+          "evidence": [
+            "frontend/src/api/lifecycleApi.js",
+            "frontend/src/auth/AuthContext.jsx"
+          ],
+          "points": [
+            [
+              411,
+              460
+            ],
+            [
+              411,
+              539
+            ]
+          ]
+        },
+        {
+          "id": "web-security",
+          "from": "frontend",
+          "to": "com.seasonplan.security",
+          "name": "Auth / JSON",
+          "evidence": [
+            "frontend/src/api/lifecycleApi.js",
+            "frontend/src/auth/AuthContext.jsx"
+          ],
+          "points": [
+            [
+              730,
+              460
+            ],
+            [
+              730,
+              898
+            ]
+          ]
+        }
+      ],
+      "intro": "Обзор существующего кода · application.* агрегирован в один пакет",
+      "notes": "UML Dependency: клиент → используемый пакет; REST-стрелки обозначают HTTP-контракт, остальные — зависимости импортов Java.\nЭто пакеты, не микросервисы и не отдельные Maven-модули. Фреймворки, PostgreSQL и внешние API указаны в пояснениях, не выданы за пакеты приложения.\nNatural Calendar сейчас — разрешающий stub; датчики, доставка outbox и PDF/HTML-рендереры не реализованы. Pollen Tree: HTTPS-адаптер есть, контракт ещё предложен.\nST-00 имеет приоритет над устаревшими SRS/UC: только 8 статусов SeasonPlan; CORRECTION/EMERGENCY — операционные условия, не статусы.",
+      "width": 2805,
+      "height": 2136
+    },
+    {
+      "id": "02-application",
+      "name": "2. SeasonPlan — Прецеденты и контракты",
+      "nodes": {
+        "com.seasonplan.lifecycle.application": {
+          "name": "application",
+          "body": "Direct package contents only:\nUseCaseSupport\nShared command lookup/copy helpers\nOwns the eight child packages\nshown in this view",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 2052,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.application.planning": {
+          "name": "planning",
+          "body": "UC-1 · Планирование сезона\nPlanningService\nCreate / edit / submit / list\nNaturalCalendarService port (stub wired)\nRequired fields / intra-plan windows\nSearch / cross-plan conflicts: missing\nFR-1–6; FR-82–85: target",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 80,
+          "y": 898
+        },
+        "com.seasonplan.lifecycle.application.approval": {
+          "name": "approval",
+          "body": "UC-2 · Согласование\nApprovalService\nReview / approve / return\nReads pollen through PollenService\nverify / conditions: implementation gap\nFR-7–9, FR-13, FR-19",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 267,
+          "y": 180
+        },
+        "com.seasonplan.lifecycle.application.preparation": {
+          "name": "preparation",
+          "body": "UC-3 · Подготовка к запуску\nMagicTaskService / FairyAssignmentService\nFairySchedulePolicy\nReadinessChecklistService\nPreparationService → RITUAL_READY\nPollenService for resource checks\nFR-10, FR-24–40",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 762,
+          "y": 180
+        },
+        "com.seasonplan.lifecycle.application.execution": {
+          "name": "execution",
+          "body": "UC-4 · Выполнение и контроль\nRitualService / MonitoringService\nIncidentResponseService\nRitual / metrics / incidents / corrections\ncore-only; adapters and routes missing\nPollen consumption: sibling pollen\nFR-11–12, FR-41–68, FR-90–91",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 1836,
+          "y": 539
+        },
+        "com.seasonplan.lifecycle.application.completion": {
+          "name": "completion",
+          "body": "UC-5 · Завершение сезона\nCompletionService\nReport draft / approval / export contract\nComplete / archive / KPI snapshot\nPollenService for consumption data\ncore-only; no renderer or REST wiring\nFR-69–77",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 1528,
+          "y": 180
+        },
+        "com.seasonplan.lifecycle.application.pollen": {
+          "name": "pollen",
+          "body": "Cross-use-case PollenService\nReservation request / confirm / reject\nConsumption / audit / warnings\nOnly application owner of PollenTreeClient\nCONFIRMED is the canonical state\nProvider owns reservations and spending\nConsumption REST/outbox wiring missing\nFR-14–23",
+          "color": "EAF6EF",
+          "w": 420,
+          "h": 280,
+          "x": 1220,
+          "y": 539
+        },
+        "com.seasonplan.lifecycle.application.shared": {
+          "name": "shared",
+          "body": "AuditLogService / ValidationSupport\nAccess and not-found exceptions\nPollenTreeUnavailableException\nAppend-only audit application service\nFR-13, FR-78–81\nNo concrete persistence dependency",
+          "color": "EBF1F8",
+          "w": 420,
+          "h": 280,
+          "x": 912,
+          "y": 1257
+        },
+        "com.seasonplan.lifecycle.application.port": {
+          "name": "port",
+          "body": "Framework-independent interfaces\nSeasonPlan / task / assignment repositories\nAuditLogRepository / CommandTransaction\nCurrentActorProvider / PollenTreeClient\nNaturalCalendarService\nPlannerNotifications / NotificationOutbox\nExecutionPorts / CompletionPorts\nImplementations belong outside core",
+          "color": "EBF1F8",
+          "w": 420,
+          "h": 280,
+          "x": 1220,
+          "y": 1616
+        },
+        "com.seasonplan.lifecycle.domain": {
+          "name": "domain",
+          "body": "com.seasonplan.lifecycle.domain\nSeasonPlan / PollenReservation\nMagicTask / FairyAssignment\nRitualSession / ClimateMetric\nMagicIncident / CorrectionAction\nSeasonReport / AuditLogEntry\nRules, enums, immutable snapshots\nOnly JDK dependencies",
+          "color": "F0F6E5",
+          "w": 420,
+          "h": 280,
+          "x": 1220,
+          "y": 1975
+        }
+      },
+      "edges": [
+        {
+          "id": "application-12",
+          "from": "com.seasonplan.lifecycle.application",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository"
+          ],
+          "points": [
+            [
+              2052,
+              1131
+            ],
+            [
+              1486,
+              1131
+            ],
+            [
+              1486,
+              1616
+            ]
+          ]
+        },
+        {
+          "id": "application-13",
+          "from": "com.seasonplan.lifecycle.application",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java: import com.seasonplan.lifecycle.application.shared.NotFoundException"
+          ],
+          "points": [
+            [
+              2052,
+              1085
+            ],
+            [
+              1295,
+              1085
+            ],
+            [
+              1295,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "application-14",
+          "from": "com.seasonplan.lifecycle.application",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              2262,
+              1178
+            ],
+            [
+              2262,
+              2199
+            ],
+            [
+              1640,
+              2199
+            ]
+          ]
+        },
+        {
+          "id": "application-15",
+          "from": "com.seasonplan.lifecycle.application.approval",
+          "to": "com.seasonplan.lifecycle.application.pollen",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.application.pollen.PollenService"
+          ],
+          "points": [
+            [
+              650,
+              460
+            ],
+            [
+              650,
+              726
+            ],
+            [
+              1220,
+              726
+            ]
+          ]
+        },
+        {
+          "id": "application-16",
+          "from": "com.seasonplan.lifecycle.application.approval",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.application.port.PlannerNotifications",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository"
+          ],
+          "points": [
+            [
+              575,
+              460
+            ],
+            [
+              575,
+              1756
+            ],
+            [
+              1220,
+              1756
+            ]
+          ]
+        },
+        {
+          "id": "application-17",
+          "from": "com.seasonplan.lifecycle.application.approval",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              612,
+              460
+            ],
+            [
+              612,
+              1397
+            ],
+            [
+              912,
+              1397
+            ]
+          ]
+        },
+        {
+          "id": "application-18",
+          "from": "com.seasonplan.lifecycle.application.approval",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              537,
+              460
+            ],
+            [
+              537,
+              2087
+            ],
+            [
+              1220,
+              2087
+            ]
+          ]
+        },
+        {
+          "id": "application-19",
+          "from": "com.seasonplan.lifecycle.application.completion",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.application.UseCaseSupport"
+          ],
+          "points": [
+            [
+              1797,
+              460
+            ],
+            [
+              1797,
+              991
+            ],
+            [
+              2052,
+              991
+            ]
+          ]
+        },
+        {
+          "id": "application-20",
+          "from": "com.seasonplan.lifecycle.application.completion",
+          "to": "com.seasonplan.lifecycle.application.pollen",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.application.pollen.PollenService"
+          ],
+          "points": [
+            [
+              1584,
+              460
+            ],
+            [
+              1584,
+              539
+            ]
+          ]
+        },
+        {
+          "id": "application-21",
+          "from": "com.seasonplan.lifecycle.application.completion",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.application.port.*"
+          ],
+          "points": [
+            [
+              1679,
+              460
+            ],
+            [
+              1679,
+              1709
+            ],
+            [
+              1640,
+              1709
+            ]
+          ]
+        },
+        {
+          "id": "application-22",
+          "from": "com.seasonplan.lifecycle.application.completion",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              1528,
+              320
+            ],
+            [
+              1201,
+              320
+            ],
+            [
+              1201,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "application-23",
+          "from": "com.seasonplan.lifecycle.application.completion",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              1758,
+              460
+            ],
+            [
+              1758,
+              2087
+            ],
+            [
+              1640,
+              2087
+            ]
+          ]
+        },
+        {
+          "id": "application-24",
+          "from": "com.seasonplan.lifecycle.application.execution",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java: import com.seasonplan.lifecycle.application.UseCaseSupport",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java: import com.seasonplan.lifecycle.application.UseCaseSupport",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.application.UseCaseSupport"
+          ],
+          "points": [
+            [
+              2154,
+              819
+            ],
+            [
+              2154,
+              898
+            ]
+          ]
+        },
+        {
+          "id": "application-25",
+          "from": "com.seasonplan.lifecycle.application.execution",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.application.port.CommandTransaction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.application.port.ExecutionPorts",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.application.port.SeasonPlanRepository"
+          ],
+          "points": [
+            [
+              1944,
+              819
+            ],
+            [
+              1944,
+              1803
+            ],
+            [
+              1640,
+              1803
+            ]
+          ]
+        },
+        {
+          "id": "application-26",
+          "from": "com.seasonplan.lifecycle.application.execution",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java: import com.seasonplan.lifecycle.application.shared.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java: import com.seasonplan.lifecycle.application.shared.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              1890,
+              819
+            ],
+            [
+              1890,
+              1397
+            ],
+            [
+              1332,
+              1397
+            ]
+          ]
+        },
+        {
+          "id": "application-27",
+          "from": "com.seasonplan.lifecycle.application.execution",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              1998,
+              819
+            ],
+            [
+              1998,
+              2143
+            ],
+            [
+              1640,
+              2143
+            ]
+          ]
+        },
+        {
+          "id": "application-28",
+          "from": "com.seasonplan.lifecycle.application.planning",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java: import com.seasonplan.lifecycle.application.port.*"
+          ],
+          "points": [
+            [
+              360,
+              1178
+            ],
+            [
+              360,
+              1826
+            ],
+            [
+              1220,
+              1826
+            ]
+          ]
+        },
+        {
+          "id": "application-29",
+          "from": "com.seasonplan.lifecycle.application.planning",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              500,
+              945
+            ],
+            [
+              980,
+              945
+            ],
+            [
+              980,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "application-30",
+          "from": "com.seasonplan.lifecycle.application.planning",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              220,
+              1178
+            ],
+            [
+              220,
+              2143
+            ],
+            [
+              1220,
+              2143
+            ]
+          ]
+        },
+        {
+          "id": "application-31",
+          "from": "com.seasonplan.lifecycle.application.pollen",
+          "to": "com.seasonplan.lifecycle.application",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java: import com.seasonplan.lifecycle.application.UseCaseSupport"
+          ],
+          "points": [
+            [
+              1563,
+              819
+            ],
+            [
+              1563,
+              1038
+            ],
+            [
+              2052,
+              1038
+            ]
+          ]
+        },
+        {
+          "id": "application-32",
+          "from": "com.seasonplan.lifecycle.application.pollen",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java: import com.seasonplan.lifecycle.application.port.*"
+          ],
+          "points": [
+            [
+              1409,
+              819
+            ],
+            [
+              1409,
+              1616
+            ]
+          ]
+        },
+        {
+          "id": "application-33",
+          "from": "com.seasonplan.lifecycle.application.pollen",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              1257,
+              819
+            ],
+            [
+              1257,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "application-34",
+          "from": "com.seasonplan.lifecycle.application.pollen",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java: import com.seasonplan.lifecycle.domain.*"
+          ],
+          "points": [
+            [
+              1640,
+              679
+            ],
+            [
+              1718,
+              679
+            ],
+            [
+              1718,
+              2031
+            ],
+            [
+              1640,
+              2031
+            ]
+          ]
+        },
+        {
+          "id": "application-35",
+          "from": "com.seasonplan.lifecycle.application.port",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/AuditLogRepository.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/CompletionPorts.java: import com.seasonplan.lifecycle.domain.SeasonReport",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/CurrentActorProvider.java: import com.seasonplan.lifecycle.domain.CurrentActor",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/ExecutionPorts.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/FairyAssignmentRepository.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/MagicTaskRepository.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/NaturalCalendarService.java: import com.seasonplan.lifecycle.domain.SeasonPlan",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenCapacity",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenReservation",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java: import com.seasonplan.lifecycle.domain.PollenUsage",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java: import com.seasonplan.lifecycle.domain.SeasonPlan"
+          ],
+          "points": [
+            [
+              1430,
+              1896
+            ],
+            [
+              1430,
+              1975
+            ]
+          ]
+        },
+        {
+          "id": "application-36",
+          "from": "com.seasonplan.lifecycle.application.preparation",
+          "to": "com.seasonplan.lifecycle.application.pollen",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.application.pollen.PollenService"
+          ],
+          "points": [
+            [
+              1114,
+              460
+            ],
+            [
+              1114,
+              632
+            ],
+            [
+              1220,
+              632
+            ]
+          ]
+        },
+        {
+          "id": "application-37",
+          "from": "com.seasonplan.lifecycle.application.preparation",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java: import com.seasonplan.lifecycle.application.port.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.application.port.*"
+          ],
+          "points": [
+            [
+              862,
+              460
+            ],
+            [
+              862,
+              1686
+            ],
+            [
+              1220,
+              1686
+            ]
+          ]
+        },
+        {
+          "id": "application-38",
+          "from": "com.seasonplan.lifecycle.application.preparation",
+          "to": "com.seasonplan.lifecycle.application.shared",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.application.shared.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java: import com.seasonplan.lifecycle.application.shared.NotFoundException",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.application.shared.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java: import com.seasonplan.lifecycle.application.shared.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.application.shared.*"
+          ],
+          "points": [
+            [
+              1047,
+              460
+            ],
+            [
+              1047,
+              1257
+            ]
+          ]
+        },
+        {
+          "id": "application-39",
+          "from": "com.seasonplan.lifecycle.application.preparation",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.FairyAssignment",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.DomainValidationException",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java: import com.seasonplan.lifecycle.domain.SeasonPlanStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java: import com.seasonplan.lifecycle.domain.*",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.AssignmentStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.ChecklistItem",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.MagicTask",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.MagicTaskStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.PollenReservationStatus",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java: import com.seasonplan.lifecycle.domain.SeasonPlan"
+          ],
+          "points": [
+            [
+              812,
+              460
+            ],
+            [
+              812,
+              2031
+            ],
+            [
+              1220,
+              2031
+            ]
+          ]
+        },
+        {
+          "id": "application-40",
+          "from": "com.seasonplan.lifecycle.application.shared",
+          "to": "com.seasonplan.lifecycle.application.port",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java: import com.seasonplan.lifecycle.application.port.AuditLogRepository"
+          ],
+          "points": [
+            [
+              1276,
+              1537
+            ],
+            [
+              1276,
+              1616
+            ]
+          ]
+        },
+        {
+          "id": "application-41",
+          "from": "com.seasonplan.lifecycle.application.shared",
+          "to": "com.seasonplan.lifecycle.domain",
+          "name": "",
+          "evidence": [
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AccessDeniedForRoleException.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java: import com.seasonplan.lifecycle.domain.AuditAction",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java: import com.seasonplan.lifecycle.domain.AuditLogEntry",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java: import com.seasonplan.lifecycle.domain.ActorRole",
+            "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java: import com.seasonplan.lifecycle.domain.DomainValidationException"
+          ],
+          "points": [
+            [
+              1066,
+              1537
+            ],
+            [
+              1066,
+              2199
+            ],
+            [
+              1220,
+              2199
+            ]
+          ]
+        }
+      ],
+      "intro": "Точные прямые импорты пакетов приложения · база: com.seasonplan.lifecycle.application",
+      "notes": "planning, approval, preparation, execution, completion, pollen, port, shared — реальные дочерние пакеты application; domain — соседний пакет lifecycle.\nПрямоугольник application показывает только UseCaseSupport, НЕ агрегирует детей в этом виде. Общее владение зафиксировано в нативной модели пакетов.\nСтрелки — прямые зависимости импортов, не порядок исполнения UC и не переходы статусов. Разные предметные сущности пока находятся в одном реальном domain.\nAPPROVED требует CONFIRMED-резерв; RITUAL_READY — обязательные задачи/чек-лист; ACTIVE — успешный ритуал; COMPLETED запрещён при открытом CRITICAL-инциденте.\nAuditLog неизменяем. Запись в БД не заменяет Pollen Tree. Полная атомарность/outbox и незавершённые вертикальные срезы не заявлены как реализованные.",
+      "width": 2552,
+      "height": 2495
+    }
+  ],
+  "sourceSHA256": {
+    "AGENTS.md": "ccfe37e0bd8a2bd872d32e0e9dc7d84c3e68ad6109516ffa4455be4eb9cdabc7",
+    "arch_docs/SYSTEM_REQUIREMENTS_SPECIFICATION.md": "733539249ced988b1a024ec7f774ab837c73f30f290a7886ac3851cc16a049d4",
+    "arch_docs/USE_CASE_SPECIFICATION.md": "25866b312f6f1f35e1ab955150dff96e72e0b9c7d9d09663415a537605c78ae3",
+    "arch_docs/VISION.md": "f2eaa6149529339382caec697dd5020e2734ad64f05acd33c342bfd067907bfa",
+    "backend/CHANGELOG.md": "b9cc686408e4829bac9e266eeeea07c0c15532ee01726137cae5d1ff1690a2df",
+    "backend/README.md": "c260c87aaae2b8c9e4ca43b3ec387937d6553d3f3f5cb050d9d2e8200cc8b163",
+    "backend/pom.xml": "380ae514be13dbac8d1ce1192fa2c008e658d3b23678b7c35d55720f1048765b",
+    "backend/src/main/java/com/seasonplan/SeasonPlanApplication.java": "e46c67fcaed33b3f997556a297f02d40119fb872d3ce8e687ceb620efba04267",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/AllowingNaturalCalendarService.java": "2304488bf664dd63f76eb6be0c947f859bf3b209000f95611a3c41d02a68e1cc",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java": "852f0900f44a63025fbcc6b184d23119b2c2800c69352de69ad3403c226e5b49",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryAuditLogRepository.java": "9298109ff7df2a5b66aab2a03e479ac927f17927e76a1434b0228aa716360e06",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryFairyAssignmentRepository.java": "511eb8ba6ef3c5e9d2491a763e67b2ae524f43de3c573af22158ab85a8b51100",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryMagicTaskRepository.java": "6f26a3021467dbf8aec47d4aa937f0a2d2f0a7ff5bf695a5efb079148055259d",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemorySeasonPlanRepository.java": "50d8585592920d02e67ce5ea249279d28f2258c2ec01dc26b7cb047b19b8c170",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/NotificationService.java": "70044a1bdf48ba55585c67da0b5b42418f271c1c4d4e6f99a5cc0f9f4fa220a8",
+    "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java": "a52728154b8ce8ca4e7e3eb7db219de10e7e84ae263c21ea29b7ffb3f496436e",
+    "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java": "320da3c027b3c6630c8aee301918a781429fa71405477b0d1d30d9aee3f7aee5",
+    "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java": "aef31f35e336f2826d4a3861643b6ba83951eab8e7a48eccc934e2eeed69c798",
+    "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java": "53fc171e1594c1cedf2b41035d9e31d68e041bb2e9f212e092bf8b16eda00912",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java": "37a9a03cff84e98dc59d2276516524852a37ced300b587907772b24c97956a45",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java": "8c6d656e4f1cd469f42e1036a1de0f94b4ced55ec1add7bbbd23043f2baa731c",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java": "63474b533df6a00638935896c782c0852345437f74f71e829a1202810a6c8718",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java": "f58d14a3ed4896b159a11646023927987e6d4363d96a4a803870a7c3bdb64137",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java": "35d1c9b32d35074382a4132b7e88f0aaf20568249bb9341e37c90f0d17fb834b",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java": "f570c1ac0e5536b9c6010b759d55fd3920738c1889713bf3223ee922c5f50d9b",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java": "f80fd368b086c4e89daa5b97a4ac45611b186f3906d103ee3f867a2744c224a2",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java": "16f3b1b62d4d54ee343e15281f511db74760015c4611220f52e78eb7b5ba4255",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/AuditLogRepository.java": "9bb0b6788ecd666d04c68cfd77469959091cffd8887a37ece54c905c2d33d909",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/CommandTransaction.java": "db75b81b5fd95f04ff58271543f57a63461f382e477f3bf4b27b6d23075c3ef5",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/CompletionPorts.java": "7580e7f088044129598e63f7e4ebda4cf365d4c49fa572f2929b1647c4e5dc64",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/CurrentActorProvider.java": "26e90c0d55733f92ef25fb173df6ed395968fd7eaa849d35617559d327b623df",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/ExecutionPorts.java": "2cc2a6b40a5cae17b93e801e00e9dab3a83ee26ccffcf0a9688f633b35e5444c",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/FairyAssignmentRepository.java": "20b0534ee345deb58bec2b536bd279cd996c7eef389794418e951c2a82036a44",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/MagicTaskRepository.java": "3ecf59d87afa617b1d4de38278c7a0fd8ea8f808e4bd5f151cc10572388dfa55",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/NaturalCalendarService.java": "29e603641510675040644889c8d12963ee82f829291fa110c9716af24dc81c2e",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/NotificationOutbox.java": "a8004998a46f6a03da5335287ae01cdd4865799dd3101da398a3841466be320c",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/PlannerNotifications.java": "8502ad54e0cdade63026141736e0780f163bbf53877e7d8f7a57247568c50242",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java": "3b5ffea23cc4e1a0d98ee67651173f464fa3f95e47da2e886fdb21a4b24c3256",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java": "59f38771a4d956c2f631fcb7d53cbd086535cdc1d4d70c8983182a02d7742eb1",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java": "2af5deed83a093be3814975369d8e82318cf1e5aef8f200001c0a305fe9f489a",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java": "ad4702c629496ce8c971e5cc4e040df4bdd1144146ab38e8a1d8abb1502a9417",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java": "bcc593bbef7f676125da3549f4efe3bd43e2f3ff5852c974a3629a7f1c7f279d",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java": "e3bd5c3ee83e644524d101778d8834f207894923b06bc77d775cb376e84b2e12",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java": "5639a30f7b4d5cd0633a9df69df1564df36a0df6ce7b4b166318c61816c210ab",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AccessDeniedForRoleException.java": "e0d8e400ce81537d8603a926732992e4c4157853156e1bc628676f2621335d38",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java": "89760553f744176724edcbe2df0fa6cc6aafed9a8df1d7d18ff96c252490002a",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/NotFoundException.java": "2b4d691c9b9c7baed43c9a064dd599c303f3f30a9fa23f84799a2944d558234f",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/PollenTreeUnavailableException.java": "945e3cf105daa17fb1c71f2d0c41d1fb4e8b85c7a2e7796592880315f372a7c4",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java": "8826702ad6fd05e4efcf72db8b6efba6037da53280e10d5a02d9717018f87d16",
+    "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java": "485ed86357947581c4f05ad4afc8ae67d0610ac6090badc30f7e8597e03bc709",
+    "backend/src/main/java/com/seasonplan/lifecycle/config/PollenTreeIntegrationConfiguration.java": "59994724d8d70f11bdda621e2c4bf57f3cb6e2dbb2ceb340f0a524fcde3240c6",
+    "backend/src/main/java/com/seasonplan/lifecycle/config/SecurityConfiguration.java": "4a00f3adc0d46d7cf82af197e6152e4585829457350ff17d23f646a326f16514",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/ActorRole.java": "6e230c092b44a6aaeb6fd1faee4a67ea2a2a912fdb45ff9dca64b9dd18f58992",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/AssignmentStatus.java": "dea067b63ef3de698966b69ca3d411c5a4a86417b2b736a5ef4f3b165b3362a1",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/AuditAction.java": "447fbf7deaeeb1019a92fdd5348b4cad40d0a184a455982c3a89256750cf38cc",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/AuditLogEntry.java": "0bc3bb5301feaccffad59f68c6a26b0063126117687f43cf12f36d0db83a5f23",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/ChecklistItem.java": "ec30633ec80000684247210f6ee9862c4a61f80a6bd0bf6f0b7db834ffcf932d",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/ClimateMetric.java": "0893798206a1cbc2d84d5859b00d0620b159a6d761b5c617eb90aadb29cddf10",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/CorrectionAction.java": "51b26de6891a2317ce36e0285264d64e1847150b451557a0512b1320c67e5067",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/CurrentActor.java": "4dd49b80a3e27385ed1003d7ca3db666c05804003c73882868d21f41a369c235",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/DomainValidationException.java": "227b6402d4f1702713f88208f6f627805c3178007d6feebb870a23f580797b52",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/FairyAssignment.java": "708d1d9fbc3a29d10c84a549452815e55dedf3d09f14d7bbc6c627693b3d450a",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicIncident.java": "7cf89e1c91278414c10b27c5cb069ac4f5f5e96361caccb33aaa1beb77d8c5c3",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicTask.java": "73c98857da1c218216786cc43b0532c08400daca636010b1a76c6c01c7e82a31",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicTaskStatus.java": "86be4e602222cad07dc5e7c6f41e4b131f0680d2b3139e72c89d35be7df60519",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/MetricDefinition.java": "1221605780e07059e2b61fc2853dd795e4483bb5ef6b7396725975a3debf2656",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenCapacity.java": "0c0dcd7b11d80806f4d45d589512410bdb4713da5e4765db8195df3ad6a75ece",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenReservation.java": "dd286f254fedf3ba11900b8586de01462f12db0a3c8f11a0b239d6a655963c00",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenReservationStatus.java": "5b645e194913798ea9b2830ec29f46f7a53f53b31528e5926077151b796b9f41",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenUsage.java": "e7c25f5aacc5c5736137b784ae7e2232d54da628d2fe4b5cc2af0cf380b7e650",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/RitualSession.java": "7dda55d04ccde2513d0a0cfde6fd4ffa8524ffcd42369d30d24fcc5488728a51",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java": "4b2d13d65d1ca290bb4dced1ae380e25a30438feec450d59a97a6fdefe96b86f",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlanStatus.java": "6e5bab878e8e0bda4ea03bc3a59538e536b40c9c4d0de192086c9c50d6c7a3e8",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonReport.java": "cedc4f3479f2f7c3775b0f6e4ea858086795cc5d90311f70496d384b5ef9a907",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/TimeWindow.java": "8c856352774b4df10c467db5bb47f51e3654b991d802503067b9091de83674eb",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java": "063eea6f83c27a5c1c1e8135df37aacad16098e1a16e76bb2c8e78ce8b068f62",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcCommandTransaction.java": "0483da4cc37a82a65892574526cbb24e1efb0a0fe43de95979005b98dae07e2b",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java": "66c934eca336ba053d8cf9ff02625c0999f06c0408232844367efa9d52b84429",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcJson.java": "343f937b04130dda55b08b695b8ba05366b62505626ed2d55d75625e9fc1296f",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java": "e6d0ccfea6d6dba8302ea30512935c9d6102801c5f84060f94af3c682fe88a13",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java": "c3312e6f15023e7550b42f84f28e47f66e0ee588b25fa9400ba54e6b705424c3",
+    "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java": "c4726f9c73281da18f5ef8f1d2409bc881d32d6c7f528892ce94d2717f09b9ed",
+    "backend/src/main/java/com/seasonplan/security/AdminUserController.java": "82b20438825bef4c29db3edbeb3371926554be42e9faab52265312c1de6f9796",
+    "backend/src/main/java/com/seasonplan/security/AuthController.java": "8ac48acecb32ed734dfa144b360502cfbebda12ed350295419a060fba88548e7",
+    "backend/src/main/java/com/seasonplan/security/DevelopmentAdministratorBootstrap.java": "081dec8fcd461500a89d69dd7aa1a1ba4574b23d2d52b7e0f221ae83f036609d",
+    "backend/src/main/java/com/seasonplan/security/JdbcLocalUserDetailsService.java": "5b5b44111744d209601b216fd7c007ff400a28c881214ab7dd24691e64d245dd",
+    "backend/src/main/java/com/seasonplan/security/JsonAuthenticationHandlers.java": "c69a8286e22f611cadc77bc685c6aba1518ebdd9da92ac8b254f099a48f12c8f",
+    "backend/src/main/java/com/seasonplan/security/LocalUserAdministration.java": "dc0d09461b3269decfbf2795f1f39db18cc86328f51c158dcf84d071e96a7083",
+    "backend/src/main/java/com/seasonplan/security/LocalUserAdministrationService.java": "9c3e085b2671a6a909ee76aa8a506004972f576466fa30934c63026f0ca612da",
+    "backend/src/main/java/com/seasonplan/security/LocalUserDetails.java": "2b69696cbeb12978253683ca2a286ce98b97679eb0113c1182b46b7bdbca3ede",
+    "backend/src/main/java/com/seasonplan/security/ManagedUser.java": "23b89796afbd6649e50dca57c9af12aa8d660b64a910079316b3e43cad31dd79",
+    "backend/src/main/java/com/seasonplan/security/SecurityCurrentActorProvider.java": "14939e1e7844c75b238d6ae3e623439d6426b74e6cdad6220aaf156e5ebaa1d0",
+    "backend/src/main/java/com/seasonplan/security/UserAdministrationException.java": "64c9a1439143f7e78ab44d40a296b27f538895cd130b5ef5db0fa31eab85f541",
+    "backend/src/main/java/com/seasonplan/security/UserAdministrationExceptionHandler.java": "cebac673c49c6d84a97f420050edcfa406e15f66bb1780e24042a423981352c0",
+    "backend/src/main/java/com/seasonplan/security/UsernameNormalizer.java": "08ef3d363034842b62fe2d5bca2a559dc93fc52d84c701d91f45b6a2d679bae9",
+    "docs/architecture/POLLEN_TREE_EXTERNAL_SERVICE.md": "f534b424858bf4e9b87022e09b74324ebebaf70fbf9fb6a4a73dafe19e48dc2b",
+    "docs/architecture/ST-00-specification-resolution.md": "960f1fd48c054ce3bf1dd136cbf4b0201d4a52772e9606be6d9732cd9c9a096a",
+    "frontend/package.json": "a463d62143cb8794cf4ee27eea534754ac355ce8927f5f918a8956fdda4b6b67",
+    "frontend/src/App.jsx": "6fc04bd7f9d280937c22c2a4b72090dd6185392a70f9dc1b5794692f3a2cbd60",
+    "frontend/src/App.test.jsx": "7cf9e6238c51ad00a1b7c3e1057854a531f3276d9090137608c8cde2265c298c",
+    "frontend/src/api/lifecycleApi.js": "4c4812e4f3bb62f2d13fc095cc11a07960c905018dc31d758d043b76939f605c",
+    "frontend/src/api/workflowStorage.js": "474b27f401feec06ecb6f4b511f11076027d98a298fdd98c7c4dc92b54ac7606",
+    "frontend/src/auth/AuthContext.jsx": "9c25743d24edc765999465f070e22d5150d6d8e10f0e8f0e8ff1b224ecac7ead",
+    "frontend/src/auth/LoginPage.jsx": "92f5669d040a670aee310cd6f8cc048b9516b9b76d8cbca255b530eaf068e73c",
+    "frontend/src/auth/ProfileSecurityPage.jsx": "f20a0a221f13b9ac55616205165a2fde1dd39ce582f9678583ab7622c85043c6",
+    "frontend/src/auth/UserRegistrationPage.jsx": "1b9c776ab9d13f9619f0fdbe7669bde47c482b149ece9e0b5fbb8d7db5724b3d",
+    "frontend/src/auth/passwordPolicy.js": "916170c09b516acd7fbdfff1043bd63f2559032b85da20d093a4263170abc688",
+    "frontend/src/components/AppShell.jsx": "666db52c80a39f6ef95b6d71779631c7dd48d7bb565361f67a7afc2b4f8e3d80",
+    "frontend/src/components/FieldErrors.jsx": "1eac30975c1670e679c9f6e628965a0d00c47fcd440d379cdab867f935a990f6",
+    "frontend/src/components/LoadingState.jsx": "c405f74c0d00cb800192b55f20b72012cc198ca6ad69e8264bf9aae69829a518",
+    "frontend/src/components/ReadinessSummary.jsx": "3a0db086dad6b3d531ec4e6d90debcbf223d06f1db4eaac596ef5627eedb47a5",
+    "frontend/src/components/StatusPill.jsx": "756be51c7b5becc58bd3a2694015cd5bd59817f3436313615c58e2db9e568dec",
+    "frontend/src/features/planReview/PlanReviewPage.jsx": "90783a720f11789dbc9a6bb34a1d4a5f861e641f136a508ebd6af1506a4f2a56",
+    "frontend/src/features/planReview/PlanReviewPage.test.jsx": "f54623a983408909f00a58e5760fc82bf365c60b6998352e3001cbff21a854f2",
+    "frontend/src/features/preparation/PreparationPage.jsx": "66ea9867a37b1629acf4f77386e32b79f82646ae2e71ec0aa6d07694906b31ff",
+    "frontend/src/features/preparation/PreparationPage.test.jsx": "70febef9f48f063213a13d4bb1a7a22c2dad4bb98ebd45adf3fd9b06e6b1cd42",
+    "frontend/src/features/seasonPlanning/SeasonPlanningPage.jsx": "b5260143f76486a2eabe9a38ac501f3db1636bf19f621b84199c5704333d27d3",
+    "frontend/src/features/seasonPlanning/SeasonPlanningPage.test.jsx": "50f00dcd26f113cf1ab75be3a7251bafe38d1230fb04aa2921dcf84d0e6d38e7",
+    "frontend/src/main.jsx": "578c95d2a32bb411e99002b6f5cb8b6769b6c8c214ae2df0a33ca7a6663de09e",
+    "frontend/src/styles/global.css": "539376c90e6154e73d9ff732e134a6b6759374fc80da3fdc9ddb1d88593a9337"
+  },
+  "dependencyPolicy": "Direct project Java imports; overview aggregates application descendants. REST edges are HTTP dependencies. External libraries omitted."
+}

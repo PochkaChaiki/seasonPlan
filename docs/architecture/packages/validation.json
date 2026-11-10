@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "projectSHA256": "e406a6bd1bacab32498bdb141d4822aa08d9dc6e634f3d8a4a0c73fd533c5c44",
+  "diagrams": [
+    {
+      "diagram": "01-system",
+      "packages": 10,
+      "dependencies": 22,
+      "notes": 12,
+      "normalNameCaptions": 2
+    },
+    {
+      "diagram": "02-application",
+      "packages": 10,
+      "dependencies": 30,
+      "notes": 12,
+      "normalNameCaptions": 0
+    }
+  ],
+  "checks": [
+    "Source import dependencies and evidence manifest",
+    "Native package model hierarchy",
+    "Two genuine PackageDiagram views; Dependency relationships",
+    "Separate-process save/reopen; exact package bounds and note text",
+    "Correct model and shape endpoints; orthogonal perimeter-attached routes",
+    "No package overlaps or routes through package interiors",
+    "Normal SIDE_NONE relationship-name captions and clear caption bounds",
+    "PNG/SVG exported from separately reopened native project",
+    "Source hashes unchanged during generation"
+  ],
+  "limits": [
+    "No full desktop GUI selection/drag automation; caption mode checked via Open API only",
+    "Diagrams document code and known gaps, not live provider or deployed runtime verification",
+    "Java import graph, not a complete call graph; third-party/library edges omitted",
+    "Native exports retain Visual Paradigm evaluation watermarks"
+  ],
+  "sha256": {
+    "01-system.png": "2fd00ad8b7d25cef9b0cd1805a8b2e77cdc6a42af554c478e5576392356b3bdf",
+    "01-system.svg": "3b91fdbb7d173d7c0c1e99315fe1ad6e37f58755121e20dcac63d0943355427e",
+    "02-application.png": "618d664e55703a260ae7a5b3d6f61192547250b5f6013df347ae4745f8dbd5e3",
+    "02-application.svg": "2816b3689952cee3fc9bd8c8d36356a72aa9e7bee7278134dc3078df9fe6128e",
+    "native-reopened.xml": "b213a11c101f4ef0011c43401cd4d36582dfcad7d55cbf52c0f33dc52ca1af87",
+    "packages.xml": "f68cf04d9af088e8daefc8e7a53a712e47ff6614fe5969a385365f09d9d6d06d",
+    "SeasonPlan-packages.vpp": "e406a6bd1bacab32498bdb141d4822aa08d9dc6e634f3d8a4a0c73fd533c5c44",
+    "source-manifest.json": "a147260229c50742c8fea6d7d170cf9d1b3b4e23f93e9ed38421dd84cf44edbb"
+  }
+}

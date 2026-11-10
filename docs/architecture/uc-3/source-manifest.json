@@ -1,0 +1,330 @@
+{
+  "scope": "UC-3; target design with explicit existing/proposed distinctions",
+  "logicalPackageSource": "docs/architecture/packages/packages.xml",
+  "sources": [
+    {
+      "path": "arch_docs/SYSTEM_REQUIREMENTS_SPECIFICATION.md",
+      "sha256": "733539249ced988b1a024ec7f774ab837c73f30f290a7886ac3851cc16a049d4"
+    },
+    {
+      "path": "arch_docs/USE_CASE_SPECIFICATION.md",
+      "sha256": "25866b312f6f1f35e1ab955150dff96e72e0b9c7d9d09663415a537605c78ae3"
+    },
+    {
+      "path": "arch_docs/VISION.md",
+      "sha256": "f2eaa6149529339382caec697dd5020e2734ad64f05acd33c342bfd067907bfa"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/AllowingNaturalCalendarService.java",
+      "sha256": "2304488bf664dd63f76eb6be0c947f859bf3b209000f95611a3c41d02a68e1cc"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/FakePollenTreeClient.java",
+      "sha256": "852f0900f44a63025fbcc6b184d23119b2c2800c69352de69ad3403c226e5b49"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryAuditLogRepository.java",
+      "sha256": "9298109ff7df2a5b66aab2a03e479ac927f17927e76a1434b0228aa716360e06"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryFairyAssignmentRepository.java",
+      "sha256": "511eb8ba6ef3c5e9d2491a763e67b2ae524f43de3c573af22158ab85a8b51100"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemoryMagicTaskRepository.java",
+      "sha256": "6f26a3021467dbf8aec47d4aa937f0a2d2f0a7ff5bf695a5efb079148055259d"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/InMemorySeasonPlanRepository.java",
+      "sha256": "50d8585592920d02e67ce5ea249279d28f2258c2ec01dc26b7cb047b19b8c170"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/fake/NotificationService.java",
+      "sha256": "70044a1bdf48ba55585c67da0b5b42418f271c1c4d4e6f99a5cc0f9f4fa220a8"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java",
+      "sha256": "a52728154b8ce8ca4e7e3eb7db219de10e7e84ae263c21ea29b7ffb3f496436e"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java",
+      "sha256": "320da3c027b3c6630c8aee301918a781429fa71405477b0d1d30d9aee3f7aee5"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java",
+      "sha256": "aef31f35e336f2826d4a3861643b6ba83951eab8e7a48eccc934e2eeed69c798"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java",
+      "sha256": "53fc171e1594c1cedf2b41035d9e31d68e041bb2e9f212e092bf8b16eda00912"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java",
+      "sha256": "8c6d656e4f1cd469f42e1036a1de0f94b4ced55ec1add7bbbd23043f2baa731c"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java",
+      "sha256": "63474b533df6a00638935896c782c0852345437f74f71e829a1202810a6c8718"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/execution/IncidentResponseService.java",
+      "sha256": "f58d14a3ed4896b159a11646023927987e6d4363d96a4a803870a7c3bdb64137"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/execution/MonitoringService.java",
+      "sha256": "35d1c9b32d35074382a4132b7e88f0aaf20568249bb9341e37c90f0d17fb834b"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/execution/RitualService.java",
+      "sha256": "f570c1ac0e5536b9c6010b759d55fd3920738c1889713bf3223ee922c5f50d9b"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java",
+      "sha256": "f80fd368b086c4e89daa5b97a4ac45611b186f3906d103ee3f867a2744c224a2"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java",
+      "sha256": "16f3b1b62d4d54ee343e15281f511db74760015c4611220f52e78eb7b5ba4255"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/AuditLogRepository.java",
+      "sha256": "9bb0b6788ecd666d04c68cfd77469959091cffd8887a37ece54c905c2d33d909"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/CommandTransaction.java",
+      "sha256": "db75b81b5fd95f04ff58271543f57a63461f382e477f3bf4b27b6d23075c3ef5"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/CompletionPorts.java",
+      "sha256": "7580e7f088044129598e63f7e4ebda4cf365d4c49fa572f2929b1647c4e5dc64"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/CurrentActorProvider.java",
+      "sha256": "26e90c0d55733f92ef25fb173df6ed395968fd7eaa849d35617559d327b623df"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/ExecutionPorts.java",
+      "sha256": "2cc2a6b40a5cae17b93e801e00e9dab3a83ee26ccffcf0a9688f633b35e5444c"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/FairyAssignmentRepository.java",
+      "sha256": "20b0534ee345deb58bec2b536bd279cd996c7eef389794418e951c2a82036a44"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/MagicTaskRepository.java",
+      "sha256": "3ecf59d87afa617b1d4de38278c7a0fd8ea8f808e4bd5f151cc10572388dfa55"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/NaturalCalendarService.java",
+      "sha256": "29e603641510675040644889c8d12963ee82f829291fa110c9716af24dc81c2e"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/NotificationOutbox.java",
+      "sha256": "a8004998a46f6a03da5335287ae01cdd4865799dd3101da398a3841466be320c"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/PlannerNotifications.java",
+      "sha256": "8502ad54e0cdade63026141736e0780f163bbf53877e7d8f7a57247568c50242"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java",
+      "sha256": "3b5ffea23cc4e1a0d98ee67651173f464fa3f95e47da2e886fdb21a4b24c3256"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java",
+      "sha256": "59f38771a4d956c2f631fcb7d53cbd086535cdc1d4d70c8983182a02d7742eb1"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairyAssignmentService.java",
+      "sha256": "2af5deed83a093be3814975369d8e82318cf1e5aef8f200001c0a305fe9f489a"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/FairySchedulePolicy.java",
+      "sha256": "ad4702c629496ce8c971e5cc4e040df4bdd1144146ab38e8a1d8abb1502a9417"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/MagicTaskService.java",
+      "sha256": "bcc593bbef7f676125da3549f4efe3bd43e2f3ff5852c974a3629a7f1c7f279d"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/PreparationService.java",
+      "sha256": "e3bd5c3ee83e644524d101778d8834f207894923b06bc77d775cb376e84b2e12"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/preparation/ReadinessChecklistService.java",
+      "sha256": "5639a30f7b4d5cd0633a9df69df1564df36a0df6ce7b4b166318c61816c210ab"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AccessDeniedForRoleException.java",
+      "sha256": "e0d8e400ce81537d8603a926732992e4c4157853156e1bc628676f2621335d38"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java",
+      "sha256": "89760553f744176724edcbe2df0fa6cc6aafed9a8df1d7d18ff96c252490002a"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/NotFoundException.java",
+      "sha256": "2b4d691c9b9c7baed43c9a064dd599c303f3f30a9fa23f84799a2944d558234f"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/PollenTreeUnavailableException.java",
+      "sha256": "945e3cf105daa17fb1c71f2d0c41d1fb4e8b85c7a2e7796592880315f372a7c4"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/ValidationSupport.java",
+      "sha256": "8826702ad6fd05e4efcf72db8b6efba6037da53280e10d5a02d9717018f87d16"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/application/UseCaseSupport.java",
+      "sha256": "37a9a03cff84e98dc59d2276516524852a37ced300b587907772b24c97956a45"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java",
+      "sha256": "485ed86357947581c4f05ad4afc8ae67d0610ac6090badc30f7e8597e03bc709"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/config/PollenTreeIntegrationConfiguration.java",
+      "sha256": "59994724d8d70f11bdda621e2c4bf57f3cb6e2dbb2ceb340f0a524fcde3240c6"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/config/SecurityConfiguration.java",
+      "sha256": "4a00f3adc0d46d7cf82af197e6152e4585829457350ff17d23f646a326f16514"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/ActorRole.java",
+      "sha256": "6e230c092b44a6aaeb6fd1faee4a67ea2a2a912fdb45ff9dca64b9dd18f58992"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/AssignmentStatus.java",
+      "sha256": "dea067b63ef3de698966b69ca3d411c5a4a86417b2b736a5ef4f3b165b3362a1"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/AuditAction.java",
+      "sha256": "447fbf7deaeeb1019a92fdd5348b4cad40d0a184a455982c3a89256750cf38cc"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/AuditLogEntry.java",
+      "sha256": "0bc3bb5301feaccffad59f68c6a26b0063126117687f43cf12f36d0db83a5f23"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/ChecklistItem.java",
+      "sha256": "ec30633ec80000684247210f6ee9862c4a61f80a6bd0bf6f0b7db834ffcf932d"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/ClimateMetric.java",
+      "sha256": "0893798206a1cbc2d84d5859b00d0620b159a6d761b5c617eb90aadb29cddf10"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/CorrectionAction.java",
+      "sha256": "51b26de6891a2317ce36e0285264d64e1847150b451557a0512b1320c67e5067"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/CurrentActor.java",
+      "sha256": "4dd49b80a3e27385ed1003d7ca3db666c05804003c73882868d21f41a369c235"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/DomainValidationException.java",
+      "sha256": "227b6402d4f1702713f88208f6f627805c3178007d6feebb870a23f580797b52"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/FairyAssignment.java",
+      "sha256": "708d1d9fbc3a29d10c84a549452815e55dedf3d09f14d7bbc6c627693b3d450a"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicIncident.java",
+      "sha256": "7cf89e1c91278414c10b27c5cb069ac4f5f5e96361caccb33aaa1beb77d8c5c3"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicTask.java",
+      "sha256": "73c98857da1c218216786cc43b0532c08400daca636010b1a76c6c01c7e82a31"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/MagicTaskStatus.java",
+      "sha256": "86be4e602222cad07dc5e7c6f41e4b131f0680d2b3139e72c89d35be7df60519"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/MetricDefinition.java",
+      "sha256": "1221605780e07059e2b61fc2853dd795e4483bb5ef6b7396725975a3debf2656"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenCapacity.java",
+      "sha256": "0c0dcd7b11d80806f4d45d589512410bdb4713da5e4765db8195df3ad6a75ece"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenReservation.java",
+      "sha256": "dd286f254fedf3ba11900b8586de01462f12db0a3c8f11a0b239d6a655963c00"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenReservationStatus.java",
+      "sha256": "5b645e194913798ea9b2830ec29f46f7a53f53b31528e5926077151b796b9f41"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenUsage.java",
+      "sha256": "e7c25f5aacc5c5736137b784ae7e2232d54da628d2fe4b5cc2af0cf380b7e650"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/RitualSession.java",
+      "sha256": "7dda55d04ccde2513d0a0cfde6fd4ffa8524ffcd42369d30d24fcc5488728a51"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java",
+      "sha256": "4b2d13d65d1ca290bb4dced1ae380e25a30438feec450d59a97a6fdefe96b86f"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlanStatus.java",
+      "sha256": "6e5bab878e8e0bda4ea03bc3a59538e536b40c9c4d0de192086c9c50d6c7a3e8"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonReport.java",
+      "sha256": "cedc4f3479f2f7c3775b0f6e4ea858086795cc5d90311f70496d384b5ef9a907"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/domain/TimeWindow.java",
+      "sha256": "8c856352774b4df10c467db5bb47f51e3654b991d802503067b9091de83674eb"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcAuditLogRepository.java",
+      "sha256": "063eea6f83c27a5c1c1e8135df37aacad16098e1a16e76bb2c8e78ce8b068f62"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcCommandTransaction.java",
+      "sha256": "0483da4cc37a82a65892574526cbb24e1efb0a0fe43de95979005b98dae07e2b"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcFairyAssignmentRepository.java",
+      "sha256": "66c934eca336ba053d8cf9ff02625c0999f06c0408232844367efa9d52b84429"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcJson.java",
+      "sha256": "343f937b04130dda55b08b695b8ba05366b62505626ed2d55d75625e9fc1296f"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcMagicTaskRepository.java",
+      "sha256": "e6d0ccfea6d6dba8302ea30512935c9d6102801c5f84060f94af3c682fe88a13"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java",
+      "sha256": "c3312e6f15023e7550b42f84f28e47f66e0ee588b25fa9400ba54e6b705424c3"
+    },
+    {
+      "path": "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java",
+      "sha256": "c4726f9c73281da18f5ef8f1d2409bc881d32d6c7f528892ce94d2717f09b9ed"
+    },
+    {
+      "path": "docs/architecture/packages/packages.xml",
+      "sha256": "f68cf04d9af088e8daefc8e7a53a712e47ff6614fe5969a385365f09d9d6d06d"
+    },
+    {
+      "path": "docs/architecture/packages/README.md",
+      "sha256": "d8d47c4ff05cc82342f8dd37f872388437791b0084b51cf6755cc71e615282e7"
+    },
+    {
+      "path": "docs/architecture/ST-00-specification-resolution.md",
+      "sha256": "960f1fd48c054ce3bf1dd136cbf4b0201d4a52772e9606be6d9732cd9c9a096a"
+    },
+    {
+      "path": "frontend/src/features/preparation/PreparationPage.jsx",
+      "sha256": "66ea9867a37b1629acf4f77386e32b79f82646ae2e71ec0aa6d07694906b31ff"
+    }
+  ]
+}

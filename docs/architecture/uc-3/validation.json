@@ -1,0 +1,80 @@
+{
+  "result": "PASS",
+  "project": "SeasonPlan-UC3-sequences.vpp",
+  "sha256": "567903a83c9c5374023d9872b7154dc429593f607913a4d3b128d558241a0bff",
+  "diagrams": {
+    "01-use-case": {
+      "lifelines": 5,
+      "activations": 17,
+      "messages": 14,
+      "fragments": 3,
+      "interactionUses": 0
+    },
+    "02-logical": {
+      "lifelines": 10,
+      "activations": 93,
+      "messages": 48,
+      "fragments": 3,
+      "interactionUses": 0
+    },
+    "03-implementation": {
+      "lifelines": 6,
+      "activations": 21,
+      "messages": 6,
+      "fragments": 0,
+      "interactionUses": 4
+    },
+    "03a-resources": {
+      "lifelines": 5,
+      "activations": 40,
+      "messages": 20,
+      "fragments": 4,
+      "interactionUses": 0
+    },
+    "03b-tasks": {
+      "lifelines": 6,
+      "activations": 30,
+      "messages": 16,
+      "fragments": 3,
+      "interactionUses": 0
+    },
+    "03c-assignments": {
+      "lifelines": 7,
+      "activations": 31,
+      "messages": 16,
+      "fragments": 4,
+      "interactionUses": 0
+    },
+    "03d-readiness": {
+      "lifelines": 12,
+      "activations": 57,
+      "messages": 29,
+      "fragments": 3,
+      "interactionUses": 0
+    }
+  },
+  "packageCount": 10,
+  "typedOperationCount": 42,
+  "checks": [
+    "separate-process native save/reopen",
+    "native UML interaction/actor-classified lifeline/message models",
+    "native bounded activations on every system participant, with message links and persisted bounds",
+    "logical view uses existing system packages, no actors, frontend initiates",
+    "message model/shape endpoints and attachment to lifeline center",
+    "unchanged lifeline bounds",
+    "typed call operations and parameter signatures",
+    "native reply action and call linkage",
+    "combined-fragment operators, nesting and guarded operand membership / geometry",
+    "per-interaction persisted preconditions and postconditions",
+    "InteractionUse native target-frame references and coverage",
+    "registered nonempty notes",
+    "normal caption mode",
+    "native reopened PNG/SVG exports"
+  ],
+  "limits": [
+    "No full desktop drag/move automation; caption mode and persisted geometry checked through Open API.",
+    "Activation segments show local message/ref processing, not elapsed method duration or continuous execution across HTTP requests.",
+    "Target design: explicitly marked proposed calls and wiring are not implemented application functionality.",
+    "Pollen Tree provider compatibility, distributed consistency and production deployment not certified."
+  ]
+}

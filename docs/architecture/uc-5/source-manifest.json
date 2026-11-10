@@ -1,0 +1,39 @@
+{
+  "scope": "ACTIVE → COMPLETED → ARCHIVED",
+  "sourceHashes": {
+    "AGENTS.md": "ccfe37e0bd8a2bd872d32e0e9dc7d84c3e68ad6109516ffa4455be4eb9cdabc7",
+    "arch_docs/SYSTEM_REQUIREMENTS_SPECIFICATION.md": "733539249ced988b1a024ec7f774ab837c73f30f290a7886ac3851cc16a049d4",
+    "arch_docs/USE_CASE_SPECIFICATION.md": "25866b312f6f1f35e1ab955150dff96e72e0b9c7d9d09663415a537605c78ae3",
+    "arch_docs/VISION.md": "f2eaa6149529339382caec697dd5020e2734ad64f05acd33c342bfd067907bfa",
+    "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java": "aef31f35e336f2826d4a3861643b6ba83951eab8e7a48eccc934e2eeed69c798",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/completion/CompletionService.java": "63474b533df6a00638935896c782c0852345437f74f71e829a1202810a6c8718",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java": "16f3b1b62d4d54ee343e15281f511db74760015c4611220f52e78eb7b5ba4255",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/CommandTransaction.java": "db75b81b5fd95f04ff58271543f57a63461f382e477f3bf4b27b6d23075c3ef5",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/CompletionPorts.java": "7580e7f088044129598e63f7e4ebda4cf365d4c49fa572f2929b1647c4e5dc64",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/ExecutionPorts.java": "2cc2a6b40a5cae17b93e801e00e9dab3a83ee26ccffcf0a9688f633b35e5444c",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java": "3b5ffea23cc4e1a0d98ee67651173f464fa3f95e47da2e886fdb21a4b24c3256",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java": "59f38771a4d956c2f631fcb7d53cbd086535cdc1d4d70c8983182a02d7742eb1",
+    "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java": "89760553f744176724edcbe2df0fa6cc6aafed9a8df1d7d18ff96c252490002a",
+    "backend/src/main/java/com/seasonplan/lifecycle/config/LifecycleConfiguration.java": "485ed86357947581c4f05ad4afc8ae67d0610ac6090badc30f7e8597e03bc709",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java": "4b2d13d65d1ca290bb4dced1ae380e25a30438feec450d59a97a6fdefe96b86f",
+    "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonReport.java": "cedc4f3479f2f7c3775b0f6e4ea858086795cc5d90311f70496d384b5ef9a907",
+    "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcCommandTransaction.java": "0483da4cc37a82a65892574526cbb24e1efb0a0fe43de95979005b98dae07e2b",
+    "backend/src/test/java/com/seasonplan/lifecycle/application/CompletionUseCaseTest.java": "1b556c049861016762bfa9e171abc30c11fd42e440b886e72c4e34f903d34f5d",
+    "docs/architecture/POLLEN_TREE_EXTERNAL_SERVICE.md": "f534b424858bf4e9b87022e09b74324ebebaf70fbf9fb6a4a73dafe19e48dc2b",
+    "docs/architecture/ST-00-specification-resolution.md": "960f1fd48c054ce3bf1dd136cbf4b0201d4a52772e9606be6d9732cd9c9a096a",
+    "docs/architecture/packages/packages.xml": "f68cf04d9af088e8daefc8e7a53a712e47ff6614fe5969a385365f09d9d6d06d"
+  },
+  "references": [
+    "https://knowhow.visual-paradigm.com/openapi/create-communication-diagram/",
+    "https://www.visual-paradigm.com/guide/uml-unified-modeling-language/what-is-communication-diagram/",
+    "https://www.omg.org/spec/UML/2.5.1"
+  ],
+  "diagramCount": 6,
+  "operationCount": 30,
+  "runtimeGaps": [
+    "UC5 UI/REST and read authorization wiring",
+    "Completion/execution persistence adapters and composition",
+    "Real PDF/HTML renderer",
+    "Provider compatibility and cross-system source consistency"
+  ]
+}

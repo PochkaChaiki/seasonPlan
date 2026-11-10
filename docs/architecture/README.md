@@ -7,8 +7,21 @@ Architecture notes and diagrams belong here.
 - [UC-2 UML 2 activity diagrams](uc-2/README.md): native Visual Paradigm project
   with abstract, package-aligned logical and method/object-level implementation
   activities, plus a package reference and reopened native previews.
+- [UC-3 UML 2 sequence diagrams](uc-3/README.md): native Visual Paradigm project
+  with abstract, existing-system-package and method/object views, linked details,
+  PostgreSQL, source-backed calls and explicitly marked target-design gaps.
 - [UC-4 class diagrams](uc-4/README.md): native Visual Paradigm project with
   use-case, logical and implementation class views, limited to season execution.
+- [UC-5 UML 2 communication diagrams](uc-5/README.md): native Visual Paradigm
+  cooperation diagrams at abstract, package and method/object levels; completion,
+  report approval/export and archival, with reopened previews and regression tests.
+- [System package diagrams](packages/README.md): native Visual Paradigm project
+  with system architecture and use-case/port dependency views, source import
+  evidence, implementation-gap notes and reopened native previews.
+- [Deployment view — native FreeBSD / Helios](deployment/README.md): detailed
+  UML 2 deployment project with machine characteristics, native artifacts,
+  interfaces/security, manual publication and explicitly proposed audit recovery;
+  no Docker deployment runtime. Includes reopened previews and validation.
 
 # Architecture decisions
 
