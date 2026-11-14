@@ -18,6 +18,7 @@ public class SeasonPlan {
     private Map<String, Double> targetClimateMetrics = new HashMap<>();
     private SeasonPlanStatus status;
     private String approvalComment;
+    private List<ApprovalCondition> approvalConditions = List.of();
     private List<ChecklistItem> readinessChecklist = new ArrayList<>();
     private String createdBy;
     private String updatedBy;
@@ -81,6 +82,23 @@ public class SeasonPlan {
         plan.createdAt = createdAt;
         plan.updatedAt = updatedAt;
         return plan;
+    }
+
+    public static SeasonPlan rehydrate(
+            UUID id, String seasonType, List<String> targetTerritories, List<TimeWindow> timeWindows,
+            Map<String, String> naturalPhenomenonParameters, Map<String, Double> targetClimateMetrics,
+            SeasonPlanStatus status, String approvalComment, List<ChecklistItem> readinessChecklist,
+            String createdBy, String updatedBy, Instant createdAt, Instant updatedAt,
+            List<ApprovalCondition> approvalConditions
+    ) {
+        SeasonPlan plan = rehydrate(id, seasonType, targetTerritories, timeWindows, naturalPhenomenonParameters,
+                targetClimateMetrics, status, approvalComment, readinessChecklist, createdBy, updatedBy, createdAt, updatedAt);
+        plan.approvalConditions = List.copyOf(approvalConditions);
+        return plan;
+    }
+
+    public List<ApprovalCondition> approvalConditions() {
+        return approvalConditions;
     }
 
     public UUID id() {
@@ -184,7 +202,7 @@ public class SeasonPlan {
     }
 
     public void updateDraftFieldsFrom(SeasonPlan draft, String actorId, Instant now) {
-        requireStatus(SeasonPlanStatus.DRAFT, SeasonPlanStatus.VERIFIED, "only DRAFT or VERIFIED plans can be updated");
+        requireStatus(SeasonPlanStatus.DRAFT, "only DRAFT plans can be updated");
         this.seasonType = draft.seasonType;
         setTargetTerritories(draft.targetTerritories);
         setTimeWindows(draft.timeWindows);
@@ -200,15 +218,31 @@ public class SeasonPlan {
         touch(actorId, now);
     }
 
+    public void verify(String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.SUBMITTED, "only SUBMITTED plans can be verified");
+        this.status = SeasonPlanStatus.VERIFIED;
+        touch(actorId, now);
+    }
+
     public void approve(String comment, String actorId, Instant now) {
-        requireStatus(SeasonPlanStatus.SUBMITTED, "only SUBMITTED plans can be reviewed");
+        approve(comment, List.of(), actorId, now);
+    }
+
+    public void approve(String comment, List<ApprovalCondition> conditions, String actorId, Instant now) {
+        requireStatus(SeasonPlanStatus.VERIFIED, "only VERIFIED plans can be approved");
+        List<ApprovalCondition> selected = conditions == null ? List.of() : conditions;
+        if (selected.stream().anyMatch(java.util.Objects::isNull)
+                || selected.stream().map(ApprovalCondition::key).distinct().count() != selected.size()) {
+            throw new DomainValidationException(Map.of("conditions", List.of("condition keys must be unique and conditions must not be null")));
+        }
+        this.approvalConditions = List.copyOf(selected);
         this.status = SeasonPlanStatus.APPROVED;
         this.approvalComment = comment;
         touch(actorId, now);
     }
 
     public void returnForRevision(String comment, String actorId, Instant now) {
-        requireStatus(SeasonPlanStatus.SUBMITTED, "only SUBMITTED plans can be reviewed");
+        requireStatus(SeasonPlanStatus.SUBMITTED, SeasonPlanStatus.VERIFIED, "only SUBMITTED or VERIFIED plans can be returned");
         if (comment == null || comment.isBlank()) {
             throw new DomainValidationException(new LinkedHashMap<>() {{
                 put("comment", List.of("comment is required when returning a plan"));

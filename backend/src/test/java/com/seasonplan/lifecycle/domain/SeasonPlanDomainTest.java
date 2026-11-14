@@ -38,11 +38,37 @@ class SeasonPlanDomainTest {
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors())
                         .containsEntry("status", List.of("only APPROVED plans can be marked RITUAL_READY")));
 
+        plan.verify("guardian-1", Instant.parse("2026-01-01T02:30:00Z"));
         plan.approve("approved", "guardian-1", Instant.parse("2026-01-01T03:00:00Z"));
         plan.markRitualReady("coordinator-1", Instant.parse("2026-01-01T04:00:00Z"));
 
         assertThat(plan.status()).isEqualTo(SeasonPlanStatus.RITUAL_READY);
         assertThat(plan.updatedBy()).isEqualTo("coordinator-1");
+    }
+
+    @Test
+    void approvalConditionsAreCopiedAndKeysMustBeUnique() {
+        SeasonPlan plan = draft();
+        plan.submit("planner", Instant.now());
+        plan.verify("chief", Instant.now());
+        var condition = new ApprovalCondition("weather", "Weather", "Calibration", ActorRole.TALENT_COORDINATOR);
+        var conditions = new java.util.ArrayList<>(List.of(condition));
+        assertThatThrownBy(() -> plan.approve("ok", List.of(condition, condition), "chief", Instant.now()))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+        plan.approve("ok", conditions, "chief", Instant.now());
+        conditions.clear();
+        assertThat(plan.approvalConditions()).containsExactly(condition);
+        assertThatThrownBy(() -> plan.approvalConditions().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void submittedPlanCannotBeApprovedWithoutVerification() {
+        SeasonPlan plan = draft();
+        plan.submit("planner-1", Instant.parse("2026-01-01T01:00:00Z"));
+        assertThatThrownBy(() -> plan.approve("approved", "guardian-1", Instant.parse("2026-01-01T02:00:00Z")))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(plan.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
     }
 
     private SeasonPlan draft() {

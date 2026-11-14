@@ -6,10 +6,9 @@ import com.seasonplan.lifecycle.application.port.CommandTransaction;
 import com.seasonplan.lifecycle.persistence.JdbcCommandTransaction;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
+import com.seasonplan.lifecycle.service.AuditLogService;
 import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
 import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository;
-import com.seasonplan.lifecycle.application.preparation.FairySchedulePolicy;
 import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
 import com.seasonplan.lifecycle.application.port.MagicTaskRepository;
 import com.seasonplan.lifecycle.application.port.NaturalCalendarService;
@@ -54,9 +53,10 @@ public class LifecycleConfiguration {
             PollenService pollen,
             MagicTaskRepository magicTasks,
             FairyAssignmentRepository fairyAssignments,
+            CommandTransaction transactions,
             Clock clock
     ) {
-        return new ReadinessChecklistService(plans, pollen, magicTasks, fairyAssignments, clock);
+        return new ReadinessChecklistService(plans, pollen, magicTasks, fairyAssignments, transactions, clock);
     }
 
     @Bean
@@ -64,12 +64,13 @@ public class LifecycleConfiguration {
             SeasonPlanRepository plans,
             PollenService pollen,
             AuditLogService auditLogService,
-            NotificationService notificationService,
+            CommandTransaction transactions,
+            ObjectProvider<NotificationOutbox> outbox,
             NaturalCalendarService naturalCalendarService,
             ReadinessChecklistService readinessChecklistService,
             Clock clock
     ) {
-        return new SeasonPlanService(plans, pollen, auditLogService, notificationService,
+        return new SeasonPlanService(plans, pollen, auditLogService, transactions, event -> outbox.getObject().enqueue(event),
                 naturalCalendarService, readinessChecklistService, clock);
     }
 
@@ -82,7 +83,7 @@ public class LifecycleConfiguration {
     PollenService pollenService(
             SeasonPlanRepository plans,
             PollenTreeClient client,
-            ObjectProvider<NotificationOutbox> outbox,
+            @org.springframework.beans.factory.annotation.Qualifier("pollenConsumptionOutbox") ObjectProvider<NotificationOutbox> outbox,
             CommandTransaction transactions,
             AuditLogService auditLogService,
             Clock clock
@@ -101,20 +102,11 @@ public class LifecycleConfiguration {
     }
 
     @Bean
-    FairySchedulePolicy fairySchedulePolicy(
-            FairyAssignmentRepository assignments,
-            MagicTaskRepository magicTasks
-    ) {
-        return new FairySchedulePolicy(assignments, magicTasks);
-    }
-
-    @Bean
     FairyAssignmentService fairyAssignmentService(
             FairyAssignmentRepository assignments,
             MagicTaskRepository magicTasks,
-            FairySchedulePolicy fairySchedulePolicy,
             AuditLogService auditLogService
     ) {
-        return new FairyAssignmentService(assignments, magicTasks, fairySchedulePolicy, auditLogService);
+        return new FairyAssignmentService(assignments, magicTasks, auditLogService);
     }
 }

@@ -36,6 +36,7 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                    set season_type = ?,
                        status = ?,
                        approval_comment = ?,
+                       approval_conditions = cast(? as jsonb),
                        natural_phenomenon_parameters = cast(? as jsonb),
                        target_climate_metrics = cast(? as jsonb),
                        updated_by = ?,
@@ -45,6 +46,7 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                 plan.seasonType(),
                 plan.status().name(),
                 plan.approvalComment(),
+                JdbcJson.write(objectMapper, plan.approvalConditions()),
                 JdbcJson.write(objectMapper, plan.naturalPhenomenonParameters()),
                 JdbcJson.write(objectMapper, plan.targetClimateMetrics()),
                 plan.updatedBy(),
@@ -54,14 +56,15 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
         if (updated == 0) {
             jdbc.update("""
                     insert into season_plans (
-                        id, season_type, status, approval_comment, natural_phenomenon_parameters,
+                        id, season_type, status, approval_comment, approval_conditions, natural_phenomenon_parameters,
                         target_climate_metrics, created_by, updated_by, created_at, updated_at
-                    ) values (?, ?, ?, ?, cast(? as jsonb), cast(? as jsonb), ?, ?, ?, ?)
+                    ) values (?, ?, ?, ?, cast(? as jsonb), cast(? as jsonb), cast(? as jsonb), ?, ?, ?, ?)
                     """,
                     plan.id(),
                     plan.seasonType(),
                     plan.status().name(),
                     plan.approvalComment(),
+                    JdbcJson.write(objectMapper, plan.approvalConditions()),
                     JdbcJson.write(objectMapper, plan.naturalPhenomenonParameters()),
                     JdbcJson.write(objectMapper, plan.targetClimateMetrics()),
                     plan.createdBy(),
@@ -156,7 +159,8 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                 rs.getString("created_by"),
                 rs.getString("updated_by"),
                 rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()
+                rs.getTimestamp("updated_at").toInstant(),
+                JdbcJson.readApprovalConditions(objectMapper, rs.getString("approval_conditions"))
         );
     }
 

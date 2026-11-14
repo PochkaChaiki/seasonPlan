@@ -57,6 +57,14 @@ public class FakePollenTreeClient implements PollenTreeClient {
     }
 
     @Override
+    public synchronized Optional<PollenReservation> findAuthoritativeConfirmedBySeasonPlanId(UUID seasonPlanId) {
+        return reservations.values().stream()
+                .filter(reservation -> reservation.seasonPlanId().equals(seasonPlanId)
+                        && reservation.status() == PollenReservationStatus.CONFIRMED)
+                .reduce((older, newer) -> newer).map(this::snapshot);
+    }
+
+    @Override
     public synchronized PollenReservation requestReservation(UUID seasonPlanId, UUID requestId, int requestedAmount, String actorId) {
         Objects.requireNonNull(seasonPlanId);
         Objects.requireNonNull(requestId);

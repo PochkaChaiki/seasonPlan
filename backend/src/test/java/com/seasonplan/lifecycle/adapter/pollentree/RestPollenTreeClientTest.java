@@ -76,6 +76,34 @@ class RestPollenTreeClientTest {
     }
 
     @Test
+    void authoritativeLookupUsesExplicitEnvelopeAndFailsClosedWhenUnsupported() {
+        String url = BASE + "/season-plans/" + PLAN + "/reservations/authoritative";
+        server.expect(requestTo(url)).andRespond(withSuccess("{\"authoritativeKnown\":true,\"reservation\":" + reservation("CONFIRMED", "1200") + "}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(url)).andRespond(withSuccess("{\"authoritativeKnown\":true,\"reservation\":null}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(url)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        assertThat(tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN).orElseThrow().id()).isEqualTo(ID);
+        assertThat(tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN)).isEmpty();
+        assertThatThrownBy(() -> tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN)).isInstanceOf(PollenTreeUnavailableException.class);
+        server.verify();
+    }
+
+    @Test
+    void authoritativeLookupDoesNotTreatMissingEnvelopeFieldAsNoConfirmation() {
+        server.expect(requestTo(BASE + "/season-plans/" + PLAN + "/reservations/authoritative"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN)).isInstanceOf(PollenTreeUnavailableException.class);
+    }
+
+    @Test
+    void authoritativeLookupRejectsMismatchedPlanOrNonconfirmedStatus() {
+        String url = BASE + "/season-plans/" + PLAN + "/reservations/authoritative";
+        server.expect(requestTo(url)).andRespond(withSuccess("{\"authoritativeKnown\":true,\"reservation\":" + reservation("CONFIRMED", "1200").replace(PLAN.toString(), UUID.randomUUID().toString()) + "}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(url)).andRespond(withSuccess("{\"authoritativeKnown\":true,\"reservation\":" + reservation("DRAFT", "null") + "}", MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN)).isInstanceOf(PollenTreeUnavailableException.class);
+        assertThatThrownBy(() -> tree.findAuthoritativeConfirmedBySeasonPlanId(PLAN)).isInstanceOf(PollenTreeUnavailableException.class);
+    }
+
+    @Test
     void confirmationChecksPendingSnapshotAndReturnedDecision() {
         pending();
         server.expect(requestTo(BASE + "/reservations/" + ID + "/confirm")).andExpect(method(HttpMethod.POST))

@@ -6,6 +6,8 @@ import com.seasonplan.lifecycle.application.port.ExecutionPorts;
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
 import com.seasonplan.lifecycle.application.shared.*;
+import com.seasonplan.lifecycle.service.AuditLogService;
+
 import java.time.Clock;
 import java.util.UUID;
 

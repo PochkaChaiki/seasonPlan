@@ -4,6 +4,7 @@ import com.seasonplan.lifecycle.application.UseCaseSupport;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.application.shared.*;
 import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.lifecycle.service.AuditLogService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -66,6 +67,10 @@ public class PollenService {
 
     public Optional<PollenReservation> findLatestBySeasonPlanId(UUID planId) {
         return client.findLatestBySeasonPlanId(planId);
+    }
+
+    public Optional<PollenReservation> findAuthoritativeConfirmedBySeasonPlanId(UUID planId) {
+        return client.findAuthoritativeConfirmedBySeasonPlanId(planId);
     }
 
     public Optional<PollenUsage> usage(UUID planId) {

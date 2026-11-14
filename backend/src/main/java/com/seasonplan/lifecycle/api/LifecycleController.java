@@ -78,16 +78,25 @@ public class LifecycleController {
         return toResponse(seasonPlanService.submitForApproval(id, actor.requiredRole(ActorRole.FAIRY_PLANNER), actor.userId().toString()));
     }
 
+    @PostMapping("/season-plans/{id}/verify")
+    @PreAuthorize("hasRole('CHIEF_GUARDIAN')")
+    public SeasonPlanResponse verify(@PathVariable UUID id) {
+        CurrentActor actor = actor();
+        return toResponse(seasonPlanService.verify(id, actor.requiredRole(ActorRole.CHIEF_GUARDIAN), actor.userId().toString()));
+    }
+
     @PostMapping("/season-plans/{id}/approve")
+    @PreAuthorize("hasRole('CHIEF_GUARDIAN')")
     public SeasonPlanResponse approve(
             @PathVariable UUID id,
             @RequestBody DecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.approve(id, request.comment(), actor.requiredRole(ActorRole.CHIEF_GUARDIAN), actor.userId().toString()));
+        return toResponse(seasonPlanService.approve(id, request.comment(), request.conditions(), actor.requiredRole(ActorRole.CHIEF_GUARDIAN), actor.userId().toString()));
     }
 
     @PostMapping("/season-plans/{id}/return")
+    @PreAuthorize("hasRole('CHIEF_GUARDIAN')")
     public SeasonPlanResponse returnForRevision(
             @PathVariable UUID id,
             @RequestBody DecisionRequest request
@@ -99,6 +108,11 @@ public class LifecycleController {
     @GetMapping("/season-plans/{id}")
     public SeasonPlanResponse getPlan(@PathVariable UUID id) {
         return toResponse(seasonPlanService.get(id));
+    }
+
+    @GetMapping("/season-plans/{id}/review-history")
+    public List<com.seasonplan.lifecycle.domain.AuditLogEntry> reviewHistory(@PathVariable UUID id) {
+        return seasonPlanService.reviewHistory(id, actor());
     }
 
     @GetMapping("/season-plans/{id}/readiness")

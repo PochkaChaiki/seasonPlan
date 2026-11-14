@@ -26,6 +26,6 @@ public final class UseCaseSupport {
     public static SeasonPlan copy(SeasonPlan plan) {
         return SeasonPlan.rehydrate(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(),
                 plan.naturalPhenomenonParameters(), plan.targetClimateMetrics(), plan.status(), plan.approvalComment(),
-                plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt());
+                plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt(), plan.approvalConditions());
     }
 }

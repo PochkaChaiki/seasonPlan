@@ -57,6 +57,18 @@ public final class RestPollenTreeClient implements PollenTreeClient {
     }
 
     @Override
+    public Optional<PollenReservation> findAuthoritativeConfirmedBySeasonPlanId(UUID seasonPlanId) {
+        // Proposed provider contract: 200 with authoritativeKnown=true and nullable reservation; 404 is unavailable.
+        AuthorityResponse response = exchange(HttpMethod.GET, "/season-plans/" + seasonPlanId + "/reservations/authoritative", null,
+                AuthorityResponse.class, false, null);
+        require(response != null && Boolean.TRUE.equals(response.authoritativeKnown()));
+        if (response.reservation() == null) return Optional.empty();
+        PollenReservation result = reservation(response.reservation());
+        require(result.seasonPlanId().equals(seasonPlanId) && result.status() == PollenReservationStatus.CONFIRMED);
+        return Optional.of(result);
+    }
+
+    @Override
     public PollenReservation requestReservation(UUID seasonPlanId, UUID requestId, int requestedAmount, String actorId) {
         ReservationResponse response = exchange(HttpMethod.POST, "/reservations",
                 new ReservationRequest(seasonPlanId, requestId, requestedAmount, actorId), ReservationResponse.class, false, "requestedAmount");
@@ -203,6 +215,7 @@ public final class RestPollenTreeClient implements PollenTreeClient {
         return new DomainValidationException(Map.of(field, List.of(message)));
     }
 
+    public record AuthorityResponse(Boolean authoritativeKnown, ReservationResponse reservation) {}
     public record ReservationRequest(UUID seasonPlanId, UUID requestId, int requestedAmount, String actorId) {}
     public record ConfirmationRequest(int confirmedAmount, String comment, String actorId) {}
     public record RejectionRequest(String comment, String actorId) {}

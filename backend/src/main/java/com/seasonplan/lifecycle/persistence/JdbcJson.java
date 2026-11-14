@@ -18,6 +18,14 @@ final class JdbcJson {
         }
     }
 
+    static java.util.List<com.seasonplan.lifecycle.domain.ApprovalCondition> readApprovalConditions(ObjectMapper objectMapper, String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<>() {});
+        } catch (JsonProcessingException error) {
+            throw new IllegalArgumentException("Could not deserialize approval conditions", error);
+        }
+    }
+
     static Map<String, String> readStringMap(ObjectMapper objectMapper, String json) {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {

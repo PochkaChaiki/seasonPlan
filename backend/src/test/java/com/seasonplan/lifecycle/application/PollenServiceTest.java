@@ -4,7 +4,7 @@ import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
 import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.port.PollenTreeClient;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
+import com.seasonplan.lifecycle.service.AuditLogService;
 import com.seasonplan.lifecycle.domain.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

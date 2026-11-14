@@ -86,18 +86,53 @@ class PollenReservationBoundaryTest {
         verifyNoInteractions(client);
     }
 
+    @Test void approvalRejectsAuthorityForAnotherPlan() {
+        fixture.setStatus(SeasonPlanStatus.VERIFIED);
+        var approval = new ApprovalService(fixture.plans, service, fixture.audit, fixture.transactions, fixture.outbox, plan -> {}, fixture.clock);
+        var latest = new PollenReservation(UUID.randomUUID(), planId, 100);
+        latest.confirm(100, "ok", "guardian");
+        var wrong = new PollenReservation(UUID.randomUUID(), UUID.randomUUID(), 100);
+        wrong.confirm(100, "ok", "guardian");
+        when(client.findLatestBySeasonPlanId(planId)).thenReturn(Optional.of(latest));
+        when(client.findAuthoritativeConfirmedBySeasonPlanId(planId)).thenReturn(Optional.of(wrong));
+        assertThatThrownBy(() -> approval.approve(planId, "ok", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(DomainValidationException.class);
+        assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+    }
+
+    @Test void authorityOutageDoesNotFallBackToLatestOrChangePlan() {
+        fixture.setStatus(SeasonPlanStatus.VERIFIED);
+        var approval = new ApprovalService(fixture.plans, service, fixture.audit, fixture.transactions, fixture.outbox, plan -> {}, fixture.clock);
+        var latest = new PollenReservation(UUID.randomUUID(), planId, 100);
+        latest.confirm(100, "ok", "guardian");
+        when(client.findLatestBySeasonPlanId(planId)).thenReturn(Optional.of(latest));
+        when(client.findAuthoritativeConfirmedBySeasonPlanId(planId)).thenThrow(new PollenTreeUnavailableException("offline"));
+        assertThatThrownBy(() -> approval.approve(planId, "ok", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(PollenTreeUnavailableException.class);
+        assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+        assertThat(fixture.events).isEmpty();
+    }
+
+    @Test void latestReservationForAnotherPlanIsRejected() {
+        fixture.setStatus(SeasonPlanStatus.VERIFIED);
+        var approval = new ApprovalService(fixture.plans, service, fixture.audit, fixture.transactions, fixture.outbox, plan -> {}, fixture.clock);
+        var wrong = new PollenReservation(UUID.randomUUID(), UUID.randomUUID(), 100);
+        wrong.confirm(100, "ok", "guardian");
+        when(client.findLatestBySeasonPlanId(planId)).thenReturn(Optional.of(wrong));
+        assertThatThrownBy(() -> approval.approve(planId, "ok", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(DomainValidationException.class);
+        verify(client, never()).findAuthoritativeConfirmedBySeasonPlanId(planId);
+        assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+    }
+
     @Test void approvalAndReadinessRequireLiveExternalConfirmation() {
-        var approval = new ApprovalService(fixture.plans, service, fixture.audit, mock(PlannerNotifications.class), fixture.clock);
+        var approval = new ApprovalService(fixture.plans, service, fixture.audit, fixture.transactions, fixture.outbox, plan -> {}, fixture.clock);
+        fixture.setStatus(SeasonPlanStatus.VERIFIED);
         var readiness = new ReadinessChecklistService(fixture.plans, service, new InMemoryMagicTaskRepository(),
-                new InMemoryFairyAssignmentRepository(), fixture.clock);
+                new InMemoryFairyAssignmentRepository(), fixture.transactions, fixture.clock);
         var pending = new PollenReservation(UUID.randomUUID(), planId, 100);
-        var rejected = new PollenReservation(UUID.randomUUID(), planId, 100);
-        rejected.reject("reason", "guardian");
-        for (Optional<PollenReservation> state : List.of(Optional.<PollenReservation>empty(), Optional.of(pending), Optional.of(rejected))) {
+        for (Optional<PollenReservation> state : List.of(Optional.<PollenReservation>empty(), Optional.of(pending))) {
             when(client.findLatestBySeasonPlanId(planId)).thenReturn(state);
             assertThatThrownBy(() -> approval.approve(planId, "approved", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(DomainValidationException.class);
             assertThat(readiness.calculateChecklist(planId)).containsKey("pollenReservation");
-            assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+            assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
         }
         when(client.findLatestBySeasonPlanId(planId)).thenThrow(new PollenTreeUnavailableException("offline"));
         assertThatThrownBy(() -> approval.approve(planId, "approved", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(PollenTreeUnavailableException.class);
@@ -105,6 +140,7 @@ class PollenReservationBoundaryTest {
         var confirmed = new PollenReservation(UUID.randomUUID(), planId, 100);
         confirmed.confirm(100, "ok", "guardian");
         doReturn(Optional.of(confirmed)).when(client).findLatestBySeasonPlanId(planId);
+        doReturn(Optional.of(confirmed)).when(client).findAuthoritativeConfirmedBySeasonPlanId(planId);
         assertThat(readiness.calculateChecklist(planId)).doesNotContainKey("pollenReservation");
         assertThat(approval.approve(planId, "approved", ActorRole.CHIEF_GUARDIAN, "chief").status()).isEqualTo(SeasonPlanStatus.APPROVED);
     }

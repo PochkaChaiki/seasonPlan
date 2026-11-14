@@ -37,7 +37,7 @@ Consumption risk -> notification outbox
 There is **one application entry point for every pollen operation**: `application/pollen/PollenService.java`.
 
 - Requests, confirms and rejects reservations.
-- Reads external capacity, the latest reservation for a plan, reservation details and usage.
+- Reads external capacity, the latest reservation, the authoritative confirmed reservation, reservation details and usage.
 - Records consumption for ACTIVE seasons.
 - Enforces roles/input validation, audits decisions and consumption, and emits threshold notifications.
 - Does not own stock, allocate pollen itself, or persist reservations.
@@ -88,6 +88,7 @@ Paths are relative to `POLLEN_TREE_BASE_URL`; requests send `X-API-Key` and acce
 | POST `/reservations` | `{seasonPlanId, requestId, requestedAmount, actorId}` -> reservation |
 | GET `/reservations/{id}` | Reservation or 404 |
 | GET `/season-plans/{id}/reservations/latest` | Latest reservation or 404 |
+| GET `/season-plans/{id}/reservations/authoritative` | Proposed `{authoritativeKnown: true, reservation: <confirmed reservation or null>}`; 404 or missing marker means unavailable, not no authority |
 | POST `/reservations/{id}/confirm` | `{confirmedAmount, comment, actorId}` -> confirmed reservation |
 | POST `/reservations/{id}/reject` | `{comment, actorId}` -> rejected reservation |
 | GET `/season-plans/{id}/usage` | Usage or 404 |
@@ -102,8 +103,8 @@ Provider requirements:
 - Request IDs deduplicate the same plan/amount/actor; changed payloads are rejected. Existing browser request routes accept optional `requestId`; omitted IDs are freshly generated, so separate calls are not deduplicated automatically.
 - Confirm/reject replay is idempotent by reservation UUID plus exact amount/comment/actor. The adapter first reads the reservation and permits pending state or an exactly matching terminal replay. That preflight is not a lock; the provider must enforce state/capacity atomically at POST time.
 - Consumption deduplicates `(seasonPlanId, clientEventId)`, rejects changed normalized amounts and returns the original event result even after later events.
-- Only real lookup/summary 404 means absence. Missing mutation targets become 404. Mutation 400/409/422 becomes sanitized field validation. Authentication errors, 429, 5xx, redirects, timeout/I/O and malformed/inconsistent results become generic SeasonPlan API 503: `Pollen Tree is unavailable`.
-- There is no silent local/fake fallback and no automatic command retry.
+- Only real lookup/summary 404 means absence; the proposed authoritative endpoint must return a 200 envelope even when no confirmed reservation exists. Missing mutation targets become 404. Mutation 400/409/422 becomes sanitized field validation. Authentication errors, 429, 5xx, redirects, timeout/I/O and malformed/inconsistent results become generic SeasonPlan API 503: `Pollen Tree is unavailable`.
+- There is no silent local/fake fallback and no automatic command retry. UC-2 checks both the latest record and this authoritative response; a DRAFT or REJECTED replacement does not supersede an earlier CONFIRMED record. A rejected reservation without authority returns the plan for revision with its reason. The authority endpoint is unverified and requires provider agreement.
 
 Browser reservation routes and response fields remain compatible. The browser never receives the external API key or calls the provider directly.
 

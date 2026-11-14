@@ -1,4 +1,4 @@
-package com.seasonplan.lifecycle.application.shared;
+package com.seasonplan.lifecycle.service;
 
 import com.seasonplan.lifecycle.application.port.AuditLogRepository;
 

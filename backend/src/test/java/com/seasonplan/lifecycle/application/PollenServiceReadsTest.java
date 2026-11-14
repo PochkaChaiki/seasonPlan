@@ -2,7 +2,7 @@ package com.seasonplan.lifecycle.application;
 
 import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.application.port.*;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
+import com.seasonplan.lifecycle.service.AuditLogService;
 import com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException;
 import com.seasonplan.lifecycle.domain.*;
 import org.junit.jupiter.api.Test;

@@ -6,7 +6,9 @@ Architecture notes and diagrams belong here.
   native-project generation, layout, caption interaction and validation lessons.
 - [UC-2 UML 2 activity diagrams](uc-2/README.md): native Visual Paradigm project
   with abstract, package-aligned logical and method/object-level implementation
-  activities, plus a package reference and reopened native previews.
+  activities, plus a package reference and reopened native previews. The
+  [English implementation revision](uc-2/implementation-revised/README.md) uses
+  implemented calls only and preserves the user's original project and other views.
 - [UC-3 UML 2 sequence diagrams](uc-3/README.md): native Visual Paradigm project
   with abstract, existing-system-package and method/object views, linked details,
   PostgreSQL, source-backed calls and explicitly marked target-design gaps.

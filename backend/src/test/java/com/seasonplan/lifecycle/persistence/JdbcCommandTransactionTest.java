@@ -41,6 +41,18 @@ class JdbcCommandTransactionTest {
         assertThat(events).containsExactly("begin", "rollback");
     }
 
+    @Test void missingLockTargetIsNotFoundAndCommandIsNotInvoked() {
+        var events = new ArrayList<String>();
+        var jdbc = mock(JdbcTemplate.class);
+        UUID id = UUID.randomUUID();
+        when(jdbc.queryForObject(anyString(), eq(UUID.class), eq(id)))
+                .thenThrow(new org.springframework.dao.EmptyResultDataAccessException(1));
+        var transaction = new JdbcCommandTransaction(jdbc, new RecordingManager(events));
+        assertThatThrownBy(() -> transaction.execute(id, () -> { events.add("command"); return null; }))
+                .isInstanceOf(com.seasonplan.lifecycle.application.shared.NotFoundException.class);
+        assertThat(events).containsExactly("begin", "rollback");
+    }
+
     private static class RecordingManager extends AbstractPlatformTransactionManager {
         private final List<String> events;
         RecordingManager(List<String> events) { this.events = events; }

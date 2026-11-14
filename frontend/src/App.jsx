@@ -89,6 +89,7 @@ function Dashboard({ currentActor }) {
         )}
       </section>
 
+      <DashboardNotifications />
       <section className="card dashboard-card">
         <h2>Доступные планы сезона</h2>
         {loadingPlans && plans.length === 0 ? <p className="note">Загрузка планов…</p> : null}
@@ -121,6 +122,43 @@ function Dashboard({ currentActor }) {
       </section>
     </main>
   );
+}
+
+function DashboardNotifications() {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    lifecycleApi.listNotifications()
+      .then((items) => {
+        if (!Array.isArray(items)) throw new Error('Некорректный ответ уведомлений.');
+        if (active) { setNotifications(items); setError(''); }
+      })
+      .catch((failure) => { if (active) setError(failure.message ?? 'Не удалось загрузить уведомления.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [refreshVersion]);
+
+  function refreshNotifications() {
+    setLoading(true);
+    setRefreshVersion((version) => version + 1);
+  }
+
+  return <section className="card dashboard-card" aria-label="Уведомления">
+    <h2>Уведомления</h2>
+    <button disabled={loading} onClick={refreshNotifications}>Обновить уведомления</button>
+    {loading && <p className="note">Загрузка уведомлений…</p>}
+    {error && <p className="note rose" role="alert">{error}</p>}
+    {!loading && !error && notifications.length === 0 && <p className="note">Уведомлений пока нет.</p>}
+    {notifications.length > 0 && <ul>{notifications.map((item) => <li key={item.eventId}>
+      <strong>{item.eventType}</strong> — <time dateTime={item.occurredAt}>{item.occurredAt}</time>
+      <p>{item.message}</p>
+      <Link to={`/season-plans/${item.seasonPlanId}`} aria-label={`Открыть план ${item.seasonPlanId}`}>Открыть план</Link>
+    </li>)}</ul>}
+  </section>;
 }
 
 function PlanRedirect() {

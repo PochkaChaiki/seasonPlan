@@ -9,6 +9,7 @@ import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
+import com.seasonplan.lifecycle.service.AuditLogService;
 
 import java.util.LinkedHashMap;
 import java.util.List;

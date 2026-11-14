@@ -8,6 +8,7 @@ import com.seasonplan.lifecycle.domain.AssignmentStatus;
 import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.FairyAssignment;
 import com.seasonplan.lifecycle.domain.MagicTask;
+import com.seasonplan.lifecycle.service.AuditLogService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,18 +17,15 @@ import java.util.UUID;
 public class FairyAssignmentService {
     private final FairyAssignmentRepository assignments;
     private final MagicTaskRepository magicTasks;
-    private final FairySchedulePolicy fairySchedulePolicy;
     private final AuditLogService auditLogService;
 
     public FairyAssignmentService(
             FairyAssignmentRepository assignments,
             MagicTaskRepository magicTasks,
-            FairySchedulePolicy fairySchedulePolicy,
             AuditLogService auditLogService
     ) {
         this.assignments = assignments;
         this.magicTasks = magicTasks;
-        this.fairySchedulePolicy = fairySchedulePolicy;
         this.auditLogService = auditLogService;
     }
 
@@ -44,7 +42,7 @@ public class FairyAssignmentService {
         if (!validateTalentCompatibility(task, talent)) {
             ValidationSupport.add(errors, "talent", "fairy talent must match required task talent");
         }
-        if (status == AssignmentStatus.CONFIRMED && fairySchedulePolicy.hasScheduleConflict(task, fairyId)) {
+        if (status == AssignmentStatus.CONFIRMED && this.hasScheduleConflict(task, fairyId)) {
             ValidationSupport.add(errors, "fairyId", "fairy has a schedule conflict");
         }
         ValidationSupport.throwIfAny(errors);
@@ -67,4 +65,11 @@ public class FairyAssignmentService {
         return assignments.findByMagicTaskId(taskId);
     }
 
+    private boolean hasScheduleConflict(MagicTask task, String fairyId) {
+        return assignments.findConfirmedByFairyId(fairyId).stream()
+            .map(assignment -> magicTasks.findById(assignment.magicTaskId())
+                .orElseThrow(() -> new NotFoundException("magic task not found: " + assignment.magicTaskId())))
+            .filter(existingTask -> existingTask.seasonPlanId().equals(task.seasonPlanId()))
+            .anyMatch(existingTask -> existingTask.timeWindow().overlaps(task.timeWindow()));
+    }
 }

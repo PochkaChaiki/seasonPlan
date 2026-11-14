@@ -4,6 +4,8 @@ import com.seasonplan.lifecycle.application.UseCaseSupport;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.shared.*;
+import com.seasonplan.lifecycle.service.AuditLogService;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

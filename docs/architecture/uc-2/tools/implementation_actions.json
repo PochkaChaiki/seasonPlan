@@ -1,0 +1,250 @@
+{
+  "open": {
+    "text": "lifecycleApi.getPlan(id)\nlifecycleApi.getReadiness(id)\nlifecycleApi.getReviewHistory(id)"
+  },
+  "authorize": {
+    "text": "actor = currentActorProvider.currentActor()\nactor.roles()",
+    "callOwner": "CurrentActorProvider",
+    "callName": "currentActor",
+    "callReturn": "CurrentActor",
+    "callParameters": "",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/port/CurrentActorProvider.java",
+    "callInterface": "true"
+  },
+  "load": {
+    "text": "LifecycleController.getPlan(id)\nSeasonPlanService.get(id)",
+    "callOwner": "LifecycleController",
+    "callName": "getPlan",
+    "callReturn": "SeasonPlanResponse",
+    "callParameters": "UUID id",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java"
+  },
+  "history": {
+    "text": "LifecycleController.reviewHistory(id)\nSeasonPlanService.reviewHistory(id, actor)\nAuditLogService.entriesFor(id)\nReadinessChecklistService.calculateChecklist(id)",
+    "callOwner": "SeasonPlanService",
+    "callName": "reviewHistory",
+    "callReturn": "List<AuditLogEntry>",
+    "callParameters": "UUID id|CurrentActor actor",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java"
+  },
+  "view": {
+    "text": "setPlan(loadedPlan); setReadiness(loadedReadiness)\nsetHistory(entries); cachePlan(loadedPlan)"
+  },
+  "verify": {
+    "text": "ApprovalService.verify(id, role, actorId)\nvalidatePlan.accept(plan)\nplan.verify(actorId, clock.instant())\ncommit(plan, AuditAction.SEASON_PLAN_VERIFIED,\n    actorId, null)",
+    "callOwner": "ApprovalService",
+    "callName": "verify",
+    "callReturn": "SeasonPlan",
+    "callParameters": "UUID id|ActorRole role|String actorId",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/approval/ApprovalService.java"
+  },
+  "conditional": {
+    "text": "setCondition({ ...condition, key: event.target.value })\nsetCondition({ ...condition, displayText: event.target.value })\nsetCondition({ ...condition,\n    evidenceRequirement: event.target.value })\nsetCondition({ ...condition, ownerRole: event.target.value })\nsetConditions([...conditions, condition])",
+    "h": 140
+  },
+  "pollen-read": {
+    "text": "RestPollenTreeClient.findLatestBySeasonPlanId(id)\nRestPollenTreeClient.\n    findAuthoritativeConfirmedBySeasonPlanId(id)",
+    "callOwner": "RestPollenTreeClient",
+    "callName": "findAuthoritativeConfirmedBySeasonPlanId",
+    "callReturn": "Optional<PollenReservation>",
+    "callParameters": "UUID seasonPlanId",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/adapter/pollentree/RestPollenTreeClient.java"
+  },
+  "approve": {
+    "text": "PlanningService.validateForReview(plan)\nplan.approve(comment, conditions,\n    actorId, clock.instant())",
+    "callOwner": "SeasonPlan",
+    "callName": "approve",
+    "callReturn": "void",
+    "callParameters": "String comment|List<ApprovalCondition> conditions|String actorId|Instant now",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java"
+  },
+  "pollen-block": {
+    "text": "comment = \"Pollen reservation rejected: \" +\n    latest.get().comment()",
+    "callOwner": "PollenReservation",
+    "callName": "comment",
+    "callReturn": "String",
+    "callParameters": "",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/domain/PollenReservation.java"
+  },
+  "blocked": {
+    "text": "throw invalidPollen()"
+  },
+  "comment": {
+    "text": "decide(\"return\")\nlifecycleApi.returnPlan(id, { comment }, actor)\nLifecycleController.returnForRevision(id, request)",
+    "callOwner": "LifecycleController",
+    "callName": "returnForRevision",
+    "callReturn": "SeasonPlanResponse",
+    "callParameters": "UUID id|DecisionRequest request",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java"
+  },
+  "comment-error": {
+    "text": "setError(decisionError)\nFieldErrors({ errors: error.errors })"
+  },
+  "return": {
+    "text": "plan.returnForRevision(\n    comment, actorId, clock.instant())",
+    "callOwner": "SeasonPlan",
+    "callName": "returnForRevision",
+    "callReturn": "void",
+    "callParameters": "String comment|String actorId|Instant now",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/domain/SeasonPlan.java"
+  },
+  "audit": {
+    "text": "entry = AuditLogService.append(\n    id, action, actorId, comment)\nAuditLogRepository.append(entry)",
+    "callOwner": "AuditLogService",
+    "callName": "append",
+    "callReturn": "AuditLogEntry",
+    "callParameters": "UUID seasonPlanId|AuditAction action|String actorId|String comment",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/shared/AuditLogService.java"
+  },
+  "save": {
+    "text": "saved = SeasonPlanRepository.save(plan)\nJdbcSeasonPlanRepository.save(plan)",
+    "callOwner": "JdbcSeasonPlanRepository",
+    "callName": "save",
+    "callReturn": "SeasonPlan",
+    "callParameters": "SeasonPlan plan",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java"
+  },
+  "outbox": {
+    "text": "event = new NotificationOutbox.Event(\n    entry.id().toString(), plan.id(), action.name(),\n    recipients, channels, comment, clock.instant())\noutbox.enqueue(event)",
+    "callOwner": "NotificationOutbox",
+    "callName": "enqueue",
+    "callReturn": "void",
+    "callParameters": "NotificationOutbox.Event event",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/port/NotificationOutbox.java",
+    "callInterface": "true"
+  },
+  "commit": {
+    "text": "transactionManager.commit(status)",
+    "callOwner": "PlatformTransactionManager",
+    "callName": "commit",
+    "callReturn": "void",
+    "callParameters": "TransactionStatus status",
+    "callSource": "",
+    "callInterface": "true",
+    "callLibrary": "org.springframework:spring-tx:6.1.15"
+  },
+  "rollback": {
+    "text": "catch (Exception ex)"
+  },
+  "rollback-body": {
+    "text": "transactionManager.rollback(status)",
+    "callOwner": "PlatformTransactionManager",
+    "callName": "rollback",
+    "callReturn": "void",
+    "callParameters": "TransactionStatus status",
+    "callSource": "",
+    "callInterface": "true",
+    "callLibrary": "org.springframework:spring-tx:6.1.15"
+  },
+  "notify": {
+    "text": "JdbcNotificationDeliveryWorker.deliverPending()\ngateway.deliver(event, recipient, channel)\nJdbcNotificationDeliveryGateway.deliver(event, recipient, channel)\nSmtpNotificationEmailGateway.send(event, recipient)",
+    "callOwner": "JdbcNotificationDeliveryWorker",
+    "callName": "deliverPending",
+    "callReturn": "void",
+    "callParameters": "",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcNotificationDeliveryWorker.java"
+  },
+  "receive": {
+    "text": "lifecycleApi.listNotifications()\nNotificationController.notifications()\ninbox.findLatestByRecipient(actors.currentActor().userId())\nsetNotifications(items)",
+    "callOwner": "NotificationController",
+    "callName": "notifications",
+    "callReturn": "List<NotificationInboxItem>",
+    "callParameters": "",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/NotificationController.java"
+  },
+  "denied": {
+    "text": "LifecycleExceptionHandler.forbidden(error)",
+    "callOwner": "LifecycleExceptionHandler",
+    "callName": "forbidden",
+    "callReturn": "ResponseEntity<Map<String, Object>>",
+    "callParameters": "AccessDeniedForRoleException error",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleExceptionHandler.java",
+    "callVisibility": "package"
+  },
+  "load-service": {
+    "text": "plan = PlanningService.get(id)",
+    "callOwner": "PlanningService",
+    "callName": "get",
+    "callReturn": "SeasonPlan",
+    "callParameters": "UUID id",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/planning/PlanningService.java"
+  },
+  "load-repo": {
+    "text": "SeasonPlanRepository.findById(id)",
+    "callOwner": "SeasonPlanRepository",
+    "callName": "findById",
+    "callReturn": "Optional<SeasonPlan>",
+    "callParameters": "UUID id",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/port/SeasonPlanRepository.java",
+    "callInterface": "true"
+  },
+  "load-jdbc": {
+    "text": "JdbcSeasonPlanRepository.findById(id)",
+    "callOwner": "JdbcSeasonPlanRepository",
+    "callName": "findById",
+    "callReturn": "Optional<SeasonPlan>",
+    "callParameters": "UUID id",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/persistence/JdbcSeasonPlanRepository.java"
+  },
+  "approval-command": {
+    "text": "lifecycleApi.approvePlan(id, { comment, conditions })\nLifecycleController.approve(id, request)\nSeasonPlanService.approve(id, comment,\n    conditions, role, actorId)",
+    "callOwner": "LifecycleController",
+    "callName": "approve",
+    "callReturn": "SeasonPlanResponse",
+    "callParameters": "UUID id|DecisionRequest request",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java"
+  },
+  "approval-tx": {
+    "text": "transactions.execute(id, command)\nplan = ApprovalService.get(id)\nplan.status()",
+    "callOwner": "CommandTransaction",
+    "callName": "execute",
+    "callReturn": "T",
+    "callParameters": "UUID seasonPlanId|Supplier<T> command",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/port/CommandTransaction.java",
+    "callInterface": "true"
+  },
+  "pollen-service": {
+    "text": "PollenService.findLatestBySeasonPlanId(id)\nPollenService.\n    findAuthoritativeConfirmedBySeasonPlanId(id)",
+    "callOwner": "PollenService",
+    "callName": "findAuthoritativeConfirmedBySeasonPlanId",
+    "callReturn": "Optional<PollenReservation>",
+    "callParameters": "UUID planId",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/pollen/PollenService.java"
+  },
+  "pollen-port": {
+    "text": "PollenTreeClient.findLatestBySeasonPlanId(id)\nPollenTreeClient.\n    findAuthoritativeConfirmedBySeasonPlanId(id)",
+    "callOwner": "PollenTreeClient",
+    "callName": "findAuthoritativeConfirmedBySeasonPlanId",
+    "callReturn": "Optional<PollenReservation>",
+    "callParameters": "UUID seasonPlanId",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/application/port/PollenTreeClient.java",
+    "callInterface": "true"
+  },
+  "return-tx": {
+    "text": "SeasonPlanService.returnForRevision(\n    id, comment, role, actorId)\ntransactions.execute(id, command)",
+    "callOwner": "SeasonPlanService",
+    "callName": "returnForRevision",
+    "callReturn": "SeasonPlan",
+    "callParameters": "UUID id|String comment|ActorRole role|String actorId",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/service/SeasonPlanService.java"
+  },
+  "verify-command": {
+    "text": "lifecycleApi.verifyPlan(id)\nLifecycleController.verify(id)\nSeasonPlanService.verify(id, role, actorId)",
+    "callOwner": "LifecycleController",
+    "callName": "verify",
+    "callReturn": "SeasonPlanResponse",
+    "callParameters": "UUID id",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleController.java"
+  },
+  "response": {
+    "text": "SeasonPlanResponse.from(plan)\nsetPlan(result); cachePlan(result)\nsetComment(''); setConditions([])\nsetReadiness(null)\nsetReadiness(await lifecycleApi.getReadiness(id))",
+    "callOwner": "SeasonPlanResponse",
+    "callName": "from",
+    "callReturn": "SeasonPlanResponse",
+    "callParameters": "SeasonPlan plan",
+    "callSource": "backend/src/main/java/com/seasonplan/lifecycle/api/LifecycleApiModels.java",
+    "callStatic": "true",
+    "callVisibility": "package",
+    "h": 120
+  }
+}

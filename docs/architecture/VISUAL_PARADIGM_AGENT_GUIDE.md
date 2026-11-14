@@ -398,6 +398,19 @@ Before linking calls, compare application orchestration and entity mutations wit
 
 It is valid to deliver a target design when the requested behavior is not implemented, but mark proposed methods, request fields, condition models, transaction wiring and adapters explicitly. Do not fabricate an existing method to make the activity appear complete. Keep real method signatures separate from proposed overloads and document the differences in the delivery README.
 
+### Code-only implementation repairs
+
+The [English implementation revision](uc-2/implementation-revised/README.md) preserves the user's existing project in an edited copy. Its [repair runner](uc-2/tools/Revise-Implementation.ps1) replaces only the selected activity, not the entire project.
+
+- If the user requires implemented calls only, implement missing behavior through red-green-refactor first. Removing a proposal marker does not make a missing method real. Verify signatures and actual composition, including persistence order and asynchronous delivery.
+- Apply language restrictions to diagram names, partition headers, guards, handler bodies and metadata as well as action labels. If notes are prohibited, omit the title-banner NOTE too. Do not add class diagrams or class-relationship arrows to an action-only view; use concrete calls/field expressions and native operation references.
+- `getDefaultPackage()` here belongs to **`IActivityDiagramUIModel`**, not generic `IDiagramUIModel`. Check that exactly one intended activity is selected before deleting/replacing its diagram and owned activity model. Never delete project infrastructure or unrelated root models.
+- Inspect before and after on scratch copies. Compare preserved diagram IDs, shape/model IDs, names, bounds and routes, not only diagram counts. The repair's separate-process receipt checks all three unrelated views remain unchanged.
+- A Java type need not have its own filename: `SeasonPlanResponse` is declared in `LifecycleApiModels.java`. Keep record/source ownership, static methods, package visibility and abstract interface operations faithful. Distinguish source-backed project methods from actual framework-library operations.
+- **A valid route can still be invisible.** Repaired connector models retained correct points but cached drawing bounds `0,0,100,100`; native export clipped every arrow while retaining guard text. After assigning final routes/pins, call `setRequestRebuild(true)`, `setRequestRebuildFromEnd(true)` and `setRequestRebuildToEnd(true)`. Drain queued EDT work before final save. Verify after reopening that drawing bounds contain the route and that native SVG contains painted ControlFlow/ExceptionHandler groups. Geometry counts alone missed this defect; changing ink alone did not fix it.
+- Set explicit connector ink, nonzero weight, opacity and line style when cloning a project with inherited formatting. Container backgrounds can also cover connectors; the repair disables `coverConnector` on its new swimlane/compartments/handler. Verify the final PNG too, not merely the style properties.
+- An independent scheduler branch denotes background work enabled by committed outbox data, not a direct controller call to a scheduler method. Keep callback cleanup separate from opening a new transaction.
+
 ## 12. System package diagrams: source hierarchy and note metadata
 
 The [package-diagram delivery](packages/README.md) includes a reusable Open API

@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "projectSHA256": "01572eba953cd2fa0dbca35ae9a3d09832ae252544ea6388d295bea71130c0f0",
+  "preservedViews": [
+    "1. UC-2 — Абстрактное описание",
+    "2. UC-2 — Более подробное описание; уровни взаимодействия совпадают с диаграммой пакетов",
+    "0. UC-2 — Пакеты и уровни логического представления"
+  ],
+  "implementation": {
+    "actions": 32,
+    "nodes": 51,
+    "flows": 67,
+    "nativeCalls": 27
+  },
+  "checks": [
+    "English-only calls and expressions; no placeholders, class diagram, object nodes or notes",
+    "Concrete source-backed operation links with typed parameters/results",
+    "Original unrelated native views unchanged",
+    "Separate-process native reopen and exports",
+    "UML2 flow types, partition membership, black control nodes and attached obstacle-clearing routes"
+  ],
+  "limits": [
+    "No full desktop GUI automation",
+    "No live Pollen Tree or email-provider verification"
+  ],
+  "sha256": {
+    "00-packages.png": "31cecf7a8591f5dbf11548dc6cf9d931215f3f10b518e7ae147d2d32f43e1fc9",
+    "00-packages.svg": "47e341bee733cf05cd9827db132aa662fbafc818cd8ff5750b751b31ea5bdf19",
+    "01-use-case.png": "d45aad55cd36a6908d6fb996f976d6c3cb2c0c723e4dd83f67ee4f8d3cece942",
+    "01-use-case.svg": "a671433883ae6122c4be84b88f1c47a68e5aa929e0aede6e372b08a72d00997d",
+    "02-logical.png": "33f4fcf496e8d5ceb79307fe4689b1147bab201f3d64d993710d05c6778049eb",
+    "02-logical.svg": "d82ed774326a198cf465589f2f5b751caa73e51ad02b245e2260c2df8f677db2",
+    "03-implementation.png": "a1b6b40f3abe85de44995822cce076c9a94f424422780d23e62fe266a3083696",
+    "03-implementation.svg": "34861eba48b3769ea093fed2039e3f4b6e887c426dc9cb6b906e402c3ec7e8ba",
+    "native-reopened.xml": "25d8a5af8549c110a44409d9b31f459a96ae22a07d8569d057a3b594652b1405",
+    "original-native.xml": "c7907513e97e6d26e3dcd8b9cf423acc938548e722acc4ce1ffdeb42562cee60",
+    "SeasonPlan-UC2-implementation.vpp": "01572eba953cd2fa0dbca35ae9a3d09832ae252544ea6388d295bea71130c0f0"
+  }
+}

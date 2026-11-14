@@ -6,7 +6,7 @@ import com.seasonplan.lifecycle.application.completion.CompletionService;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.application.pollen.PollenService;
 import com.seasonplan.lifecycle.domain.*;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
+import com.seasonplan.lifecycle.service.AuditLogService;
 
 import java.math.BigDecimal;
 import java.time.*;

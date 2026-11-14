@@ -25,6 +25,9 @@ public interface PollenTreeClient {
     Optional<PollenReservation> findById(UUID reservationId);
     Optional<PollenReservation> findLatestBySeasonPlanId(UUID seasonPlanId);
 
+    /** Latest non-superseded confirmed record; rejected replacements do not supersede it. */
+    Optional<PollenReservation> findAuthoritativeConfirmedBySeasonPlanId(UUID seasonPlanId);
+
     /** Same requestId/payload reuses the external reservation; changed payloads are rejected. */
     PollenReservation requestReservation(UUID seasonPlanId, UUID requestId, int requestedAmount, String actorId);
     /** Identical terminal decisions replay without another allocation; changed payloads are rejected. */

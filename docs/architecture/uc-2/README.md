@@ -1,5 +1,7 @@
 # UC-2 — Согласовать сезонный план: UML 2 Activity
 
+> **Updated implementation view:** [English, source-backed edited copy](implementation-revised/README.md) — concrete implemented calls only, without notes or proposal labels. The original project and backups are preserved. Sections below describe the historical delivery and its then-existing gaps, not the current implementation.
+
 Откройте **[SeasonPlan-UC2-activities.vpp](SeasonPlan-UC2-activities.vpp)** в **Visual Paradigm 18.1** через **Project → Open**. Импорт и авторский плагин не нужны. Это редактируемый нативный проект: действия, потоки, разделы ответственности, операции и объекты являются UML-моделями, а не картинками.
 
 ## Три требуемых представления

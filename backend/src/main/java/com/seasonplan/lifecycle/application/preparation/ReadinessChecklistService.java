@@ -24,28 +24,42 @@ public class ReadinessChecklistService {
     private final MagicTaskRepository magicTasks;
     private final FairyAssignmentRepository fairyAssignments;
     private final Clock clock;
+    private final CommandTransaction transactions;
 
     public ReadinessChecklistService(
             SeasonPlanRepository plans,
             PollenService pollen,
             MagicTaskRepository magicTasks,
             FairyAssignmentRepository fairyAssignments,
+            CommandTransaction transactions,
             Clock clock
     ) {
         this.plans = plans;
         this.pollen = pollen;
         this.magicTasks = magicTasks;
         this.fairyAssignments = fairyAssignments;
+        this.transactions = transactions;
         this.clock = clock;
     }
 
     public Map<String, List<String>> calculateChecklist(UUID seasonPlanId) {
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
         SeasonPlan plan = plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
-        if (pollen.findLatestBySeasonPlanId(seasonPlanId)
-                .filter(reservation -> reservation.status() == PollenReservationStatus.CONFIRMED)
-                .isEmpty()) {
+        var latest = pollen.findLatestBySeasonPlanId(seasonPlanId);
+        boolean confirmed = latest.filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
+                && reservation.status() == PollenReservationStatus.CONFIRMED).isPresent();
+        if (latest.filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
+                && reservation.status() == PollenReservationStatus.REJECTED).isPresent()) {
+            confirmed = pollen.findAuthoritativeConfirmedBySeasonPlanId(seasonPlanId)
+                    .filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
+                            && reservation.status() == PollenReservationStatus.CONFIRMED).isPresent();
+        }
+        if (!confirmed) {
             ValidationSupport.add(errors, "pollenReservation", "confirmed pollen reservation is required");
+        }
+        // Evidence verification is not available yet; manual checklist flags cannot satisfy these conditions.
+        for (var condition : plan.approvalConditions()) {
+            ValidationSupport.add(errors, condition.key(), "approval condition evidence is not verified");
         }
         List<MagicTask> tasks = magicTasks.findBySeasonPlanId(seasonPlanId);
         if (tasks.isEmpty()) {
@@ -79,8 +93,11 @@ public class ReadinessChecklistService {
 
     public void completeItem(UUID seasonPlanId, String key, ActorRole actorRole, String actorId) {
         ValidationSupport.requireAnyRole(actorRole, ActorRole.TALENT_COORDINATOR, ActorRole.POLLEN_GUARDIAN);
-        SeasonPlan plan = plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
-        plan.completeReadinessChecklistItem(key, actorId, clock.instant());
-        plans.save(plan);
+        transactions.execute(seasonPlanId, () -> {
+            SeasonPlan plan = plans.findById(seasonPlanId).orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId));
+            plan.completeReadinessChecklistItem(key, actorId, clock.instant());
+            plans.save(plan);
+            return null;
+        });
     }
 }

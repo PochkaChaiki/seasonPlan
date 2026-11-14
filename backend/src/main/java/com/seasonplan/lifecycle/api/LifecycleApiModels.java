@@ -1,6 +1,7 @@
 package com.seasonplan.lifecycle.api;
 
 import com.seasonplan.lifecycle.domain.AssignmentStatus;
+import com.seasonplan.lifecycle.domain.ApprovalCondition;
 import com.seasonplan.lifecycle.domain.ChecklistItem;
 import com.seasonplan.lifecycle.domain.FairyAssignment;
 import com.seasonplan.lifecycle.domain.MagicTask;
@@ -42,6 +43,7 @@ record SeasonPlanResponse(
         Map<String, Double> targetClimateMetrics,
         SeasonPlanStatus status,
         String approvalComment,
+        List<ApprovalCondition> approvalConditions,
         List<ChecklistItemResponse> readinessChecklist,
         String createdBy,
         String updatedBy
@@ -49,7 +51,7 @@ record SeasonPlanResponse(
     static SeasonPlanResponse from(SeasonPlan plan) {
         return new SeasonPlanResponse(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(),
                 plan.naturalPhenomenonParameters(), plan.targetClimateMetrics(), plan.status(),
-                plan.approvalComment(), plan.readinessChecklist().stream().map(ChecklistItemResponse::from).toList(),
+                plan.approvalComment(), plan.approvalConditions(), plan.readinessChecklist().stream().map(ChecklistItemResponse::from).toList(),
                 plan.createdBy(), plan.updatedBy());
     }
 }
@@ -85,7 +87,7 @@ record FairyAssignmentResponse(UUID id, UUID magicTaskId, String fairyId, String
     }
 }
 
-record DecisionRequest(String comment) {
+record DecisionRequest(String comment, List<ApprovalCondition> conditions) {
 }
 
 record ReservationRequest(int requestedAmount, UUID requestId) {

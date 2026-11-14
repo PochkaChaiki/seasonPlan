@@ -2,11 +2,9 @@ package com.seasonplan.lifecycle.service;
 
 import com.seasonplan.lifecycle.application.preparation.*;
 import com.seasonplan.lifecycle.application.port.*;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
 import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
 import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
 import com.seasonplan.lifecycle.application.pollen.PollenService;
-import com.seasonplan.lifecycle.adapter.fake.NotificationService;
 
 import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
 import com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository;
@@ -31,7 +29,7 @@ public class SeasonPlanTestFixture {
     private final FairyAssignmentService fairyAssignmentService;
     private final ReadinessChecklistService readinessChecklistService;
     private final AuditLogService auditLogService;
-    private final NotificationService notificationService;
+    private final List<NotificationOutbox.Event> reviewEvents;
 
     private SeasonPlanTestFixture(
             SeasonPlanService seasonPlanService,
@@ -40,7 +38,7 @@ public class SeasonPlanTestFixture {
             FairyAssignmentService fairyAssignmentService,
             ReadinessChecklistService readinessChecklistService,
             AuditLogService auditLogService,
-            NotificationService notificationService
+            List<NotificationOutbox.Event> reviewEvents
     ) {
         this.seasonPlanService = seasonPlanService;
         this.pollenService = pollenService;
@@ -48,7 +46,7 @@ public class SeasonPlanTestFixture {
         this.fairyAssignmentService = fairyAssignmentService;
         this.readinessChecklistService = readinessChecklistService;
         this.auditLogService = auditLogService;
-        this.notificationService = notificationService;
+        this.reviewEvents = reviewEvents;
     }
 
     public static SeasonPlanTestFixture create() {
@@ -58,20 +56,19 @@ public class SeasonPlanTestFixture {
         InMemoryMagicTaskRepository magicTasks = new InMemoryMagicTaskRepository();
         InMemoryFairyAssignmentRepository fairyAssignments = new InMemoryFairyAssignmentRepository();
         AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
-        NotificationService notificationService = new NotificationService();
+        List<NotificationOutbox.Event> reviewEvents = new java.util.ArrayList<>();
         Map<String, NotificationOutbox.Event> pollenEvents = new java.util.LinkedHashMap<>();
         PollenService pollenService = new PollenService(plans, tree,
                 () -> event -> pollenEvents.putIfAbsent(event.deduplicationKey(), event), new DirectTestTransaction(), auditLogService, clock);
         ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService(plans, pollenService,
-                magicTasks, fairyAssignments, clock);
+                magicTasks, fairyAssignments, new DirectTestTransaction(), clock);
         SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, auditLogService,
-                notificationService, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
+                new DirectTestTransaction(), reviewEvents::add, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
         MagicTaskService magicTaskService = new MagicTaskService(magicTasks, plans, auditLogService);
-        FairySchedulePolicy fairySchedulePolicy = new FairySchedulePolicy(fairyAssignments, magicTasks);
         FairyAssignmentService fairyAssignmentService = new FairyAssignmentService(fairyAssignments, magicTasks,
-                fairySchedulePolicy, auditLogService);
+                auditLogService);
         return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService,
-                fairyAssignmentService, readinessChecklistService, auditLogService, notificationService);
+                fairyAssignmentService, readinessChecklistService, auditLogService, reviewEvents);
     }
 
     public static SeasonPlan validPlanDraft(String createdBy) {
@@ -123,7 +120,7 @@ public class SeasonPlanTestFixture {
         return auditLogService;
     }
 
-    public NotificationService notificationService() {
-        return notificationService;
+    public List<NotificationOutbox.Event> reviewEvents() {
+        return List.copyOf(reviewEvents);
     }
 }

@@ -39,10 +39,58 @@ new framework or Maven module.
 
 ## Current runtime versus new core
 
+Review uses `POST /season-plans/{id}/verify` (Chief Guardian) before approval.
+Verify, approve and return save the plan, audit entry and notification event in a
+single JDBC command transaction. A scheduled worker delivers committed events
+independently per recipient/channel. IN_APP writes an idempotent durable inbox row.
+EMAIL uses configurable SMTP and otherwise fails closed for retry. Delivery uses
+exponential retry until 24 hours after the event, then records EXPIRED. Approval accepts immutable typed conditions. Until a verified-evidence
+implementation exists, every condition is an unmet readiness blocker; manually
+completing a checklist item cannot satisfy it. Review history is readable by the
+Chief Guardian or the plan creator with the Fairy Planner role; other roles are
+denied until a source-backed visibility policy exists. Review validation rechecks
+the calendar and overlapping applicable plans by normalized territory and window.
+
+### Review notification delivery
+
+`NotificationDeliveryGateway` is replaceable. The default `JdbcNotificationDeliveryGateway`
+writes IN_APP to `notification_inbox` (one row per event id and recipient).
+Authenticated `GET /notifications` reads only the current server-session user's
+inbox, at most 50 entries ordered newest first, with event ID as a stable tie-breaker.
+The Dashboard displays these messages and provides a refresh control; no mark-read
+workflow is implemented. EMAIL uses `SmtpNotificationEmailGateway`, with mandatory
+STARTTLS (TLS 1.2/1.3), hostname verification and 3-second connect/read/write timeouts. SMTP is
+not live-verified. Without complete configuration or a valid recipient mapping,
+EMAIL fails closed and is retried; it is never marked delivered by a fake.
+SMTP itself cannot guarantee exactly-once delivery if a process fails after send.
+The gateway includes `X-SeasonPlan-Event-ID`; the downstream provider/consumer must
+deduplicate that event id per recipient. The temporary configured UUID-to-email
+resolver is replaceable by an identity directory; it does not derive an address
+from a username. Use secrets management for credentials and only deployment-owned
+addresses. For example, an application configuration may contain:
+
+```yaml
+notifications:
+  smtp:
+    host: smtp.example.invalid
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    from: sender@example.invalid
+    recipients:
+      "11111111-1111-1111-1111-111111111111": planner@example.invalid
+```
+
+The worker starts after 60 seconds and polls every 30 seconds by default; override
+`notifications.initial-delay-ms` and `notifications.poll-delay-ms` as needed.
+Per-channel delivery state prevents a failed email from blocking IN_APP. The
+outbox is committed before the separate worker runs; a delivery failure cannot
+roll back the review decision.
+
 Existing reservation REST routes use the unified `PollenService`. Its consumption
 logic remains executable and unit-tested but has no consumption REST route or
-complete audit/outbox persistence/delivery slice. Missing outbox configuration
-fails before external spending, without affecting reservation commands.
+complete audit/outbox persistence/delivery slice. Its separate consumption outbox
+is deliberately unconfigured, so it fails before external spending.
 Other UC-4/UC-5 services also remain core-only: no new service composition,
 REST routes, database adapters/migrations, sensors, schedulers or report renderers.
 

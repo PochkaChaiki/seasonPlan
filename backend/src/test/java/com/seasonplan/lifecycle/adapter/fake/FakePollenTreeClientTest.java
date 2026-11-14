@@ -68,6 +68,14 @@ class FakePollenTreeClientTest {
         assertThat(sameInputs.requestReservation(plan, requestId, 100, "guardian").id()).isEqualTo(first.id());
     }
 
+    @Test void newerConfirmedReservationRemainsAuthoritativeWhenOlderDraftConfirmsLater() {
+        var older = request(plan, 100);
+        var newer = request(plan, 100);
+        tree.confirmReservation(newer.id(), 100, "ok", "guardian");
+        tree.confirmReservation(older.id(), 100, "ok", "guardian");
+        assertThat(tree.findAuthoritativeConfirmedBySeasonPlanId(plan).orElseThrow().id()).isEqualTo(newer.id());
+    }
+
     @Test void snapshotsAreDetachedAndTerminalReservationsCannotChange() {
         assertThat(tree.findById(UUID.randomUUID())).isEmpty();
         assertThat(tree.findLatestBySeasonPlanId(plan)).isEmpty();

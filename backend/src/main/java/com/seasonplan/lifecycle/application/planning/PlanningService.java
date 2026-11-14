@@ -3,6 +3,7 @@ package com.seasonplan.lifecycle.application.planning;
 import com.seasonplan.lifecycle.domain.*;
 import com.seasonplan.lifecycle.application.port.*;
 import com.seasonplan.lifecycle.application.shared.*;
+import com.seasonplan.lifecycle.service.AuditLogService;
 
 import java.time.Clock;
 import java.util.Comparator;
@@ -15,13 +16,15 @@ public class PlanningService {
     private final SeasonPlanRepository plans;
     private final AuditLogService audit;
     private final NaturalCalendarService calendar;
+    private final CommandTransaction transactions;
     private final Clock clock;
 
     public PlanningService(SeasonPlanRepository plans, AuditLogService audit,
-                           NaturalCalendarService calendar, Clock clock) {
+                           NaturalCalendarService calendar, CommandTransaction transactions, Clock clock) {
         this.plans = plans;
         this.audit = audit;
         this.calendar = calendar;
+        this.transactions = transactions;
         this.clock = clock;
     }
 
@@ -39,11 +42,13 @@ public class PlanningService {
 
     public SeasonPlan updateDraft(UUID id, SeasonPlan draft, ActorRole role, String actorId) {
         ValidationSupport.requireRole(role, ActorRole.FAIRY_PLANNER);
-        SeasonPlan existing = get(id);
-        validatePlan(draft);
-        existing.updateDraftFieldsFrom(draft, actorId, clock.instant());
-        audit.append(id, AuditAction.SEASON_PLAN_UPDATED, actorId, null);
-        return plans.save(existing);
+        return transactions.execute(id, () -> {
+            SeasonPlan existing = get(id);
+            validatePlan(draft);
+            existing.updateDraftFieldsFrom(draft, actorId, clock.instant());
+            audit.append(id, AuditAction.SEASON_PLAN_UPDATED, actorId, null);
+            return plans.save(existing);
+        });
     }
 
     public LinkedHashMap<String, List<String>> validatePlan(SeasonPlan plan) {
@@ -85,13 +90,41 @@ public class PlanningService {
         return errors;
     }
 
+    public void validateForReview(SeasonPlan plan) {
+        validatePlan(plan);
+        var applicable = java.util.EnumSet.of(SeasonPlanStatus.SUBMITTED, SeasonPlanStatus.VERIFIED,
+                SeasonPlanStatus.APPROVED, SeasonPlanStatus.RITUAL_READY, SeasonPlanStatus.ACTIVE);
+        var errors = new LinkedHashMap<String, List<String>>();
+        for (SeasonPlan other : plans.findAll()) {
+            if (plan.id().equals(other.id()) || !applicable.contains(other.status())) continue;
+            for (String territory : plan.targetTerritories()) {
+                if (territory == null) continue;
+                String normalized = territory.trim().toLowerCase(java.util.Locale.ROOT);
+                boolean shared = other.targetTerritories().stream().filter(java.util.Objects::nonNull)
+                        .anyMatch(value -> value.trim().toLowerCase(java.util.Locale.ROOT).equals(normalized));
+                if (!shared) continue;
+                for (TimeWindow window : plan.timeWindows()) {
+                    for (TimeWindow otherWindow : other.timeWindows()) {
+                        if (window.overlaps(otherWindow)) {
+                            ValidationSupport.add(errors, "targetTerritories", "territory " + normalized
+                                    + " conflicts with plan " + other.id() + " window " + otherWindow);
+                        }
+                    }
+                }
+            }
+        }
+        ValidationSupport.throwIfAny(errors);
+    }
+
     public SeasonPlan submitForApproval(UUID id, ActorRole role, String actorId) {
         ValidationSupport.requireRole(role, ActorRole.FAIRY_PLANNER);
-        SeasonPlan plan = get(id);
-        validatePlan(plan);
-        plan.submit(actorId, clock.instant());
-        audit.append(id, AuditAction.SEASON_PLAN_SUBMITTED, actorId, null);
-        return plans.save(plan);
+        return transactions.execute(id, () -> {
+            SeasonPlan plan = get(id);
+            validatePlan(plan);
+            plan.submit(actorId, clock.instant());
+            audit.append(id, AuditAction.SEASON_PLAN_SUBMITTED, actorId, null);
+            return plans.save(plan);
+        });
     }
 
     public SeasonPlan get(UUID id) {

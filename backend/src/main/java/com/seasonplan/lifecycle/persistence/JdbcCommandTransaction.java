@@ -8,7 +8,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-/** Serializes local completion by plan; external mutations must occur before entering this transaction. */
+/** Serializes aggregate commands by plan; external mutations must occur before entering this transaction. */
 public final class JdbcCommandTransaction implements CommandTransaction {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
@@ -21,7 +21,11 @@ public final class JdbcCommandTransaction implements CommandTransaction {
     @Override
     public <T> T execute(UUID seasonPlanId, Supplier<T> command) {
         return transaction.execute(status -> {
-            jdbc.queryForObject("select id from season_plans where id = ? for update", UUID.class, seasonPlanId);
+            try {
+                jdbc.queryForObject("select id from season_plans where id = ? for update", UUID.class, seasonPlanId);
+            } catch (org.springframework.dao.EmptyResultDataAccessException missing) {
+                throw new com.seasonplan.lifecycle.application.shared.NotFoundException("season plan not found: " + seasonPlanId);
+            }
             return command.get();
         });
     }

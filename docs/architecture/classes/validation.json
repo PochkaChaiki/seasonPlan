@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "project": "SeasonPlan-all-classes.vpp",
+  "projectSHA256": "d01ef14b1caeb8e5db32f7a21e455bb6aa8750d0aeec669f902869780fa6905f",
+  "classifiers": 180,
+  "javaClassifiers": 163,
+  "frontendModules": 17,
+  "attributes": 527,
+  "operations": 607,
+  "enumerationLiterals": 81,
+  "relationships": 487,
+  "diagrams": 88,
+  "namedCaptionsInNormalMode": 150,
+  "verification": "Separate VP process; native member signatures, ownership, types, relationship models/endpoints/routes/bounds, notes, caption mode, source hashes and native SVG/PNG exports. No full desktop or mouse-drag automation.",
+  "sourceManifestSHA256": "b01e1e66c5b989d478ef68868ed59e3a93a3b8a3b303240dfb19ef2519029715"
+}
