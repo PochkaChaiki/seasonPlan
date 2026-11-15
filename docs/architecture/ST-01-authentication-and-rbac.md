@@ -5,14 +5,42 @@ Spring Session JDBC sessions; the React client uses only same-origin `/api` call
 with `credentials: include`. It never stores an authoritative identity, role, or
 credential in browser storage.
 
-`CurrentActor(UUID, username, roles)` is the provider-neutral identity passed
-into the lifecycle boundary. The local adapter resolves it from Spring Security's
+`security.identity.CurrentActor(UUID, username, roles, systemAdministrator)` is
+the provider-neutral identity shared by security and lifecycle. The three-argument
+constructor defaults the independent administrator flag to false; role sets are
+immutable. The local adapter resolves it from Spring Security's
 `LocalUserDetails`; business code does not receive `Authentication`, sessions,
 JWT claims, or OIDC provider classes. A future Keycloak migration adds an
 `external_identity_links(provider, issuer, subject, user_id)` table with unique
 `(issuer, subject)` and `ON DELETE RESTRICT`, then replaces only the inbound
 authentication adapter. The durable local user UUID, ownership values, audit
 references, role policy, and `/api/auth/me` shape remain unchanged.
+
+## Package and authorization boundaries
+
+Security remains a sibling feature, not a lifecycle subpackage. Neutral actor,
+role and provider contracts live in `security.identity`; account values in
+`security.domain`; validated commands/core administration in `security.service`;
+persistence contracts in `security.repository`; neutral failures in
+`security.exception`; and HTTP controllers/error mapping in `security.api`.
+JDBC implementations and Spring principal/password/transaction adapters are under
+`security.infrastructure`, composed in `security.config`. Security code does not
+import lifecycle classes, and core account logic does not import Spring/JDBC.
+
+`lifecycle.authorization.LifecycleAccessPolicy` is the shared operation-permission
+matrix for API role selection and lifecycle service guards. Existing ownership
+checks remain enforced at application/transaction boundaries. Planner draft
+editing/submission is creator-only, and marking ritual-ready is coordinator-only,
+as required by ST-00. Checklist completion still allows coordinator/pollen guardian.
+Field validation helpers do not own authorization. The identity record itself
+contains no operation-permission policy.
+
+Existing lifecycle role/actor-ID arguments are trusted internal-call values. The
+API obtains them from the authenticated actor; an arbitrary role argument or
+public Java record alone is not authentication proof. Account commands receive the
+whole trusted actor, with no caller-selected target UUID or administrator flag.
+See [ADR 0004](../decisions/0004-security-feature-and-lifecycle-authorization.md)
+for ownership decisions and preserved compatibility limits.
 
 ## Fixed role catalog
 
@@ -45,7 +73,9 @@ administrator may create an enabled local user through `POST /api/admin/users`.
 The request contains a normalized username, display name, plaintext password
 used only for the current request, and one or more roles from the fixed catalog.
 The backend validates and encodes the password before transactionally inserting
-the user, local credential, and roles. The response never contains the password
+the user, local credential, and roles. Both the HTTP boundary and core account
+service require the separate administrator privilege; validation commands belong
+to the application contract, not its implementation class. The response never contains the password
 or encoded credential. The slice intentionally does not add user listing,
 deletion, disabling, role editing, password reset, or administrator delegation.
 Local passwords must contain at least 12 characters and no more than 72 UTF-8
@@ -54,7 +84,11 @@ enforce the rule, while the backend remains authoritative.
 
 Every authenticated local user may change only their own username and password
 through `PUT /api/auth/me/credentials`. The request must include the current
-password; it contains no target user ID or administrator flag. A successful
+password; it contains no target user ID or administrator flag. The core locks and
+reads the currently stored encoded credential for the authenticated UUID, then
+verifies the supplied password and updates username/hash within the same account
+transaction. It does not trust a stale password hash from the session principal.
+A wrong/missing password writes nothing and leaves the session intact. A successful
 change invalidates the current server session and requires authentication with
 the new credentials. This prevents a stale session principal from retaining the
 old username and gives credential rotation a clear security boundary.
@@ -83,10 +117,41 @@ first start against a database without an administrator, use the configured
 development credentials. After that, change them from **Profile and security**
 in the application; editing `.env` does not overwrite an existing account.
 
+## Security package refactor rollout
+
+**A one-time sign-in is required for sessions created before ADR 0004.** This is
+the operator-selected rollout policy, not transparent legacy-session migration.
+Spring Session JDBC serializes authentication principals and enum roles; their
+moved Java class names cannot deserialize old snapshots without compatibility
+code. No legacy shim, automatic session deletion or destructive migration is
+included. New authentication snapshots have serialization round-trip tests;
+actual PostgreSQL-backed runtime verification still requires the integration suite.
+
+Use a coordinated deployment:
+
+1. Stop **all** old application instances sharing this session store. Do not run
+   mixed old/new versions against the same store during this transition.
+2. An authorized database operator explicitly revokes the old sessions in the
+   correct deployment database before starting the new version. The existing
+   foreign key cascades deletion of their session attributes:
+
+   ```sql
+   BEGIN;
+   DELETE FROM spring_session;
+   COMMIT;
+   ```
+
+   This removes session state only, not users, credentials, roles, audit history,
+   plans or pollen data. The agent does not execute this command automatically.
+3. Deploy/start the new application, obtain a fresh CSRF token and sign in again.
+   Verify JSON 401/403 behavior, login/logout and session persistence across a
+   normal subsequent restart. Existing account passwords and ownership UUIDs are
+   unchanged.
+
 ## Operations
 
 The browser administration form is available only to `ROLE_SYSTEM_ADMIN` and
-the backend repeats this authorization at the API boundary. The React route
+the backend repeats this authorization at both API and account-service boundaries. The React route
 guard and hidden navigation link are usability measures, not security controls.
 Never pass a password on the command line, log request bodies, commit `.env`, or
 enable the development bootstrap outside the explicit `dev` profile.

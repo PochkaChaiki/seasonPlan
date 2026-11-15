@@ -33,7 +33,15 @@ Architecture notes and diagrams belong here.
 - [Pollen Tree external-service refactor and integration handoff](POLLEN_TREE_EXTERNAL_SERVICE.md)
   records requirements, external ownership, proposed REST contract, configuration,
   recovery behavior and verification limits.
+- [Cohesive lifecycle services](../decisions/0002-cohesive-lifecycle-services.md)
+  records the accepted service consolidation and merge trade-offs.
+- [Responsibility-owned contracts and infrastructure](../decisions/0003-responsibility-owned-contracts-and-infrastructure.md)
+  records interface placement, named contracts and the removal of generic application buckets.
+- [Security feature and lifecycle authorization](../decisions/0004-security-feature-and-lifecycle-authorization.md)
+  records why account security remains separate, neutral identity ownership,
+  permission/resource policies and the explicitly accepted one-time session rollout.
 - [Backend package layout and integration boundaries](../../backend/README.md)
-  describes the use-case-oriented application core.
+  describes the current service-oriented application core. Existing UML artifacts
+  above are historical views and predate the service consolidation and package migration.
 - [Backend reorganization changelog](../../backend/CHANGELOG.md) records preserved
   behavior, new execution/completion logic, tests and outstanding adapter work.

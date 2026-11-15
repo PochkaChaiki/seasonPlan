@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.config;
 
-import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.adapter.pollentree.RestPollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.http.RestPollenTreeClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

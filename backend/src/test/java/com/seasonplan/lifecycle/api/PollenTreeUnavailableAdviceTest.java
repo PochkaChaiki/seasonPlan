@@ -1,6 +1,6 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException;
+import com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

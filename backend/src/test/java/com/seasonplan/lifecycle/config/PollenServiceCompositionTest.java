@@ -1,9 +1,21 @@
 package com.seasonplan.lifecycle.config;
 
-import com.seasonplan.lifecycle.adapter.fake.*;
-import com.seasonplan.lifecycle.application.pollen.PollenService;
-import com.seasonplan.lifecycle.application.port.*;
-import com.seasonplan.lifecycle.domain.ActorRole;
+import com.seasonplan.lifecycle.repository.SeasonPlanRepository;
+import com.seasonplan.lifecycle.repository.MagicTaskRepository;
+import com.seasonplan.lifecycle.repository.FairyAssignmentRepository;
+import com.seasonplan.lifecycle.repository.AuditLogRepository;
+import com.seasonplan.lifecycle.notification.NotificationOutbox;
+import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryFairyAssignmentRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryMagicTaskRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemorySeasonPlanRepository;
+
+import com.seasonplan.lifecycle.infrastructure.fake.*;
+import com.seasonplan.lifecycle.service.PollenService;
+
+import com.seasonplan.security.identity.ActorRole;
 import com.seasonplan.lifecycle.domain.PollenReservationStatus;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
@@ -38,8 +50,7 @@ class PollenServiceCompositionTest {
                     assertThat(pollen.get(reservation.id()).status()).isEqualTo(PollenReservationStatus.CONFIRMED);
                     assertThat(pollen.findLatestBySeasonPlanId(plan.id()).orElseThrow().id()).isEqualTo(reservation.id());
                     assertThat(pollen.usage(plan.id()).orElseThrow().actualGrams()).isEqualByComparingTo("0");
-                    assertThat(context.getBean(com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService.class)
-                            .calculateChecklist(plan.id())).doesNotContainKey("pollenReservation");
+                    assertThat(plans.calculateChecklist(plan.id())).doesNotContainKey("pollenReservation");
                     verifyNoInteractions(jdbc);
                     context.getBean(SeasonPlanRepository.class).save(com.seasonplan.lifecycle.domain.SeasonPlan.rehydrate(
                             plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(), plan.naturalPhenomenonParameters(),

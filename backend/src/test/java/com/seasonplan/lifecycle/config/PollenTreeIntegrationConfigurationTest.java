@@ -1,8 +1,8 @@
 package com.seasonplan.lifecycle.config;
 
-import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.adapter.pollentree.RestPollenTreeClient;
-import com.seasonplan.lifecycle.application.port.PollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.http.RestPollenTreeClient;
+import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

@@ -1,5 +1,7 @@
 package com.seasonplan.lifecycle.domain;
 
+import com.seasonplan.security.identity.ActorRole;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

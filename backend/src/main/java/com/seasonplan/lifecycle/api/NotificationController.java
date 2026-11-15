@@ -1,7 +1,7 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
-import com.seasonplan.lifecycle.application.port.NotificationInboxRepository;
+import com.seasonplan.security.identity.CurrentActorProvider;
+import com.seasonplan.lifecycle.repository.NotificationInboxRepository;
 import com.seasonplan.lifecycle.domain.NotificationInboxItem;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,6 +1,6 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.application.port.AuditLogRepository;
+import com.seasonplan.lifecycle.repository.AuditLogRepository;
 
 import com.seasonplan.lifecycle.domain.AuditAction;
 import com.seasonplan.lifecycle.domain.AuditLogEntry;

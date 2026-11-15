@@ -1,9 +1,12 @@
 # SeasonPlan backend
 
-Java 17 / Spring Boot 3.2 / Maven. The application core is organized by the five
-use cases in [`USE_CASE_SPECIFICATION.md`](../arch_docs/USE_CASE_SPECIFICATION.md).
-See [`CHANGELOG.md`](CHANGELOG.md) for the implementation inventory, preserved
-behavior, test results, and remaining integration work.
+Java 17 / Spring Boot 3.2 / Maven. The application core uses cohesive services
+rather than one package/service per use case. See the
+[service consolidation decision](../docs/decisions/0002-cohesive-lifecycle-services.md)
+for merge choices, the [package ownership decision](../docs/decisions/0003-responsibility-owned-contracts-and-infrastructure.md)
+for contract placement, the [security boundary decision](../docs/decisions/0004-security-feature-and-lifecycle-authorization.md)
+for identity and authorization ownership, and [`CHANGELOG.md`](CHANGELOG.md)
+for verification and remaining integration work.
 
 ## Package layout
 
@@ -11,31 +14,83 @@ Under `src/main/java/com/seasonplan/lifecycle`:
 
 ```text
 domain/                         Entities, immutable snapshots and domain rules
-application/
-  planning/                     UC-1: planning
-  approval/                     UC-2: approval
-  preparation/                  UC-3: preparation and readiness
-  execution/                    UC-4: ritual, monitoring and incident response
-  pollen/                       One PollenService: reservations, consumption, audit and warnings
-  completion/                   UC-5: reports, completion and archival
-  port/                         Inbound-context/outbound dependency contracts
-  shared/                       Audit application service, validation and exceptions
-  UseCaseSupport.java           Shared command lookup/copy helpers
-service/SeasonPlanService.java  Compatibility facade for existing callers
-api/                            Existing REST adapter (package retained)
-persistence/                    Existing JDBC adapters (package retained)
-adapter/fake/                   Explicit educational integration fakes
-adapter/pollentree/             Proposed external Pollen Tree HTTPS adapter
-config/                         Existing Spring composition/security configuration
+service/
+  SeasonPlanService.java        Drafting, validation, review, checklist and ritual readiness
+  MagicTaskService.java         Task preparation, fairy assignments and schedule checks
+  PollenService.java            Sole pollen reservation/consumption integration boundary
+  RitualService.java            Ritual attempts/events and successful plan activation
+  MonitoringService.java        Measurements, deviation responses and critical warnings
+  IncidentResponseService.java  Incidents, corrective actions and overdue escalation
+  SeasonReportService.java      Report snapshots, approval/completion, export and archival
+  AuditLogService.java          Immutable audit append/read operations
+  ServiceSupport.java           Package-private command lookup/copy helpers
+  ValidationSupport.java        Package-private field validation helpers
+  ...                           Service-owned transaction, rule and report contracts
+authorization/                  Shared operation permission matrix and resource-access policy
+repository/                     Framework-independent persistence/query interfaces
+integration/pollen/             Pollen Tree client contract and availability failure
+integration/calendar/           Natural Calendar client contract
+notification/                   Outbox submission, delivery and recipient contracts
+exception/                      API-neutral lookup failures
+api/                            REST controllers and API models
+infrastructure/jdbc/            JDBC repositories, transactions, outbox/inbox and delivery worker
+infrastructure/http/            External Pollen Tree HTTPS implementation
+infrastructure/mail/            SMTP implementation and configured address resolver
+infrastructure/fake/            Explicit educational integration fakes
+config/                         Lifecycle/integration/notification Spring composition
 ```
 
-`com.seasonplan.security` remains the existing authentication/administration
-boundary. It was not redesigned.
+Security remains a sibling feature rather than being merged wholesale into
+lifecycle. Under `src/main/java/com/seasonplan/security`:
 
-Dependency direction is **adapters/configuration → application → domain**.
-Application ports may reference domain types, never concrete adapters. The domain
-uses only the JDK. Architecture tests protect these boundaries without adding a
-new framework or Maven module.
+```text
+identity/                       Public framework-neutral ActorRole, CurrentActor and provider
+api/                            Auth/admin controllers and account/access error mapping
+domain/                         Managed account values and username rules
+service/                        Core account service, validated commands, hash/transaction contracts
+repository/                     UserAccountRepository persistence contract
+exception/                      Neutral account and denied-access failures
+infrastructure/jdbc/            Account SQL and database-backed authentication lookup
+infrastructure/spring/          Principal/context, auth handlers, password and transaction adapters
+config/                         Filter chain, account composition and dev-only bootstrap
+```
+
+Security has no dependency on lifecycle. Lifecycle-specific permissions belong to
+`lifecycle/authorization`, not to the authentication filter chain. Lifecycle API
+role selection and service guards use that same policy. Ownership checks execute
+at the service boundary; business transitions still belong to domain/application
+logic. An administrator flag is separate from the seven business roles and never
+grants implicit lifecycle permissions.
+
+Account commands receive the trusted current actor, not a Spring principal or a
+user-selected target UUID. The core uses repository/password/transaction contracts;
+credential changes lock and verify the current stored hash before atomic updates.
+The controller invalidates its session only after success. Existing lifecycle
+role/actor-ID signatures remain trusted internal application contracts; the API
+binds both to its authenticated actor, not request-body/header claims.
+
+**Deployment requires a one-time sign-in for old sessions** because serialized
+principal/role class names moved. Follow the coordinated, operator-controlled
+[session rollout procedure](../docs/architecture/ST-01-authentication-and-rbac.md#security-package-refactor-rollout).
+No session/account data is deleted automatically.
+
+Dependency direction is **API/configuration → services → domain/contracts**;
+infrastructure implements repository, integration and notification contracts.
+Services and contracts are framework-independent; neither imports concrete
+infrastructure. Domain code uses the JDK and the public neutral identity role
+catalog; it does not depend on service, policy or infrastructure implementations. Architecture tests protect these boundaries without a new framework or
+Maven module.
+
+Interfaces live with their responsibility, not in a global interface directory.
+For example, `repository/SeasonPlanRepository` is implemented by
+`infrastructure/jdbc/JdbcSeasonPlanRepository`; `integration/pollen/PollenTreeClient`
+is implemented by `infrastructure/http/RestPollenTreeClient`.
+`CommandTransaction`, `RitualReadinessChecker`,
+`MetricRuleProvider`, `IncidentRuleProvider`, `RequiredTaskResults`,
+`CatalogVersionProvider` and `SeasonReportExporter` are service-owned contracts in
+`service`. The related `Readiness` and `MetricRule` records remain nested in their
+owning interfaces. There are no `application`, `port`, `shared`, `adapter` or
+top-level `persistence` source packages.
 
 ## Current runtime versus new core
 
@@ -91,25 +146,25 @@ Existing reservation REST routes use the unified `PollenService`. Its consumptio
 logic remains executable and unit-tested but has no consumption REST route or
 complete audit/outbox persistence/delivery slice. Its separate consumption outbox
 is deliberately unconfigured, so it fails before external spending.
-Other UC-4/UC-5 services also remain core-only: no new service composition,
-REST routes, database adapters/migrations, sensors, schedulers or report renderers.
+Ritual, monitoring, incident response and reporting remain core-only: no new
+service composition, REST routes, database adapters/migrations, sensors,
+schedulers or report renderers were added by the consolidation.
 
-To integrate those services later, implement the contracts in `application/port`
-and compose them outside the core. In particular:
+To integrate those services later, implement the named repository and service
+contracts and compose them outside the core. In particular:
 
 - `CommandTransaction` must serialize commands for a plan and atomically commit
   participating repositories, audit appends and notification outbox inserts.
-- `ExecutionPorts.LaunchReadiness` must return real blockers, confirmed participant
+- `RitualReadinessChecker` must return real blockers, confirmed participant
   snapshots, and configured required ritual events. Do not use a permissive default.
 - Metric rules and the report catalog-version port must use the plan's pinned
   catalog version, not whichever catalog is currently newest.
-- `CompletionPorts.Tasks` must project all **required** work and missing required
+- `RequiredTaskResults` must project all **required** work and missing required
   categories; it must not mistake the legacy preparation status `READY` for
   completion.
-- All application pollen access follows **use case → `PollenService` →
+- All application pollen access follows **application service → `PollenService` →
   `PollenTreeClient` → `RestPollenTreeClient`** (or explicit dev/test fake).
-  Approval, readiness, completion and the compatibility facade never use the
-  external client directly. `PollenService` owns our read/command API and business
+  `SeasonPlanService` and `SeasonReportService` never use the external client directly. `PollenService` owns our read/command API and business
   orchestration; `RestPollenTreeClient` is only the replaceable HTTPS adapter.
   Public facade results are client-independent domain values. Architecture tests
   protect this boundary. There is no local reservation repository or projection persistence. Only our
@@ -140,7 +195,7 @@ mvn.cmd -f .\backend\pom.xml clean verify
 ```
 
 The full suite requires a running Docker daemon for
-`PostgresLifecyclePersistenceTest`. On this host's Docker 29, Testcontainers 1.20.4
+`PostgresLifecyclePersistenceTest` and `PostgresAccountAdministrationTest`. On this host's Docker 29, Testcontainers 1.20.4
 needs the following test-process-only API compatibility override:
 
 ```powershell
@@ -152,11 +207,14 @@ To run the remaining tests explicitly when Docker is unavailable
 (not a substitute for the PostgreSQL suite):
 
 ```powershell
-mvn.cmd -f .\backend\pom.xml '-Dtest=!PostgresLifecyclePersistenceTest' clean verify
+mvn.cmd -f .\backend\pom.xml '-Dtest=!Postgres*Test' clean verify
 ```
 
-Execution/completion unit-test port fakes live under `src/test`. The replaceable
-`adapter/fake/FakePollenTreeClient` is also available to explicitly configured dev/test
-runtimes, never production. Mock transport and unit tests do not establish live
+Service unit tests and deterministic execution/report port fakes live under
+`src/test/java/com/seasonplan/lifecycle/service`. The replaceable
+`infrastructure/fake/FakePollenTreeClient` is also available to explicitly configured
+dev/test runtimes, never production. `AllowingNaturalCalendarClient` remains the
+existing permissive educational stub, not a verified calendar integration or proof
+of launch readiness. Mock transport and unit tests do not establish live
 provider compatibility, database rollback or notification delivery; PostgreSQL
 audit-retry and no-local-reservation-write tests require Docker. CI selects Temurin 17 and runs the full suite.

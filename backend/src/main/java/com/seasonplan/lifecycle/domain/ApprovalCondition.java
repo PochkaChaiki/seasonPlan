@@ -1,5 +1,7 @@
 package com.seasonplan.lifecycle.domain;
 
+import com.seasonplan.security.identity.ActorRole;
+
 import java.util.List;
 import java.util.Map;
 

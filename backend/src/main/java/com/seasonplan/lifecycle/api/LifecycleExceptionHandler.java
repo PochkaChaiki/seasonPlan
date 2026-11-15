@@ -1,9 +1,8 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.application.shared.AccessDeniedForRoleException;
 import com.seasonplan.lifecycle.domain.DomainValidationException;
-import com.seasonplan.lifecycle.application.shared.NotFoundException;
-import com.seasonplan.lifecycle.application.shared.PollenTreeUnavailableException;
+import com.seasonplan.lifecycle.exception.NotFoundException;
+import com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,11 +18,6 @@ public class LifecycleExceptionHandler {
                 "message", error.getMessage(),
                 "errors", error.fieldErrors()
         ));
-    }
-
-    @ExceptionHandler(AccessDeniedForRoleException.class)
-    ResponseEntity<Map<String, Object>> forbidden(AccessDeniedForRoleException error) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", error.getMessage()));
     }
 
     @ExceptionHandler(PollenTreeUnavailableException.class)

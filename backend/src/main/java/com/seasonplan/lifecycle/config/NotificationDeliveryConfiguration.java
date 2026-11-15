@@ -1,12 +1,12 @@
 package com.seasonplan.lifecycle.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.seasonplan.lifecycle.application.port.NotificationDeliveryGateway;
-import com.seasonplan.lifecycle.application.port.NotificationRecipientResolver;
-import com.seasonplan.lifecycle.persistence.ConfiguredNotificationRecipientResolver;
-import com.seasonplan.lifecycle.persistence.JdbcNotificationDeliveryGateway;
-import com.seasonplan.lifecycle.persistence.JdbcNotificationDeliveryWorker;
-import com.seasonplan.lifecycle.persistence.SmtpNotificationEmailGateway;
+import com.seasonplan.lifecycle.notification.NotificationDeliveryGateway;
+import com.seasonplan.lifecycle.notification.NotificationRecipientResolver;
+import com.seasonplan.lifecycle.infrastructure.mail.ConfiguredNotificationRecipientResolver;
+import com.seasonplan.lifecycle.infrastructure.jdbc.JdbcNotificationDeliveryGateway;
+import com.seasonplan.lifecycle.infrastructure.jdbc.JdbcNotificationDeliveryWorker;
+import com.seasonplan.lifecycle.infrastructure.mail.SmtpNotificationEmailGateway;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

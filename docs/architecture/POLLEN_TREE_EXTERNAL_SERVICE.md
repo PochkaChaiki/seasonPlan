@@ -20,7 +20,7 @@ The user's explicit ownership decision is that **reservation persistence belongs
 ## Current design
 
 ```text
-REST routes / approval / readiness / completion / compatibility facade
+REST routes / SeasonPlanService / SeasonReportService
                                 |
                           PollenService
                                 |
@@ -34,7 +34,7 @@ Our decisions    -> immutable AuditLog
 Consumption risk -> notification outbox
 ```
 
-There is **one application entry point for every pollen operation**: `application/pollen/PollenService.java`.
+There is **one application entry point for every pollen operation**: `service/PollenService.java`.
 
 - Requests, confirms and rejects reservations.
 - Reads external capacity, the latest reservation, the authoritative confirmed reservation, reservation details and usage.
@@ -42,13 +42,13 @@ There is **one application entry point for every pollen operation**: `applicatio
 - Enforces roles/input validation, audits decisions and consumption, and emits threshold notifications.
 - Does not own stock, allocate pollen itself, or persist reservations.
 
-There is **one external API contract**: `application/port/PollenTreeClient.java`, used only behind `PollenService`. Approval, preparation/readiness, completion/report and compatibility services depend on `PollenService`, never on the client. Configuration chooses the adapter; it does not offer an alternative access path to application code.
+There is **one external API contract**: `integration/pollen/PollenTreeClient.java`, used only behind `PollenService`. `SeasonPlanService` (review/readiness) and `SeasonReportService` depend on `PollenService`, never on the client. Configuration chooses the adapter; it does not offer an alternative access path to application code.
 
 `PollenService` is the application facade: it owns our validation, authorization, audit and warning orchestration. `RestPollenTreeClient` is not another business service: it only implements the external HTTPS/JSON contract, response validation and transport-error translation. Keeping these two responsibilities separate makes the external integration replaceable without changing its consumers.
 
 The facade returns client-independent `PollenReservation`, `PollenCapacity` and `PollenUsage` values, including the provider source version for report freshness checks. Latest-reservation/usage absence stays `Optional.empty()`; provider failures propagate instead of becoming missing data. Reads do not cache, audit, resolve the consumption outbox or access local persistence.
 
-`FakePollenTreeClient` simulates the same provider contract with deterministic IDs, detached results, shared cross-plan capacity and replay-safe operations. It is ephemeral and allowed only in explicitly configured dev/test runtimes.
+`infrastructure/fake/FakePollenTreeClient` simulates the same provider contract with deterministic IDs, detached results, shared cross-plan capacity and replay-safe operations. It is ephemeral and allowed only in explicitly configured dev/test runtimes.
 
 ## Removed complexity
 
@@ -58,7 +58,7 @@ Removed:
 - separate `PollenReservationService` and `PollenConsumptionService`;
 - ambiguous/split `PollenTree` and `PollenTreeReservations` interfaces;
 - reservation projection writes and the transaction previously required to coordinate projection plus audit;
-- direct external-client dependencies from approval, preparation, completion and the compatibility facade.
+- direct external-client dependencies from plan review/readiness and reporting services.
 
 `PollenReservation` remains a returned external reservation representation used by the API, **not a locally persisted entity**. `PollenUsage` is an immutable usage value used in reports, not an inventory ledger.
 
@@ -78,7 +78,7 @@ Consumption still needs the existing UC-4 transaction/outbox and persistence int
 
 ## Proposed external REST contract
 
-No provider OpenAPI, URL or credentials were supplied. These are **proposed, contract-tested routes**, not verified compatibility with a deployed provider. Agree them with the provider or adapt only `adapter/pollentree/RestPollenTreeClient.java` and its tests.
+No provider OpenAPI, URL or credentials were supplied. These are **proposed, contract-tested routes**, not verified compatibility with a deployed provider. Agree them with the provider or adapt only `infrastructure/http/RestPollenTreeClient.java` and its tests.
 
 Paths are relative to `POLLEN_TREE_BASE_URL`; requests send `X-API-Key` and accept JSON. POST bodies use JSON UTF-8.
 
@@ -131,6 +131,12 @@ $env:POLLEN_TREE_API_KEY = '<provided securely; never commit a real key>'
 ```
 
 ## Verification and remaining work
+
+The integration counts below record an earlier provider-boundary validation, before
+the service/package refactors. Current package ownership and actual verification
+results are recorded in [ADR 0003](../decisions/0003-responsibility-owned-contracts-and-infrastructure.md)
+and the [backend changelog](../../backend/CHANGELOG.md); they do not imply that
+Docker or PostgreSQL was available for a later run.
 
 Red-first tests cover the consolidated service/removed abstractions, audit-only recovery, readable external audit references and missing-outbox failure before spending. New architecture tests enforce the exclusive facade boundary and client-independent public return types. Read tests preserve absence, source versions, propagated outages and freedom from local side effects. Existing secure transport, capacity, role, approval/readiness, report and retry tests remain covered. An independent read-only reviewer found no issues in the facade-boundary change.
 

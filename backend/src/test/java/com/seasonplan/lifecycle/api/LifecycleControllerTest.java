@@ -1,7 +1,8 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.domain.ActorRole;
-import com.seasonplan.lifecycle.domain.CurrentActor;
+import com.seasonplan.security.identity.ActorRole;
+import com.seasonplan.security.identity.CurrentActor;
+import com.seasonplan.security.api.UserAdministrationExceptionHandler;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,20 @@ class LifecycleControllerTest {
     void setUp() {
         SeasonPlanTestFixture fixture = SeasonPlanTestFixture.create();
         CurrentActor planner = new CurrentActor(UUID.fromString("00000000-0000-0000-0000-000000000001"), "planner", Set.of(ActorRole.FAIRY_PLANNER));
-        mvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
-                        fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(),
-                        fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> planner))
-                .setControllerAdvice(new LifecycleExceptionHandler()).build();
+        mvc = historyMvc(fixture, planner);
+    }
+
+    @Test
+    void wrongBusinessRoleGetsForbiddenForPollenAndTaskCommands() throws Exception {
+        var fixture = SeasonPlanTestFixture.create();
+        var admin = new CurrentActor(UUID.randomUUID(), "admin", Set.of(), true);
+        var deniedMvc = historyMvc(fixture, admin);
+        deniedMvc.perform(post("/season-plans/{id}/pollen-reservations", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"requestedAmount\":10}"))
+                .andExpect(status().isForbidden());
+        deniedMvc.perform(patch("/tasks/{id}", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -37,10 +48,7 @@ class LifecycleControllerTest {
         SeasonPlanTestFixture fixture = SeasonPlanTestFixture.create();
         var plan = fixture.seasonPlanService().createDraft(SeasonPlanTestFixture.validPlanDraft("planner"), ActorRole.FAIRY_PLANNER, "planner");
         CurrentActor guardian = new CurrentActor(UUID.randomUUID(), "guardian", Set.of(ActorRole.POLLEN_GUARDIAN));
-        MockMvc guardianMvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
-                        fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(),
-                        fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> guardian))
-                .setControllerAdvice(new LifecycleExceptionHandler()).build();
+        MockMvc guardianMvc = historyMvc(fixture, guardian);
         String payload = "{\"requestedAmount\":1500,\"requestId\":\"" + UUID.randomUUID() + "\"}";
         String first = guardianMvc.perform(post("/season-plans/{id}/pollen-reservations", plan.id())
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
@@ -67,10 +75,7 @@ class LifecycleControllerTest {
         fixture.pollenService().confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen");
         fixture.seasonPlanService().verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "chief");
         CurrentActor chief = new CurrentActor(UUID.randomUUID(), "chief", Set.of(ActorRole.CHIEF_GUARDIAN));
-        MockMvc chiefMvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
-                        fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(),
-                        fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> chief))
-                .setControllerAdvice(new LifecycleExceptionHandler()).build();
+        MockMvc chiefMvc = historyMvc(fixture, chief);
         chiefMvc.perform(post("/season-plans/{id}/approve", plan.id()).contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"comment":"conditional", "conditions":[{"key":"weather-evidence", "displayText":"Weather evidence",
@@ -78,7 +83,7 @@ class LifecycleControllerTest {
                                 """))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.approvalConditions[0].key").value("weather-evidence"))
                 .andExpect(jsonPath("$.approvalConditions[0].ownerRole").value("TALENT_COORDINATOR"));
-        fixture.readinessChecklistService().completeItem(plan.id(), "weather-evidence", ActorRole.TALENT_COORDINATOR, "coordinator");
+        fixture.seasonPlanService().completeItem(plan.id(), "weather-evidence", ActorRole.TALENT_COORDINATOR, "coordinator");
         chiefMvc.perform(get("/season-plans/{id}/readiness", plan.id()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.errors['weather-evidence']").isArray());
         chiefMvc.perform(get("/season-plans/{id}/review-history", plan.id()))
@@ -103,20 +108,45 @@ class LifecycleControllerTest {
 
     private MockMvc historyMvc(SeasonPlanTestFixture fixture, CurrentActor actor) {
         return MockMvcBuilders.standaloneSetup(new LifecycleController(
-                fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(),
-                fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> actor))
-                .setControllerAdvice(new LifecycleExceptionHandler()).build();
+                fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(), () -> actor))
+                .setControllerAdvice(new LifecycleExceptionHandler(), new UserAdministrationExceptionHandler()).build();
     }
 
     @Test
-    void reviewDecisionEndpointsRequireChiefGuardianAtSecurityBoundary() throws Exception {
-        for (String method : List.of("approve", "returnForRevision")) {
-            var handler = java.util.Arrays.stream(LifecycleController.class.getDeclaredMethods())
-                    .filter(candidate -> candidate.getName().equals(method)).findFirst().orElseThrow();
-            var auth = handler.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
-            org.assertj.core.api.Assertions.assertThat(auth).isNotNull();
-            org.assertj.core.api.Assertions.assertThat(auth.value()).contains("CHIEF_GUARDIAN");
+    void taskAssignmentAndReadinessRoutesStillCompletePreparation() throws Exception {
+        SeasonPlanTestFixture fixture = SeasonPlanTestFixture.create();
+        var plans = fixture.seasonPlanService();
+        var plan = plans.createDraft(SeasonPlanTestFixture.validPlanDraft("planner"), ActorRole.FAIRY_PLANNER, "planner");
+        plans.submitForApproval(plan.id(), ActorRole.FAIRY_PLANNER, "planner");
+        var reservation = fixture.pollenService().requestReservation(plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen");
+        fixture.pollenService().confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen");
+        plans.verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "chief");
+        plans.approve(plan.id(), "ok", ActorRole.CHIEF_GUARDIAN, "chief");
+        var coordinator = new CurrentActor(UUID.randomUUID(), "coordinator", Set.of(ActorRole.TALENT_COORDINATOR));
+        MockMvc coordinatorMvc = historyMvc(fixture, coordinator);
+        String response = coordinatorMvc.perform(post("/season-plans/{id}/tasks", plan.id())
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"title":"Prepare weather", "description":"Align winds", "requiredTalent":"SPRING_WEATHER",
+                                 "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY"}
+                                """))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String taskId = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).get("id").asText();
+        coordinatorMvc.perform(post("/tasks/{id}/assignments", taskId).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"fairyId":"fairy", "role":"LEAD", "talent":"SPRING_WEATHER", "status":"CONFIRMED"}
+                        """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.magicTaskId").value(taskId));
+        coordinatorMvc.perform(get("/tasks/{id}/assignments", taskId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].fairyId").value("fairy"));
+        coordinatorMvc.perform(get("/season-plans/{id}/readiness", plan.id()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(false));
+        for (String key : List.of("calendar-reviewed", "roles-reviewed")) {
+            coordinatorMvc.perform(post("/season-plans/{id}/readiness-checklist/{key}/complete", plan.id(), key))
+                    .andExpect(status().isOk());
         }
+        coordinatorMvc.perform(get("/season-plans/{id}/readiness", plan.id()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(true));
+        coordinatorMvc.perform(post("/season-plans/{id}/mark-ritual-ready", plan.id()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RITUAL_READY"));
     }
 
     @Test
@@ -143,10 +173,7 @@ class LifecycleControllerTest {
         var plan = fixture.seasonPlanService().createDraft(SeasonPlanTestFixture.validPlanDraft("planner"), ActorRole.FAIRY_PLANNER, "planner");
         fixture.seasonPlanService().submitForApproval(plan.id(), ActorRole.FAIRY_PLANNER, "planner");
         CurrentActor guardian = new CurrentActor(UUID.randomUUID(), "guardian", Set.of(ActorRole.CHIEF_GUARDIAN));
-        MockMvc guardianMvc = MockMvcBuilders.standaloneSetup(new LifecycleController(
-                        fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(),
-                        fixture.fairyAssignmentService(), fixture.readinessChecklistService(), () -> guardian))
-                .setControllerAdvice(new LifecycleExceptionHandler()).build();
+        MockMvc guardianMvc = historyMvc(fixture, guardian);
         guardianMvc.perform(post("/season-plans/{id}/verify", plan.id()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VERIFIED"));
         guardianMvc.perform(post("/season-plans/{id}/verify", plan.id())).andExpect(status().isBadRequest());

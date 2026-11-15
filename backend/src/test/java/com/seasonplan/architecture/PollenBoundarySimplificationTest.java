@@ -1,6 +1,6 @@
 package com.seasonplan.architecture;
 
-import com.seasonplan.lifecycle.application.pollen.PollenService;
+import com.seasonplan.lifecycle.service.PollenService;
 import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,9 +16,9 @@ class PollenBoundarySimplificationTest {
             var violations = sources.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
                         String relative = ROOT.relativize(path).toString().replace('\\', '/');
-                        return !relative.startsWith("adapter/") && !relative.startsWith("config/")
-                                && !relative.equals("application/port/PollenTreeClient.java")
-                                && !relative.equals("application/pollen/PollenService.java");
+                        return !relative.startsWith("infrastructure/") && !relative.startsWith("config/")
+                                && !relative.equals("integration/pollen/PollenTreeClient.java")
+                                && !relative.equals("service/PollenService.java");
                     })
                     .filter(path -> {
                         try { return Files.readString(path).matches("(?s).*\\b(?:PollenTreeClient|RestPollenTreeClient|FakePollenTreeClient)\\b.*"); }
@@ -39,8 +39,8 @@ class PollenBoundarySimplificationTest {
     }
 
     @Test void pollenHasOneApplicationServiceOneExternalClientAndNoLocalReservationRepository() {
-        assertThat(ROOT.resolve("application/pollen/PollenService.java")).isRegularFile();
-        assertThat(ROOT.resolve("application/port/PollenTreeClient.java")).isRegularFile();
+        assertThat(ROOT.resolve("service/PollenService.java")).isRegularFile();
+        assertThat(ROOT.resolve("integration/pollen/PollenTreeClient.java")).isRegularFile();
         for (String obsolete : List.of(
                 "application/preparation/PollenReservationService.java",
                 "application/execution/PollenConsumptionService.java",
