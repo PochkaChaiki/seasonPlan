@@ -7,4 +7,6 @@
   interface placement, named contracts, core dependency boundaries and adapter packages.
 - [0004 — Security feature and lifecycle authorization](0004-security-feature-and-lifecycle-authorization.md):
   account/core separation, shared identity, permission/ownership policy and one-time session rollout.
+- [0005 — Configured execution and durable repositories](0005-configured-execution-and-durable-repositories.md):
+  production providers/checker, immutable rule selection, JDBC execution storage and safe legacy-data handling.
 

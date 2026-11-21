@@ -5,6 +5,9 @@ Status: Accepted. Supplements ADR 0002; supersedes its retained `application/por
 ownership decisions. [ADR 0004](0004-security-feature-and-lifecycle-authorization.md)
 subsequently moves shared identity/denied-access contracts into security and
 introduces lifecycle-owned authorization; the remaining package decisions stand.
+[ADR 0005](0005-configured-execution-and-durable-repositories.md) subsequently
+implements execution contracts, schema and composition; the core-only runtime
+limits below describe the earlier package-refactor milestone.
 
 ## Context
 

@@ -2,7 +2,9 @@
 
 Status: Accepted. Package locations are refined by
 [ADR 0003](0003-responsibility-owned-contracts-and-infrastructure.md); service
-ownership decisions remain unchanged.
+ownership decisions remain unchanged. [ADR 0005](0005-configured-execution-and-durable-repositories.md)
+subsequently implements execution providers/repositories and service composition;
+its runtime/transaction guarantees supersede the core-only limits recorded here.
 
 ## Context
 
