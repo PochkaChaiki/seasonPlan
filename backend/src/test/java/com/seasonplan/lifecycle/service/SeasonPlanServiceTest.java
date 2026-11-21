@@ -38,6 +38,21 @@ class SeasonPlanServiceTest {
     }
 
     @Test
+    void missingDeploymentRulesBlockCreationBeforePersistenceWithFieldError() {
+        var plans = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.SeasonPlanRepository.class);
+        var service = new SeasonPlanService(plans, null, null, null, null, new DirectTestTransaction(), null,
+                new com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient(), java.time.Clock.systemUTC(),
+                () -> { throw new IllegalStateException("secret config value"); },
+                id -> new RitualReadinessChecker.Readiness(List.of(), List.of(), java.util.Set.of("TEST")));
+        assertThatThrownBy(() -> service.createDraft(SeasonPlanTestFixture.validPlanDraft("planner"), ActorRole.FAIRY_PLANNER, "planner"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> {
+                    assertThat(ex.fieldErrors()).containsKey("executionRules");
+                    assertThat(ex.fieldErrors().toString()).doesNotContain("secret config value");
+                });
+        org.mockito.Mockito.verifyNoInteractions(plans);
+    }
+
+    @Test
     void plannerCanCreateValidDraftAndInvalidDraftReturnsFieldErrors() {
         SeasonPlan created = seasonPlans.createDraft(SeasonPlanTestFixture.validPlanDraft("planner-1"), ActorRole.FAIRY_PLANNER, "planner-1");
 
@@ -50,6 +65,17 @@ class SeasonPlanServiceTest {
                 .isInstanceOf(DomainValidationException.class)
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors())
                         .containsKeys("seasonType", "timeWindows", "targetTerritories", "naturalPhenomenonParameters", "targetClimateMetrics"));
+    }
+
+    @Test
+    void missingOrNonFiniteCatalogTargetsBlockCreation() {
+        var draft = SeasonPlanTestFixture.validPlanDraft("planner");
+        draft.setTargetClimateMetrics(java.util.Map.of("temperature", 20.0));
+        assertThatThrownBy(() -> seasonPlans.createDraft(draft, ActorRole.FAIRY_PLANNER, "planner"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("targetClimateMetrics"));
+        draft.setTargetClimateMetrics(java.util.Map.of("temperature", Double.NaN, "humidity", 60.0, "pollen_density", 1.0));
+        assertThatThrownBy(() -> seasonPlans.createDraft(draft, ActorRole.FAIRY_PLANNER, "planner"))
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
@@ -259,9 +285,9 @@ class SeasonPlanServiceTest {
         SeasonPlan plan = submittedPlan();
         confirmPollen(plan);
         PollenReservation replacement = pollenReservations.requestReservation(plan.id(), 120, ActorRole.POLLEN_GUARDIAN, "pollen-1");
-        assertThat(seasonPlans.calculateChecklist(plan.id())).containsKey("pollenReservation");
+        assertThat(seasonPlans.calculateChecklist(plan.id())).containsKey("pollen-confirmed");
         pollenReservations.rejectReservation(replacement.id(), "capacity", ActorRole.POLLEN_GUARDIAN, "pollen-1");
-        assertThat(seasonPlans.calculateChecklist(plan.id())).doesNotContainKey("pollenReservation");
+        assertThat(seasonPlans.calculateChecklist(plan.id())).doesNotContainKey("pollen-confirmed");
     }
 
     @Test
@@ -282,8 +308,7 @@ class SeasonPlanServiceTest {
         seasonPlans.verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
         var condition = new com.seasonplan.lifecycle.domain.ApprovalCondition("weather-evidence", "Weather", "Calibration", ActorRole.TALENT_COORDINATOR);
         seasonPlans.approve(plan.id(), "conditional", List.of(condition), ActorRole.CHIEF_GUARDIAN, "guardian-1");
-        MagicTask task = magicTasks.createTask(plan.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
-        magicTasks.assignFairy(task.id(), "fairy-1", "LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        prepareRequiredTasks(plan);
         seasonPlans.completeItem(plan.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
         seasonPlans.completeItem(plan.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
         seasonPlans.completeItem(plan.id(), "weather-evidence", ActorRole.TALENT_COORDINATOR, "coordinator-1");
@@ -301,7 +326,7 @@ class SeasonPlanServiceTest {
         assertThatThrownBy(() -> seasonPlans.markRitualReady(approved.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1"))
                 .isInstanceOf(DomainValidationException.class)
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors())
-                        .containsKeys("pollenReservation", "magicTasks", "readinessChecklist"));
+                        .containsKeys("pollen-confirmed", "category:WEATHER", "category:POLLEN", "readinessChecklist"));
     }
 
     @Test
@@ -309,8 +334,7 @@ class SeasonPlanServiceTest {
         SeasonPlan approved = approvedPlan();
         PollenReservation reservation = pollenReservations.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
         pollenReservations.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
-        MagicTask task = magicTasks.createTask(approved.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
-        magicTasks.assignFairy(task.id(), "fairy-1", "LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        prepareRequiredTasks(approved);
         seasonPlans.completeItem(approved.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
         seasonPlans.completeItem(approved.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
 
@@ -340,6 +364,17 @@ class SeasonPlanServiceTest {
 
         assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.FAIRY_PLANNER, "planner-1"))
                 .isInstanceOf(AccessDeniedForRoleException.class);
+    }
+
+    private void prepareRequiredTasks(SeasonPlan plan) {
+        String[] categories = {"WEATHER", "POLLEN"}; String[] roles = {"RITUAL_LEAD", "WEATHER_WEAVER"};
+        for (int i = 0; i < categories.length; i++) {
+            MagicTask base = SeasonPlanTestFixture.validTaskDraft();
+            MagicTask draft = new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, categories[i]);
+            MagicTask task = magicTasks.createTask(plan.id(), draft, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+            magicTasks.assignFairy(task.id(), "fairy-" + i, roles[i], "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+            magicTasks.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, categories[i]), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        }
     }
 
     private SeasonPlan submittedPlan() {

@@ -34,11 +34,13 @@ public class SeasonPlanService {
     private final NotificationOutbox outbox;
     private final NaturalCalendarClient calendar;
     private final Clock clock;
+    private final java.util.function.Supplier<ExecutionRuleSnapshot> executionRules;
+    private final RitualReadinessChecker readiness;
 
     public SeasonPlanService(SeasonPlanRepository plans, PollenService pollen,
                              MagicTaskRepository magicTasks, FairyAssignmentRepository fairyAssignments,
                              AuditLogService audit, CommandTransaction transactions, NotificationOutbox outbox,
-                             NaturalCalendarClient calendar, Clock clock) {
+                             NaturalCalendarClient calendar, Clock clock, java.util.function.Supplier<ExecutionRuleSnapshot> executionRules, RitualReadinessChecker readiness) {
         this.plans = plans;
         this.pollen = pollen;
         this.magicTasks = magicTasks;
@@ -48,18 +50,27 @@ public class SeasonPlanService {
         this.outbox = outbox;
         this.calendar = calendar;
         this.clock = clock;
+        this.executionRules = java.util.Objects.requireNonNull(executionRules);
+        this.readiness = java.util.Objects.requireNonNull(readiness);
     }
 
     public SeasonPlan createDraft(SeasonPlan draft, ActorRole role, String actorId) {
         LifecycleAccessPolicy.require(role, LifecyclePermission.CREATE_DRAFT);
         validatePlan(draft);
+        ExecutionRuleSnapshot rules;
+        try { rules = executionRules.get(); }
+        catch (IllegalStateException ex) { ServiceSupport.reject("executionRules", "Complete versioned execution rules must be configured before creating a plan"); throw ex; }
+        if (!rules.seasons().containsKey(draft.seasonType())) ServiceSupport.reject("seasonType", "season type is not present in the execution catalog");
         SeasonPlan created = SeasonPlan.createDraft(UUID.randomUUID(), draft.seasonType(), draft.targetTerritories(),
                 draft.timeWindows(), draft.naturalPhenomenonParameters(), draft.targetClimateMetrics(),
                 List.of(new ChecklistItem("calendar-reviewed", false), new ChecklistItem("roles-reviewed", false)),
                 actorId, clock.instant());
-        plans.save(created);
-        audit.append(created.id(), AuditAction.SEASON_PLAN_CREATED, actorId, null);
-        return created;
+        created.pinExecutionRules(rules);
+        return transactions.create(() -> {
+            plans.save(created);
+            audit.append(created.id(), AuditAction.SEASON_PLAN_CREATED, actorId, null);
+            return created;
+        });
     }
 
     public SeasonPlan updateDraft(UUID id, SeasonPlan draft, ActorRole role, String actorId) {
@@ -68,6 +79,8 @@ public class SeasonPlanService {
             SeasonPlan existing = get(id);
             LifecycleAccessPolicy.requireDraftOwner(role, actorId, existing);
             validatePlan(draft);
+            if (existing.executionRules() == null) ServiceSupport.reject("executionRules", "Legacy plan has no pinned execution rules; operator remediation required");
+            if (!existing.executionRules().seasons().containsKey(draft.seasonType())) ServiceSupport.reject("seasonType", "season type is not present in pinned execution catalog");
             existing.updateDraftFieldsFrom(draft, actorId, clock.instant());
             audit.append(id, AuditAction.SEASON_PLAN_UPDATED, actorId, null);
             return plans.save(existing);
@@ -90,6 +103,13 @@ public class SeasonPlanService {
         }
         if (plan.targetClimateMetrics().isEmpty()) {
             ValidationSupport.add(errors, "targetClimateMetrics", "target climate metrics are required");
+        }
+        for (MetricDefinition metric : MetricDefinition.values()) {
+            if (!plan.targetClimateMetrics().containsKey(metric.key())) ValidationSupport.add(errors, "targetClimateMetrics", "target is required for " + metric.key());
+        }
+        for (var entry : plan.targetClimateMetrics().entrySet()) {
+            boolean known = java.util.Arrays.stream(MetricDefinition.values()).anyMatch(metric -> metric.key().equals(entry.getKey()));
+            if (!known || entry.getValue() == null || !Double.isFinite(entry.getValue())) ValidationSupport.add(errors, "targetClimateMetrics", "metric targets must use catalog keys and finite values");
         }
         for (TimeWindow window : plan.timeWindows()) {
             if (window.start() == null || window.end() == null || !window.start().isBefore(window.end())) {
@@ -209,43 +229,8 @@ public class SeasonPlanService {
 
     public Map<String, List<String>> calculateChecklist(UUID seasonPlanId) {
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
-        SeasonPlan plan = get(seasonPlanId);
-        var latest = pollen.findLatestBySeasonPlanId(seasonPlanId);
-        boolean confirmed = latest.filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
-                && reservation.status() == PollenReservationStatus.CONFIRMED).isPresent();
-        if (latest.filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
-                && reservation.status() == PollenReservationStatus.REJECTED).isPresent()) {
-            confirmed = pollen.findAuthoritativeConfirmedBySeasonPlanId(seasonPlanId)
-                    .filter(reservation -> seasonPlanId.equals(reservation.seasonPlanId())
-                            && reservation.status() == PollenReservationStatus.CONFIRMED).isPresent();
-        }
-        if (!confirmed) {
-            ValidationSupport.add(errors, "pollenReservation", "confirmed pollen reservation is required");
-        }
-        // Evidence verification is not available yet; manual flags cannot satisfy approval conditions.
-        for (var condition : plan.approvalConditions()) {
-            ValidationSupport.add(errors, condition.key(), "approval condition evidence is not verified");
-        }
-        List<MagicTask> tasks = magicTasks.findBySeasonPlanId(seasonPlanId);
-        if (tasks.isEmpty()) {
-            ValidationSupport.add(errors, "magicTasks", "at least one magic task is required");
-        }
-        for (MagicTask task : tasks) {
-            if (task.status() != MagicTaskStatus.READY) {
-                ValidationSupport.add(errors, "magicTasks", "all magic tasks must be READY");
-            }
-            var confirmedAssignments = fairyAssignments.findByMagicTaskId(task.id()).stream()
-                    .filter(assignment -> assignment.status() == AssignmentStatus.CONFIRMED).toList();
-            if (confirmedAssignments.isEmpty()) {
-                ValidationSupport.add(errors, "assignments", "every task requires a confirmed fairy assignment");
-            }
-            boolean compatible = confirmedAssignments.stream().anyMatch(assignment -> task.requiredTalent().equals(assignment.talent()));
-            if (!confirmedAssignments.isEmpty() && !compatible) {
-                ValidationSupport.add(errors, "assignments", "assigned fairy talent must match required task talent");
-            }
-        }
-        if (plan.readinessChecklist().isEmpty() || plan.readinessChecklist().stream().anyMatch(item -> !item.complete())) {
-            ValidationSupport.add(errors, "readinessChecklist", "all readiness checklist items must be complete");
+        for (String blocker : readiness.inspect(seasonPlanId).blockers()) {
+            ValidationSupport.add(errors, blocker, "readiness requirement is not satisfied");
         }
         return errors;
     }

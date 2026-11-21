@@ -1,6 +1,60 @@
 # Backend changelog
 
-## Unreleased — Security feature and lifecycle authorization
+## Unreleased — Execution implementations and PostgreSQL runtime
+
+- Implemented all seven requested contracts: `PinnedMetricRuleProvider`,
+  `ConfiguredIncidentRuleProvider`, `ComputedRitualReadinessChecker`, and JDBC
+  incident, correction-action, ritual-session and climate-metric repositories.
+  Real beans now compose `RitualService`, `MonitoringService` and `IncidentResponseService`.
+- Followed current SRS/UC and ST-00 conflict resolution. The operator selected
+  validated versioned configuration **without defaults** and the existing
+  temperature/humidity/pollen-density catalog. No lifecycle statuses were added.
+- New plan creation requires complete configured execution/incident rules and
+  finite targets for all three metrics. An immutable rules snapshot, plan and
+  creation audit commit atomically; database protection prevents replacing the
+  pinned snapshot. Copies and draft edits preserve selection; metric evaluation
+  uses the displayed plan target and pinned tolerance/response settings.
+- Computed readiness checks required categories/completed work, per-task confirmed
+  compatible assignments with actual timestamps, required roles, authoritative
+  pollen, manual flags and current critical incidents. Unverified approval
+  conditions remain blockers. READY is not treated as completed work.
+- Added category metadata to existing task DTOs, actual confirmation timestamps,
+  shared per-plan transactions, and atomic `MAGIC_TASK_UPDATED` audit appends.
+  Completion requires assignment evidence and cannot be selected at creation.
+  Terminal tasks reject edits as structured validation; ongoing optional task
+  work remains possible after readiness/activation, including during critical incidents.
+- Forward migrations 012/013 preserve legacy data while adding global import and
+  correction keys, same-plan incident links, exclusive ritual attempts/success,
+  sealed participants, append-only ordered events and immutable terminal records.
+  Incomplete history fails closed pending verified operator remediation—no
+  guessed backfill, automatic deletion or audit-history rewrite.
+- Fixed real-database replay defects: nanosecond sensor input is normalized before
+  import comparison; an unchanged failed ritual remains replayable after a later
+  success. Measurement decimal precision is retained.
+- No new dependencies, execution REST routes, frontend flows, sensors, reporting
+  or schedulers were added. Pollen remains external and the separate consumption
+  outbox remains unconfigured. See the [configuration/rollout guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
+  and [ADR 0005](../docs/decisions/0005-configured-execution-and-durable-repositories.md).
+
+### Verification
+
+- JDK **17.0.21**, Maven 3.9.11, PostgreSQL 14 via Testcontainers:
+  `mvn.cmd -f .\backend\pom.xml '-Dapi.version=1.44' clean verify`
+  with process-local `DOCKER_API_VERSION=1.44` for Docker 29 compatibility.
+- **352 backend tests passed**, including **34 real PostgreSQL tests**;
+  zero failures/errors/skips. Docker Desktop was started with operator approval,
+  resolving the previous environment blocker. No production database was used.
+- RED/GREEN regressions cover missing implementations/configuration, pinned
+  snapshots/copying, creation rollback, readiness/assignment/completion guards,
+  task audit/locking, terminal PATCH validation, semantic precision/replay,
+  failed-attempt history, constraints and concurrent unique-key/ritual races.
+- A real Spring/PostgreSQL acceptance test exercises preparation, successful
+  ritual activation, critical measurement/incident/correction persistence and
+  ongoing optional task completion. Core and persistence source reviews passed
+  after their actionable findings were fixed and independently re-reviewed.
+- Frontend remains unchanged; its **43 tests**, lint and production build pass.
+
+## Earlier — Security feature and lifecycle authorization
 
 - Kept account/authentication security as a sibling feature; it no longer imports
   lifecycle. Shared actor/role/provider contracts now live in `security/identity`.

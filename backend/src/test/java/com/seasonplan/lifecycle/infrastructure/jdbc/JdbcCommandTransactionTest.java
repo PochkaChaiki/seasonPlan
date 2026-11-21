@@ -32,6 +32,19 @@ class JdbcCommandTransactionTest {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
     }
 
+    @Test void creationRunsAtomicallyWithoutLockingANonexistentPlan() {
+        var events = new ArrayList<String>();
+        var jdbc = mock(JdbcTemplate.class);
+        var transaction = new JdbcCommandTransaction(jdbc, new RecordingManager(events));
+        assertThat(transaction.create(() -> { events.add("insert-and-audit"); return "created"; })).isEqualTo("created");
+        assertThat(events).containsExactly("begin", "insert-and-audit", "commit");
+        verifyNoInteractions(jdbc);
+        events.clear();
+        assertThatThrownBy(() -> transaction.create(() -> { events.add("insert"); throw new IllegalStateException("audit failed"); }))
+                .hasMessage("audit failed");
+        assertThat(events).containsExactly("begin", "insert", "rollback");
+    }
+
     @Test void writeFailureRollsBackAndPropagatesWithoutCommitting() {
         var events = new ArrayList<String>();
         var jdbc = mock(JdbcTemplate.class);

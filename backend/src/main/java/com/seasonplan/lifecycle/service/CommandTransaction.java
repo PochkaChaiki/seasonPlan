@@ -10,4 +10,6 @@ import java.util.function.Supplier;
  */
 public interface CommandTransaction {
     <T> T execute(UUID seasonPlanId, Supplier<T> command);
+    /** Atomically creates a new plan and its audit records before any plan row exists to lock. */
+    <T> T create(Supplier<T> command);
 }

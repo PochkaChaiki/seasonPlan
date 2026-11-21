@@ -12,6 +12,7 @@ public record ClimateMetric(UUID id, UUID seasonPlanId, String source, String so
     public ClimateMetric {
         Objects.requireNonNull(id); Objects.requireNonNull(seasonPlanId); Objects.requireNonNull(definition);
         Objects.requireNonNull(observedAt);
+        observedAt = ExecutionTime.canonical(observedAt);
         if (source == null || source.isBlank() || sourceEventId == null || sourceEventId.isBlank()) {
             throw new IllegalArgumentException("metric source and event id are required");
         }

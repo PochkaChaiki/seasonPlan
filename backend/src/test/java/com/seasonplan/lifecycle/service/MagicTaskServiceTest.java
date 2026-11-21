@@ -84,7 +84,7 @@ class MagicTaskServiceTest {
         assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(auditCount);
         assign(second, "fairy", AssignmentStatus.PROPOSED);
         assertThat(tasks.validateRequiredRoles(second)).isFalse();
-        assertThat(plans.calculateChecklist(plan.id())).containsKey("assignments");
+        assertThat(plans.calculateChecklist(plan.id())).containsKey("role:RITUAL_LEAD");
     }
 
     @Test
@@ -99,9 +99,82 @@ class MagicTaskServiceTest {
         assign(later, "fairy", AssignmentStatus.CONFIRMED);
         plans.completeItem(plan.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator");
         plans.completeItem(plan.id(), "roles-reviewed", ActorRole.POLLEN_GUARDIAN, "pollen");
-        assertThat(plans.calculateChecklist(plan.id())).isEmpty();
-        assertThat(plans.markRitualReady(plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator").status())
-                .isEqualTo(SeasonPlanStatus.RITUAL_READY);
+        assertThat(plans.calculateChecklist(plan.id())).containsKeys("task-category:" + first.id(), "task-category:" + later.id(), "category:WEATHER", "category:POLLEN");
+        assertThatThrownBy(() -> plans.markRitualReady(plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(DomainValidationException.class);
+    }
+
+    @Test
+    void cannotCompleteAnUncategorizedTaskOrCancelWithoutReason() {
+        MagicTask task = createTask();
+        var uncategorized = new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), MagicTaskStatus.COMPLETED);
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), uncategorized, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("category"));
+        var cancelled = new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), MagicTaskStatus.CANCELLED, "WEATHER");
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), cancelled, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("status"));
+        assertThat(tasks.get(task.id()).status()).isEqualTo(MagicTaskStatus.READY);
+    }
+
+    @Test
+    void completionRequiresConfirmedCompatibleAssignmentAndPreservesStateOnFailure() {
+        MagicTask task = createTask();
+        var completed = new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), MagicTaskStatus.COMPLETED, "WEATHER");
+        int auditCount = fixture.auditLogService().entriesFor(plan.id()).size();
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), completed, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("assignments"));
+        assertThat(tasks.get(task.id()).status()).isEqualTo(MagicTaskStatus.READY);
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(auditCount);
+        assign(task, "proposal", AssignmentStatus.PROPOSED);
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), completed, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(DomainValidationException.class);
+        assign(task, "fairy", AssignmentStatus.CONFIRMED);
+        var changedTalent = new MagicTask(task.title(), task.description(), "OTHER", task.timeWindow(), MagicTaskStatus.COMPLETED, "WEATHER");
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), changedTalent, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(tasks.get(task.id()).status()).isEqualTo(MagicTaskStatus.READY);
+        assertThat(tasks.updateTask(task.id(), completed, ActorRole.TALENT_COORDINATOR, "coordinator").status()).isEqualTo(MagicTaskStatus.COMPLETED);
+    }
+
+    @Test
+    void legacyConfirmedAssignmentWithoutRealTimestampCannotCompleteTask() {
+        var repository = new com.seasonplan.lifecycle.infrastructure.fake.InMemoryMagicTaskRepository();
+        var assignments = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.FairyAssignmentRepository.class);
+        var planRepository = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.SeasonPlanRepository.class);
+        org.mockito.Mockito.when(planRepository.findById(plan.id())).thenReturn(java.util.Optional.of(plan));
+        var service = new MagicTaskService(repository, assignments, planRepository, fixture.auditLogService(), new DirectTestTransaction(), java.time.Clock.systemUTC());
+        MagicTask task = SeasonPlanTestFixture.validTaskDraft(); task.setId(UUID.randomUUID()); task.setSeasonPlanId(plan.id()); repository.save(task, "actor");
+        var legacy = new FairyAssignment(UUID.randomUUID(), task.id(), "fairy", "LEAD", task.requiredTalent(), AssignmentStatus.CONFIRMED);
+        org.mockito.Mockito.when(assignments.findByMagicTaskId(task.id())).thenReturn(java.util.List.of(legacy));
+        int before = fixture.auditLogService().entriesFor(plan.id()).size();
+        assertThatThrownBy(() -> service.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), MagicTaskStatus.COMPLETED, "WEATHER"), ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("assignments"));
+        assertThat(repository.findById(task.id()).orElseThrow().status()).isEqualTo(MagicTaskStatus.READY);
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(before);
+    }
+
+    @Test
+    void directCompletedTaskCreationIsRejectedWithoutAudit() {
+        MagicTask base = SeasonPlanTestFixture.validTaskDraft();
+        var completed = new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), MagicTaskStatus.COMPLETED, "WEATHER");
+        int before = fixture.auditLogService().entriesFor(plan.id()).size();
+        assertThatThrownBy(() -> tasks.createTask(plan.id(), completed, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("status"));
+        assertThat(tasks.listTasksBySeasonPlan(plan.id())).isEmpty();
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(before);
+    }
+
+    @Test
+    void taskCompletionIsAuditedAndTerminal() {
+        MagicTask task = createTask();
+        assign(task, "fairy", AssignmentStatus.CONFIRMED);
+        tasks.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), MagicTaskStatus.COMPLETED, "WEATHER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        int before = fixture.auditLogService().entriesFor(plan.id()).size();
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).extracting(AuditLogEntry::action).contains(AuditAction.MAGIC_TASK_UPDATED);
+        assertThatThrownBy(() -> tasks.updateTask(task.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOfSatisfying(DomainValidationException.class, ex -> assertThat(ex.fieldErrors()).containsKey("task"));
+        assertThat(tasks.get(task.id()).status()).isEqualTo(MagicTaskStatus.COMPLETED);
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(before);
     }
 
     @Test

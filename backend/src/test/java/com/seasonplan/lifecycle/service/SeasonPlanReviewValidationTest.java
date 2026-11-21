@@ -20,7 +20,8 @@ import static org.mockito.Mockito.*;
 class SeasonPlanReviewValidationTest {
     private final SeasonPlanRepository plans = mock(SeasonPlanRepository.class);
     private final SeasonPlanService planning = new SeasonPlanService(plans, null, null, null, null,
-            new DirectTestTransaction(), null, new AllowingNaturalCalendarClient(), Clock.systemUTC());
+            new DirectTestTransaction(), null, new AllowingNaturalCalendarClient(), Clock.systemUTC(), TestExecutionRules::snapshot,
+            id -> new RitualReadinessChecker.Readiness(java.util.List.of(), java.util.List.of(), java.util.Set.of("TEST")));
     private final LocalDateTime start = LocalDateTime.parse("2026-03-01T09:00:00");
     private final SeasonPlan plan = plan(UUID.randomUUID(), SeasonPlanStatus.SUBMITTED, "North", start, start.plusHours(3));
 
@@ -48,7 +49,7 @@ class SeasonPlanReviewValidationTest {
 
     private SeasonPlan plan(UUID id, SeasonPlanStatus status, String territory, LocalDateTime from, LocalDateTime to) {
         return SeasonPlan.rehydrate(id, "SPRING", List.of(territory), List.of(new TimeWindow(from, to)),
-                Map.of("bloom", "early"), Map.of("temperature", 20.0), status, null, List.of(),
+                Map.of("bloom", "early"), Map.of("temperature", 20.0, "humidity", 60.0, "pollen_density", 1.0), status, null, List.of(),
                 "planner", "planner", Instant.EPOCH, Instant.EPOCH);
     }
 }

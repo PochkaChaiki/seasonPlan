@@ -62,15 +62,15 @@ record ChecklistItemResponse(String key, boolean complete) {
     }
 }
 
-record MagicTaskRequest(String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status) {
+record MagicTaskRequest(String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status, String category) {
     MagicTask toDraft() {
-        return new MagicTask(title, description, requiredTalent, timeWindow, status);
+        return new MagicTask(title, description, requiredTalent, timeWindow, status, category);
     }
 }
 
-record MagicTaskResponse(UUID id, UUID seasonPlanId, String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status) {
+record MagicTaskResponse(UUID id, UUID seasonPlanId, String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status, String category) {
     static MagicTaskResponse from(MagicTask task) {
-        return new MagicTaskResponse(task.id(), task.seasonPlanId(), task.title(), task.description(), task.requiredTalent(), task.timeWindow(), task.status());
+        return new MagicTaskResponse(task.id(), task.seasonPlanId(), task.title(), task.description(), task.requiredTalent(), task.timeWindow(), task.status(), task.category());
     }
 }
 

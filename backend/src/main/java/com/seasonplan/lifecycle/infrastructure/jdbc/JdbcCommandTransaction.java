@@ -21,6 +21,11 @@ public final class JdbcCommandTransaction implements CommandTransaction {
     }
 
     @Override
+    public <T> T create(Supplier<T> command) {
+        return transaction.execute(status -> command.get());
+    }
+
+    @Override
     public <T> T execute(UUID seasonPlanId, Supplier<T> command) {
         return transaction.execute(status -> {
             try {

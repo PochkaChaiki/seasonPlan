@@ -27,6 +27,7 @@ public class JdbcFairyAssignmentRepository implements FairyAssignmentRepository 
                        role = ?,
                        talent = ?,
                        status = ?,
+                       confirmed_at = ?,
                        updated_by = ?,
                        updated_at = now()
                  where id = ?
@@ -35,13 +36,14 @@ public class JdbcFairyAssignmentRepository implements FairyAssignmentRepository 
                 assignment.role(),
                 assignment.talent(),
                 assignment.status().name(),
+                ExecutionJdbcSupport.timestamp(assignment.confirmedAt()),
                 actorId,
                 assignment.id());
         if (updated == 0) {
             jdbc.update("""
                     insert into fairy_assignments (
-                        id, magic_task_id, fairy_id, role, talent, status, created_by, updated_by
-                    ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                        id, magic_task_id, fairy_id, role, talent, status, confirmed_at, created_by, updated_by
+                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     assignment.id(),
                     assignment.magicTaskId(),
@@ -49,6 +51,7 @@ public class JdbcFairyAssignmentRepository implements FairyAssignmentRepository 
                     assignment.role(),
                     assignment.talent(),
                     assignment.status().name(),
+                    ExecutionJdbcSupport.timestamp(assignment.confirmedAt()),
                     actorId,
                     actorId);
         }
@@ -77,7 +80,8 @@ public class JdbcFairyAssignmentRepository implements FairyAssignmentRepository 
                 rs.getString("fairy_id"),
                 rs.getString("role"),
                 rs.getString("talent"),
-                AssignmentStatus.valueOf(rs.getString("status"))
+                AssignmentStatus.valueOf(rs.getString("status")),
+                ExecutionJdbcSupport.instant(rs.getTimestamp("confirmed_at"))
         );
     }
 }

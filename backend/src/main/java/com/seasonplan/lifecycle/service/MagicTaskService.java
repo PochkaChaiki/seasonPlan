@@ -29,39 +29,61 @@ public class MagicTaskService {
     private final FairyAssignmentRepository assignments;
     private final SeasonPlanRepository plans;
     private final AuditLogService auditLogService;
+    private final CommandTransaction transactions;
+    private final java.time.Clock clock;
 
     public MagicTaskService(MagicTaskRepository tasks, FairyAssignmentRepository assignments,
-                            SeasonPlanRepository plans, AuditLogService auditLogService) {
+                            SeasonPlanRepository plans, AuditLogService auditLogService, CommandTransaction transactions, java.time.Clock clock) {
         this.tasks = tasks;
         this.assignments = assignments;
         this.plans = plans;
         this.auditLogService = auditLogService;
+        this.transactions = transactions;
+        this.clock = clock;
     }
 
     public MagicTask createTask(UUID seasonPlanId, MagicTask draft, ActorRole actorRole, String actorId) {
         LifecycleAccessPolicy.require(actorRole, LifecyclePermission.CREATE_TASK);
+        return transactions.execute(seasonPlanId, () -> {
         if (plans.findById(seasonPlanId)
                 .orElseThrow(() -> new NotFoundException("season plan not found: " + seasonPlanId))
                 .status() != SeasonPlanStatus.APPROVED) {
             ServiceSupport.reject("seasonPlanStatus", "tasks can only be created for APPROVED plans");
         }
         validateTask(draft);
+        if (draft.status() == MagicTaskStatus.COMPLETED) ServiceSupport.reject("status", "a task cannot be created completed before an assignment is confirmed");
+        validateCategory(draft, ServiceSupport.plan(plans, seasonPlanId));
         draft.setId(UUID.randomUUID());
         draft.setSeasonPlanId(seasonPlanId);
         if (draft.status() == null) {
-            draft.updateFrom(new MagicTask(draft.title(), draft.description(), draft.requiredTalent(), draft.timeWindow(), MagicTaskStatus.READY));
+            draft.updateFrom(new MagicTask(draft.title(), draft.description(), draft.requiredTalent(), draft.timeWindow(), MagicTaskStatus.READY, draft.category()));
         }
         tasks.save(draft, actorId);
         auditLogService.append(seasonPlanId, AuditAction.MAGIC_TASK_CREATED, actorId, draft.title());
         return draft;
+        });
     }
 
     public MagicTask updateTask(UUID taskId, MagicTask draft, ActorRole actorRole, String actorId) {
         LifecycleAccessPolicy.require(actorRole, LifecyclePermission.UPDATE_TASK);
-        MagicTask existing = get(taskId);
-        validateTask(draft);
-        existing.updateFrom(draft);
-        return tasks.save(existing, actorId);
+        UUID planId = get(taskId).seasonPlanId();
+        return transactions.execute(planId, () -> {
+            MagicTask existing = get(taskId);
+            var plan = ServiceSupport.plan(plans, planId, SeasonPlanStatus.APPROVED, SeasonPlanStatus.RITUAL_READY, SeasonPlanStatus.ACTIVE);
+            if (existing.status() == MagicTaskStatus.COMPLETED || existing.status() == MagicTaskStatus.CANCELLED)
+                ServiceSupport.reject("task", "terminal task is immutable");
+            validateTask(draft);
+            validateCategory(draft, plan);
+            if (draft.status() == MagicTaskStatus.COMPLETED && assignments.findByMagicTaskId(taskId).stream().noneMatch(assignment ->
+                    assignment.status() == AssignmentStatus.CONFIRMED && assignment.confirmedAt() != null
+                            && draft.requiredTalent().equals(assignment.talent()))) {
+                ServiceSupport.reject("assignments", "a confirmed compatible assignment with a confirmation timestamp is required before completion");
+            }
+            existing.updateFrom(draft);
+            MagicTask saved = tasks.save(existing, actorId);
+            auditLogService.append(planId, AuditAction.MAGIC_TASK_UPDATED, actorId, taskId.toString());
+            return saved;
+        });
     }
 
     public List<MagicTask> listTasksBySeasonPlan(UUID seasonPlanId) {
@@ -75,7 +97,12 @@ public class MagicTaskService {
     public FairyAssignment assignFairy(UUID magicTaskId, String fairyId, String role, String talent,
                                        AssignmentStatus status, ActorRole actorRole, String actorId) {
         LifecycleAccessPolicy.require(actorRole, LifecyclePermission.ASSIGN_FAIRY);
+        UUID planId = get(magicTaskId).seasonPlanId();
+        return transactions.execute(planId, () -> {
         MagicTask task = get(magicTaskId);
+        var plan = ServiceSupport.plan(plans, planId, SeasonPlanStatus.APPROVED, SeasonPlanStatus.RITUAL_READY, SeasonPlanStatus.ACTIVE);
+        if (plan.executionRules() == null) ServiceSupport.reject("executionRules", "Legacy plan has no pinned execution rules; operator remediation required");
+        if (task.status() == MagicTaskStatus.COMPLETED || task.status() == MagicTaskStatus.CANCELLED) ServiceSupport.reject("task", "terminal task is immutable");
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
         if (fairyId == null || fairyId.isBlank()) {
             ValidationSupport.add(errors, "fairyId", "fairy id is required");
@@ -90,10 +117,11 @@ public class MagicTaskService {
             ValidationSupport.add(errors, "fairyId", "fairy has a schedule conflict");
         }
         ValidationSupport.throwIfAny(errors);
-        FairyAssignment assignment = new FairyAssignment(UUID.randomUUID(), magicTaskId, fairyId, role, talent, status);
+        FairyAssignment assignment = new FairyAssignment(UUID.randomUUID(), magicTaskId, fairyId, role, talent, status, status == AssignmentStatus.CONFIRMED ? clock.instant() : null);
         assignments.save(assignment, actorId);
         auditLogService.append(task.seasonPlanId(), AuditAction.FAIRY_ASSIGNED, actorId, fairyId);
         return assignment;
+        });
     }
 
     public boolean validateTalentCompatibility(MagicTask task, String talent) {
@@ -116,8 +144,20 @@ public class MagicTaskService {
                 .anyMatch(existingTask -> existingTask.timeWindow().overlaps(task.timeWindow()));
     }
 
+    private void validateCategory(MagicTask task, com.seasonplan.lifecycle.domain.SeasonPlan plan) {
+        var rules = plan.executionRules();
+        if (rules == null) ServiceSupport.reject("executionRules", "Legacy plan has no pinned execution rules; operator remediation required");
+        if (task.category() == null || task.category().isBlank()) {
+            if (task.status() == MagicTaskStatus.COMPLETED) ServiceSupport.reject("category", "a catalog category is required before completion");
+            return;
+        }
+        if (rules.seasons().values().stream().noneMatch(season -> season.categories().contains(task.category())))
+            ServiceSupport.reject("category", "task category is not in the pinned catalog");
+    }
+
     private void validateTask(MagicTask task) {
         LinkedHashMap<String, List<String>> errors = new LinkedHashMap<>();
+        if (task.status() == MagicTaskStatus.CANCELLED) ValidationSupport.add(errors, "status", "task cancellation requires a reason and is not supported by this command");
         if (task.title() == null || task.title().isBlank()) {
             ValidationSupport.add(errors, "title", "title is required");
         }

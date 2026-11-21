@@ -57,8 +57,8 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
             jdbc.update("""
                     insert into season_plans (
                         id, season_type, status, approval_comment, approval_conditions, natural_phenomenon_parameters,
-                        target_climate_metrics, created_by, updated_by, created_at, updated_at
-                    ) values (?, ?, ?, ?, cast(? as jsonb), cast(? as jsonb), cast(? as jsonb), ?, ?, ?, ?)
+                        target_climate_metrics, created_by, updated_by, created_at, updated_at, execution_rules
+                    ) values (?, ?, ?, ?, cast(? as jsonb), cast(? as jsonb), cast(? as jsonb), ?, ?, ?, ?, cast(? as jsonb))
                     """,
                     plan.id(),
                     plan.seasonType(),
@@ -70,7 +70,8 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                     plan.createdBy(),
                     plan.updatedBy(),
                     Timestamp.from(plan.createdAt()),
-                    Timestamp.from(plan.updatedAt())
+                    Timestamp.from(plan.updatedAt()),
+                    plan.executionRules() == null ? null : JdbcJson.write(objectMapper, plan.executionRules())
             );
         }
 
@@ -146,7 +147,7 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
     }
 
     private SeasonPlan mapPlan(ResultSet rs, int rowNum) throws SQLException {
-        return SeasonPlan.rehydrate(
+        SeasonPlan plan = SeasonPlan.rehydrate(
                 rs.getObject("id", UUID.class),
                 rs.getString("season_type"),
                 List.of(),
@@ -162,6 +163,15 @@ public class JdbcSeasonPlanRepository implements SeasonPlanRepository {
                 rs.getTimestamp("updated_at").toInstant(),
                 JdbcJson.readApprovalConditions(objectMapper, rs.getString("approval_conditions"))
         );
+        String snapshot = rs.getString("execution_rules");
+        if (snapshot != null) {
+            try {
+                plan.pinExecutionRules(objectMapper.readValue(snapshot, com.seasonplan.lifecycle.domain.ExecutionRuleSnapshot.class));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                throw new IllegalStateException("Invalid persisted execution rules for plan " + plan.id(), ex);
+            }
+        }
+        return plan;
     }
 
     private LocalDateTime toLocalDateTime(ResultSet rs, String column) throws SQLException {

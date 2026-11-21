@@ -19,6 +19,7 @@ public class SeasonPlan {
     private SeasonPlanStatus status;
     private String approvalComment;
     private List<ApprovalCondition> approvalConditions = List.of();
+    private ExecutionRuleSnapshot executionRules;
     private List<ChecklistItem> readinessChecklist = new ArrayList<>();
     private String createdBy;
     private String updatedBy;
@@ -95,6 +96,13 @@ public class SeasonPlan {
                 targetClimateMetrics, status, approvalComment, readinessChecklist, createdBy, updatedBy, createdAt, updatedAt);
         plan.approvalConditions = List.copyOf(approvalConditions);
         return plan;
+    }
+
+    public ExecutionRuleSnapshot executionRules() { return executionRules; }
+
+    public void pinExecutionRules(ExecutionRuleSnapshot rules) {
+        if (executionRules != null) throw new IllegalStateException("execution rules are already pinned");
+        executionRules = java.util.Objects.requireNonNull(rules);
     }
 
     public List<ApprovalCondition> approvalConditions() {

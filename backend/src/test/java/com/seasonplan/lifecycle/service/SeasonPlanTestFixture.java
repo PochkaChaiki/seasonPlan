@@ -51,8 +51,9 @@ public class SeasonPlanTestFixture {
         PollenService pollenService = new PollenService(plans, tree,
                 () -> event -> pollenEvents.putIfAbsent(event.deduplicationKey(), event), new DirectTestTransaction(), auditLogService, clock);
         SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, magicTasks, fairyAssignments,
-                auditLogService, new DirectTestTransaction(), reviewEvents::add, new AllowingNaturalCalendarClient(), clock);
-        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, fairyAssignments, plans, auditLogService);
+                auditLogService, new DirectTestTransaction(), reviewEvents::add, new AllowingNaturalCalendarClient(), clock, TestExecutionRules::snapshot,
+                new ComputedRitualReadinessChecker(plans, magicTasks, fairyAssignments, pollenService, org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.MagicIncidentRepository.class)));
+        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, fairyAssignments, plans, auditLogService, new DirectTestTransaction(), clock);
         return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService, auditLogService, reviewEvents);
     }
 
@@ -62,7 +63,7 @@ public class SeasonPlanTestFixture {
         plan.setTargetTerritories(List.of("north-grove"));
         plan.setTimeWindows(List.of(new TimeWindow(LocalDateTime.parse("2026-03-01T09:00:00"), LocalDateTime.parse("2026-03-01T12:00:00"))));
         plan.setNaturalPhenomenonParameters(Map.of("bloom", "early"));
-        plan.setTargetClimateMetrics(Map.of("temperature", 17.5));
+        plan.setTargetClimateMetrics(Map.of("temperature", 17.5, "humidity", 60.0, "pollen_density", 1.0));
         plan.setCreatedBy(createdBy);
         return plan;
     }

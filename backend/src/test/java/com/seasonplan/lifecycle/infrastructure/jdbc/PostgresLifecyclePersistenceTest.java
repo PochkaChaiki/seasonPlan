@@ -57,6 +57,15 @@ class PostgresLifecyclePersistenceTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("seasonplan.incident-rules.version", () -> "test-v1");
+        for (var type : com.seasonplan.lifecycle.domain.MagicIncident.Type.values()) registry.add("seasonplan.incident-rules.severity." + type.name(), () -> "HIGH");
+        registry.add("seasonplan.execution-rules.version", () -> "test-v1");
+        registry.add("seasonplan.execution-rules.required-events", () -> "LAUNCH_VALIDATED");
+        for (String metric : java.util.List.of("temperature", "humidity", "pollen_density")) {
+            registry.add("seasonplan.execution-rules.metrics." + metric + ".tolerance", () -> "2");
+            registry.add("seasonplan.execution-rules.metrics." + metric + ".owner", () -> "test-owner");
+            registry.add("seasonplan.execution-rules.metrics." + metric + ".response-seconds", () -> "3600");
+        }
     }
 
     @Autowired
@@ -77,6 +86,9 @@ class PostgresLifecyclePersistenceTest {
 
     @Autowired
     private SeasonPlanService seasonPlanService;
+
+    @Autowired
+    private com.seasonplan.lifecycle.service.CommandTransaction commandTransaction;
 
     @Autowired
     private PollenService pollenService;
@@ -388,6 +400,142 @@ class PostgresLifecyclePersistenceTest {
     }
 
     @Test
+    void optionalTaskWorkContinuesDuringRitualReadyAndActiveCriticalIncident() {
+        SeasonPlan plan = seasonPlanService.createDraft(uniquePlanDraft(), ActorRole.FAIRY_PLANNER, "planner-1");
+        seasonPlanService.submitForApproval(plan.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenService.confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        seasonPlanService.verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        seasonPlanService.approve(plan.id(), "ok", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        MagicTask base = SeasonPlanTestFixture.validTaskDraft();
+        MagicTask optional = magicTaskService.createTask(plan.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.TODO, "WATER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        jdbc.update("update season_plans set status = 'RITUAL_READY' where id = ?", plan.id());
+        magicTaskService.updateTask(optional.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, "WATER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        magicTaskService.assignFairy(optional.id(), "ready-worker", "WATER_KEEPER", base.requiredTalent(), AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator");
+        jdbc.update("update season_plans set status = 'ACTIVE' where id = ?", plan.id());
+        incidents.save(new com.seasonplan.lifecycle.domain.MagicIncident(UUID.randomUUID(), plan.id(), com.seasonplan.lifecycle.domain.MagicIncident.Type.CLIMATE, com.seasonplan.lifecycle.domain.MagicIncident.Severity.CRITICAL, com.seasonplan.lifecycle.domain.MagicIncident.Status.OPEN, "cause", "impact", "actor", java.time.Instant.now()));
+        magicTaskService.assignFairy(optional.id(), "water-worker", "WATER_KEEPER", base.requiredTalent(), AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator");
+        magicTaskService.updateTask(optional.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, "WATER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        assertThat(magicTaskService.get(optional.id()).status()).isEqualTo(com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED);
+        assertThatThrownBy(() -> magicTaskService.updateTask(optional.id(), base, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(com.seasonplan.lifecycle.domain.DomainValidationException.class);
+        jdbc.update("update season_plans set status = 'COMPLETED' where id = ?", plan.id());
+        assertThatThrownBy(() -> magicTaskService.assignFairy(optional.id(), "another", "WATER_KEEPER", base.requiredTalent(), AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(com.seasonplan.lifecycle.domain.DomainValidationException.class);
+        jdbc.update("update season_plans set status = 'ARCHIVED' where id = ?", plan.id());
+        assertThatThrownBy(() -> magicTaskService.updateTask(optional.id(), base, ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(com.seasonplan.lifecycle.domain.DomainValidationException.class);
+    }
+
+    @Autowired private com.seasonplan.lifecycle.repository.MagicIncidentRepository incidents;
+    @Autowired private com.seasonplan.lifecycle.repository.RitualSessionRepository rituals;
+    @Autowired private com.seasonplan.lifecycle.repository.ClimateMetricRepository metrics;
+    @Autowired private com.seasonplan.lifecycle.repository.CorrectionActionRepository corrections;
+    @Autowired private com.seasonplan.lifecycle.service.RitualService ritualService;
+    @Autowired private com.seasonplan.lifecycle.service.MonitoringService monitoring;
+
+    @Test
+    void configuredReadinessRitualAndCriticalMonitoringRunEndToEndAgainstPostgres() {
+        SeasonPlan plan = seasonPlanService.createDraft(uniquePlanDraft(), ActorRole.FAIRY_PLANNER, "planner-1");
+        assertThat(plan.executionRules()).isNotNull();
+        seasonPlanService.submitForApproval(plan.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenService.confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        seasonPlanService.verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        seasonPlanService.approve(plan.id(), "ok", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        MagicTask base = SeasonPlanTestFixture.validTaskDraft();
+        String[] categories = {"WEATHER", "POLLEN"}; String[] roles = {"RITUAL_LEAD", "WEATHER_WEAVER"};
+        for (int i = 0; i < categories.length; i++) {
+            MagicTask task = magicTaskService.createTask(plan.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, categories[i]), ActorRole.TALENT_COORDINATOR, "coordinator");
+            var assignment = magicTaskService.assignFairy(task.id(), "ritual-fairy-" + i, roles[i], base.requiredTalent(), AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator");
+            assertThat(assignment.confirmedAt()).isNotNull();
+            magicTaskService.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, categories[i]), ActorRole.TALENT_COORDINATOR, "coordinator");
+        }
+        MagicTask optional = magicTaskService.createTask(plan.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.TODO, "WATER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        seasonPlanService.completeItem(plan.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator");
+        seasonPlanService.completeItem(plan.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator");
+        seasonPlanService.markRitualReady(plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator");
+        var session = ritualService.start(plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator");
+        ritualService.recordEvent(session.id(), "LAUNCH_VALIDATED", "ok", ActorRole.TALENT_COORDINATOR, "coordinator");
+        var finished = ritualService.finish(session.id(), null, null, ActorRole.TALENT_COORDINATOR, "coordinator");
+        assertThat(finished.result()).isEqualTo(com.seasonplan.lifecycle.domain.RitualSession.Result.SUCCESS);
+        assertThat(seasonPlanRepository.findById(plan.id()).orElseThrow().status()).isEqualTo(SeasonPlanStatus.ACTIVE);
+        var stored = rituals.find(session.id()).orElseThrow();
+        assertThat(stored.participants()).hasSize(2).allMatch(participant -> participant.confirmedAt() != null);
+        assertThat(stored.events()).extracting(com.seasonplan.lifecycle.domain.RitualSession.Event::type).containsExactly("LAUNCH_VALIDATED");
+        String importId = UUID.randomUUID().toString();
+        var measurement = new com.seasonplan.lifecycle.service.MonitoringService.Measurement("integration-sensor", importId, "temperature", "CELSIUS", new java.math.BigDecimal("22"), java.time.Instant.now());
+        var recorded = monitoring.record(plan.id(), measurement, ActorRole.CLIMATE_BALANCER, "balancer");
+        assertThat(recorded.critical()).isTrue();
+        assertThat(metrics.byImportKey("integration-sensor", importId)).isPresent();
+        assertThat(incidents.forPlan(plan.id())).hasSize(1).allMatch(com.seasonplan.lifecycle.domain.MagicIncident::critical);
+        assertThat(corrections.forPlan(plan.id())).hasSize(1);
+        assertThat(jdbc.queryForObject("select count(*) from notification_outbox where season_plan_id = ? and event_type = 'CRITICAL_METRIC'", Integer.class, plan.id())).isEqualTo(1);
+        assertThat(magicTaskService.get(optional.id()).status()).isEqualTo(com.seasonplan.lifecycle.domain.MagicTaskStatus.TODO);
+        magicTaskService.assignFairy(optional.id(), "optional-worker", "WATER_KEEPER", base.requiredTalent(), AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator");
+        magicTaskService.updateTask(optional.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, "WATER"), ActorRole.TALENT_COORDINATOR, "coordinator");
+        assertThat(magicTaskService.get(optional.id()).status()).isEqualTo(com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED);
+    }
+
+    @Test
+    void pinnedRulesSurviveReloadAndDraftTargetChangesWithoutSnapshotMutation() {
+        SeasonPlan draft = seasonPlanService.createDraft(uniquePlanDraft(), ActorRole.FAIRY_PLANNER, "planner-1");
+        var original = draft.executionRules();
+        SeasonPlan revised = uniquePlanDraft();
+        revised.setTargetClimateMetrics(java.util.Map.of("temperature", 21.0, "humidity", 60.0, "pollen_density", 1.0));
+        seasonPlanService.updateDraft(draft.id(), revised, ActorRole.FAIRY_PLANNER, "planner-1");
+        assertThat(seasonPlanRepository.findById(draft.id()).orElseThrow().executionRules()).isEqualTo(original);
+        var freshProvider = new com.seasonplan.lifecycle.service.PinnedMetricRuleProvider(seasonPlanRepository);
+        assertThat(freshProvider.forMetric(draft.id(), com.seasonplan.lifecycle.domain.MetricDefinition.TEMPERATURE).target()).isEqualByComparingTo("21");
+        assertThat(freshProvider.forMetric(draft.id(), com.seasonplan.lifecycle.domain.MetricDefinition.TEMPERATURE).tolerance()).isEqualByComparingTo("2");
+        assertThatThrownBy(() -> jdbc.update("update season_plans set execution_rules = '{}'::jsonb where id = ?", draft.id())).isInstanceOf(RuntimeException.class);
+        assertThat(seasonPlanRepository.findById(draft.id()).orElseThrow().executionRules()).isEqualTo(original);
+    }
+
+    @Test
+    void taskUpdateWaitsForTheSamePlanCommandLockUsedByReadiness() throws Exception {
+        SeasonPlan draft = seasonPlanService.createDraft(uniquePlanDraft(), ActorRole.FAIRY_PLANNER, "planner-1");
+        seasonPlanService.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(draft.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenService.confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        seasonPlanService.verify(draft.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        seasonPlanService.approve(draft.id(), "ok", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        MagicTask task = magicTaskService.createTask(draft.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        var held = new java.util.concurrent.CountDownLatch(1); var release = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var lock = pool.submit(() -> commandTransaction.execute(draft.id(), () -> {
+                held.countDown();
+                try { if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("timeout"); }
+                catch (InterruptedException ex) { Thread.currentThread().interrupt(); throw new IllegalStateException(ex); }
+                return null;
+            }));
+            assertThat(held.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var update = pool.submit(() -> magicTaskService.updateTask(task.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1"));
+            assertThatThrownBy(() -> update.get(300, java.util.concurrent.TimeUnit.MILLISECONDS)).isInstanceOf(java.util.concurrent.TimeoutException.class);
+            release.countDown();
+            lock.get(5, java.util.concurrent.TimeUnit.SECONDS); update.get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } finally { release.countDown(); pool.shutdownNow(); }
+    }
+
+    @Test
+    void taskCreationRollsBackWhenAuditAppendFails() {
+        SeasonPlan draft = seasonPlanService.createDraft(uniquePlanDraft(), ActorRole.FAIRY_PLANNER, "planner-1");
+        seasonPlanService.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
+        PollenReservation reservation = pollenService.requestReservation(draft.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenService.confirmReservation(reservation.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        seasonPlanService.verify(draft.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        seasonPlanService.approve(draft.id(), "ok", ActorRole.CHIEF_GUARDIAN, "guardian-1");
+        JdbcAuditLogRepository target = org.springframework.test.util.AopTestUtils.getTargetObject(auditRepository);
+        org.mockito.Mockito.doAnswer(invocation -> { invocation.callRealMethod(); throw new IllegalStateException("audit failed"); })
+                .when(target).append(any());
+        assertThatThrownBy(() -> magicTaskService.createTask(draft.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1"))
+                .hasMessageContaining("audit failed");
+        assertThat(jdbc.queryForObject("select count(*) from magic_tasks where season_plan_id = ?", Integer.class, draft.id())).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from audit_log_entries where season_plan_id = ? and action = 'MAGIC_TASK_CREATED'", Integer.class, draft.id())).isZero();
+    }
+
+    @Test
     void preparationDataIsPersistedAndLoadedFromPostgres() {
         SeasonPlan draft = seasonPlanService.createDraft(
                 uniquePlanDraft(),
@@ -399,8 +547,17 @@ class PostgresLifecyclePersistenceTest {
         pollenService.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
         seasonPlanService.verify(draft.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
         SeasonPlan approved = seasonPlanService.approve(draft.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1");
-        MagicTask task = magicTaskService.createTask(approved.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator-1");
-        magicTaskService.assignFairy(task.id(), "fairy-1", "LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        MagicTask base = SeasonPlanTestFixture.validTaskDraft();
+        MagicTask task = magicTaskService.createTask(approved.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, "WEATHER"), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        magicTaskService.assignFairy(task.id(), "fairy-1", "RITUAL_LEAD", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        MagicTask pollenTask = magicTaskService.createTask(approved.id(), new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, "POLLEN"), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        magicTaskService.assignFairy(pollenTask.id(), "fairy-2", "WEATHER_WEAVER", "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        for (MagicTask item : java.util.List.of(task, pollenTask)) {
+            magicTaskService.updateTask(item.id(), new MagicTask(item.title(), item.description(), item.requiredTalent(), item.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, item.category()), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+        }
+        assertThat(seasonPlanRepository.findById(approved.id()).orElseThrow().executionRules()).isEqualTo(approved.executionRules());
+        assertThat(magicTaskService.get(task.id()).category()).isEqualTo("WEATHER");
+        assertThat(magicTaskService.assignmentsForTask(task.id()).get(0).confirmedAt()).isNotNull();
         seasonPlanService.completeItem(approved.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
         seasonPlanService.completeItem(approved.id(), "roles-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
 
@@ -410,7 +567,7 @@ class PostgresLifecyclePersistenceTest {
         assertThat(pollenService.get(reservation.id()).status()).isEqualTo(PollenReservationStatus.CONFIRMED);
         assertThat(jdbc.queryForObject("select count(*) from pollen_reservations where season_plan_id = ?", Integer.class, approved.id())).isZero();
         assertThat(jdbc.queryForObject("select count(*) from magic_tasks where season_plan_id = ?", Integer.class, approved.id()))
-                .isEqualTo(1);
+                .isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from fairy_assignments where magic_task_id = ?", Integer.class, task.id()))
                 .isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from readiness_checklist_items where season_plan_id = ? and complete = true", Integer.class, approved.id()))

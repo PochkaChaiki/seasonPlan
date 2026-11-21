@@ -35,6 +35,7 @@ class ExecutionTestFixture {
     final List<NotificationOutbox.Event> events = new ArrayList<>();
     final CommandTransaction transactions = new CommandTransaction() {
         public <T> T execute(UUID id, Supplier<T> command) { return command.get(); }
+        public <T> T create(Supplier<T> command) { return command.get(); }
     };
     final NotificationOutbox outbox = event -> {
         if (events.stream().noneMatch(old -> old.deduplicationKey().equals(event.deduplicationKey()))) events.add(event);
@@ -92,7 +93,7 @@ class ExecutionTestFixture {
         org.mockito.Mockito.when(pollenPort.summary(org.mockito.ArgumentMatchers.any(UUID.class)))
                 .thenAnswer(call -> Optional.ofNullable(pollenSummary));
         plan = SeasonPlan.createDraft(UUID.randomUUID(), "SPRING", List.of("north"), List.of(), Map.of("bloom", "early"),
-                Map.of("temperature", 20.0), List.of(), "planner", now);
+                Map.of("temperature", 20.0, "humidity", 60.0, "pollen_density", 1.0), List.of(), "planner", now);
         setStatus(status);
         rituals = new RitualService(plans, ritualPort, incidentPort,
                 id -> new RitualReadinessChecker.Readiness(readinessBlockers,
@@ -113,11 +114,17 @@ class ExecutionTestFixture {
         ClimateMetric metric = new ClimateMetric(UUID.randomUUID(), plan.id(), "sensor", "metric-1", MetricDefinition.TEMPERATURE,
                 new BigDecimal("20"), new BigDecimal("20"), new BigDecimal("2"), null, now);
         metrics.clear(); metrics.put(metric.id(), metric);
+        ClimateMetric humidity = new ClimateMetric(UUID.randomUUID(), plan.id(), "sensor", "metric-2", MetricDefinition.HUMIDITY,
+                new BigDecimal("60"), new BigDecimal("60"), new BigDecimal("2"), null, now);
+        ClimateMetric density = new ClimateMetric(UUID.randomUUID(), plan.id(), "sensor", "metric-3", MetricDefinition.POLLEN_DENSITY,
+                new BigDecimal("1"), new BigDecimal("1"), new BigDecimal("2"), null, now);
+        metrics.put(humidity.id(), humidity); metrics.put(density.id(), density);
         tasks.clear(); tasks.add(new SeasonReport.TaskResult(UUID.randomUUID(), "Work", true));
     }
     void setStatus(SeasonPlanStatus status) {
         plan = SeasonPlan.rehydrate(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(), plan.naturalPhenomenonParameters(),
                 plan.targetClimateMetrics(), status, null, plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt());
+        plan.pinExecutionRules(TestExecutionRules.snapshot());
         plans.save(plan);
     }
 }

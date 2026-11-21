@@ -29,7 +29,8 @@ class PollenReservationBoundaryTest {
     private final UUID planId = fixture.plan.id();
     private final SeasonPlanService approval = new SeasonPlanService(fixture.plans, service,
             new InMemoryMagicTaskRepository(), new InMemoryFairyAssignmentRepository(), fixture.audit,
-            fixture.transactions, fixture.outbox, new AllowingNaturalCalendarClient(), fixture.clock);
+            fixture.transactions, fixture.outbox, new AllowingNaturalCalendarClient(), fixture.clock, TestExecutionRules::snapshot,
+            new ComputedRitualReadinessChecker(fixture.plans, new InMemoryMagicTaskRepository(), new InMemoryFairyAssignmentRepository(), service, fixture.incidentPort));
 
     PollenReservationBoundaryTest() {
         fixture.plan.setTimeWindows(SeasonPlanTestFixture.validPlanDraft("planner").timeWindows());
@@ -139,7 +140,7 @@ class PollenReservationBoundaryTest {
         for (Optional<PollenReservation> state : List.of(Optional.<PollenReservation>empty(), Optional.of(pending))) {
             when(client.findLatestBySeasonPlanId(planId)).thenReturn(state);
             assertThatThrownBy(() -> approval.approve(planId, "approved", ActorRole.CHIEF_GUARDIAN, "chief")).isInstanceOf(DomainValidationException.class);
-            assertThat(readiness.calculateChecklist(planId)).containsKey("pollenReservation");
+            assertThat(readiness.calculateChecklist(planId)).containsKey("pollen-confirmed");
             assertThat(fixture.plan.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
         }
         when(client.findLatestBySeasonPlanId(planId)).thenThrow(new PollenTreeUnavailableException("offline"));
@@ -149,7 +150,7 @@ class PollenReservationBoundaryTest {
         confirmed.confirm(100, "ok", "guardian");
         doReturn(Optional.of(confirmed)).when(client).findLatestBySeasonPlanId(planId);
         doReturn(Optional.of(confirmed)).when(client).findAuthoritativeConfirmedBySeasonPlanId(planId);
-        assertThat(readiness.calculateChecklist(planId)).doesNotContainKey("pollenReservation");
+        assertThat(readiness.calculateChecklist(planId)).doesNotContainKey("pollen-confirmed");
         assertThat(approval.approve(planId, "approved", ActorRole.CHIEF_GUARDIAN, "chief").status()).isEqualTo(SeasonPlanStatus.APPROVED);
     }
 }

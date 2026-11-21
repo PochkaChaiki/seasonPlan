@@ -5,7 +5,8 @@ rather than one package/service per use case. See the
 [service consolidation decision](../docs/decisions/0002-cohesive-lifecycle-services.md)
 for merge choices, the [package ownership decision](../docs/decisions/0003-responsibility-owned-contracts-and-infrastructure.md)
 for contract placement, the [security boundary decision](../docs/decisions/0004-security-feature-and-lifecycle-authorization.md)
-for identity and authorization ownership, and [`CHANGELOG.md`](CHANGELOG.md)
+for identity and authorization ownership, the [execution implementation guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
+for required configuration and legacy-data rollout, and [`CHANGELOG.md`](CHANGELOG.md)
 for verification and remaining integration work.
 
 ## Package layout
@@ -146,19 +147,38 @@ Existing reservation REST routes use the unified `PollenService`. Its consumptio
 logic remains executable and unit-tested but has no consumption REST route or
 complete audit/outbox persistence/delivery slice. Its separate consumption outbox
 is deliberately unconfigured, so it fails before external spending.
-Ritual, monitoring, incident response and reporting remain core-only: no new
-service composition, REST routes, database adapters/migrations, sensors,
-schedulers or report renderers were added by the consolidation.
+Ritual, monitoring and incident response now have real runtime composition:
 
-To integrate those services later, implement the named repository and service
-contracts and compose them outside the core. In particular:
+- `PinnedMetricRuleProvider` resolves plan targets and pinned metric settings.
+- `ConfiguredIncidentRuleProvider` resolves the explicitly selected incident catalog.
+- `ComputedRitualReadinessChecker` checks actual tasks, confirmed assignments,
+  required roles, authoritative pollen, manual flags and critical incidents.
+- `JdbcMagicIncidentRepository`, `JdbcCorrectionActionRepository`,
+  `JdbcRitualSessionRepository` and `JdbcClimateMetricRepository` persist their
+  domain state through forward migrations 012/013 and PostgreSQL constraints.
 
-- `CommandTransaction` must serialize commands for a plan and atomically commit
-  participating repositories, audit appends and notification outbox inserts.
-- `RitualReadinessChecker` must return real blockers, confirmed participant
-  snapshots, and configured required ritual events. Do not use a permissive default.
-- Metric rules and the report catalog-version port must use the plan's pinned
-  catalog version, not whichever catalog is currently newest.
+These are wired into their consuming services, not just supplied by test lambdas.
+**Configure versioned execution and incident rules before creating new plans.**
+No business defaults are supplied. New plans pin an immutable execution snapshot
+atomically with creation/audit. All three metric targets must be supplied on the
+plan. Existing incomplete metadata is preserved and fails closed, not guessed.
+See the [configuration and safe rollout guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
+and [ADR 0005](../docs/decisions/0005-configured-execution-and-durable-repositories.md).
+
+The existing task API accepts additive `category` metadata. Complete compatible,
+timestamped confirmed assignments before completing their task; READY is not
+COMPLETED. Readiness and ritual execution share the checker. Per-plan transactions
+also protect task updates/audit and assignments; permitted ongoing task work
+remains available after readiness/activation, including during critical incidents.
+
+No new execution REST routes, UI, sensors or escalation scheduler are included.
+Reporting still remains core-only. Remaining integration constraints include:
+
+- `CommandTransaction` serializes plan commands and atomically commits state,
+  repositories, audit and outbox; its creation operation does not lock a nonexistent row.
+- Approval-condition evidence is still unverified and blocks readiness.
+- Metric rules use the persisted snapshot; future report catalog projection must
+  use the same plan selection rather than whichever catalog is currently newest.
 - `RequiredTaskResults` must project all **required** work and missing required
   categories; it must not mistake the legacy preparation status `READY` for
   completion.
@@ -179,9 +199,12 @@ contracts and compose them outside the core. In particular:
 - Exporters render only approved report snapshots. The core supplies the format,
   versioned filename and content type; it does not fabricate PDF/HTML content.
 
-The existing database schema is **not** a UC-4/UC-5 persistence adapter. Its
-constraints do not yet support all new audit/report/ritual representations.
-Do not wire the new services to it without adapter contract tests and migrations.
+The schema now includes the requested execution persistence and extended audit
+actions. The legacy `season_reports` table is still **not** a compatible adapter
+for the new approved-report snapshots; reporting needs its own forward migration,
+implementation and integration tests. Role-labelled notifications also need
+appropriate identity-recipient expansion before individual inbox receipt can be
+claimed; writing an outbox event is not proof of delivery.
 
 ## Tests on Windows PowerShell
 
@@ -195,7 +218,8 @@ mvn.cmd -f .\backend\pom.xml clean verify
 ```
 
 The full suite requires a running Docker daemon for
-`PostgresLifecyclePersistenceTest` and `PostgresAccountAdministrationTest`. On this host's Docker 29, Testcontainers 1.20.4
+`PostgresLifecyclePersistenceTest`, `PostgresAccountAdministrationTest` and
+`PostgresExecutionRepositoriesTest`. On this host's Docker 29, Testcontainers 1.20.4
 needs the following test-process-only API compatibility override:
 
 ```powershell

@@ -24,8 +24,10 @@ final class ServiceSupport {
     }
     /** Isolate transitions from mutable legacy repository objects until the command commits. */
     public static SeasonPlan copy(SeasonPlan plan) {
-        return SeasonPlan.rehydrate(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(),
+        SeasonPlan copy = SeasonPlan.rehydrate(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(),
                 plan.naturalPhenomenonParameters(), plan.targetClimateMetrics(), plan.status(), plan.approvalComment(),
                 plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt(), plan.approvalConditions());
+        if (plan.executionRules() != null) copy.pinExecutionRules(plan.executionRules());
+        return copy;
     }
 }

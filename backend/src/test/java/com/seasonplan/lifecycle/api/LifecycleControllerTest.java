@@ -127,16 +127,33 @@ class LifecycleControllerTest {
         String response = coordinatorMvc.perform(post("/season-plans/{id}/tasks", plan.id())
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"title":"Prepare weather", "description":"Align winds", "requiredTalent":"SPRING_WEATHER",
-                                 "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY"}
+                                 "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY", "category":"WEATHER"}
                                 """))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String taskId = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).get("id").asText();
         coordinatorMvc.perform(post("/tasks/{id}/assignments", taskId).contentType(MediaType.APPLICATION_JSON).content("""
-                        {"fairyId":"fairy", "role":"LEAD", "talent":"SPRING_WEATHER", "status":"CONFIRMED"}
+                        {"fairyId":"fairy", "role":"RITUAL_LEAD", "talent":"SPRING_WEATHER", "status":"CONFIRMED"}
                         """))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.magicTaskId").value(taskId));
         coordinatorMvc.perform(get("/tasks/{id}/assignments", taskId))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].fairyId").value("fairy"));
+        String pollenResponse = coordinatorMvc.perform(post("/season-plans/{id}/tasks", plan.id()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Prepare pollen", "description":"Prepare", "requiredTalent":"SPRING_WEATHER", "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY", "category":"POLLEN"}
+                """)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String pollenTaskId = new com.fasterxml.jackson.databind.ObjectMapper().readTree(pollenResponse).get("id").asText();
+        coordinatorMvc.perform(post("/tasks/{id}/assignments", pollenTaskId).contentType(MediaType.APPLICATION_JSON).content("""
+                {"fairyId":"fairy-2", "role":"WEATHER_WEAVER", "talent":"SPRING_WEATHER", "status":"CONFIRMED"}
+                """)).andExpect(status().isOk());
+        for (String[] task : List.of(new String[]{taskId, "WEATHER", "Prepare weather", "Align winds"}, new String[]{pollenTaskId, "POLLEN", "Prepare pollen", "Prepare"})) {
+            String body = "{\"title\":\"" + task[2] + "\",\"description\":\"" + task[3] + "\",\"requiredTalent\":\"SPRING_WEATHER\",\"timeWindow\":{\"start\":\"2026-03-01T09:00:00\",\"end\":\"2026-03-01T10:00:00\"},\"status\":\"COMPLETED\",\"category\":\"" + task[1] + "\"}";
+            coordinatorMvc.perform(patch("/tasks/{id}", task[0]).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        }
+        int auditCount = fixture.auditLogService().entriesFor(plan.id()).size();
+        coordinatorMvc.perform(patch("/tasks/{id}", taskId).contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Prepare weather", "description":"Align winds", "requiredTalent":"SPRING_WEATHER", "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY", "category":"WEATHER"}
+                """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.task").isArray());
+        org.assertj.core.api.Assertions.assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(auditCount);
+        org.assertj.core.api.Assertions.assertThat(fixture.magicTaskService().get(UUID.fromString(taskId)).status()).isEqualTo(com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED);
         coordinatorMvc.perform(get("/season-plans/{id}/readiness", plan.id()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(false));
         for (String key : List.of("calendar-reviewed", "roles-reviewed")) {
@@ -161,7 +178,7 @@ class LifecycleControllerTest {
         plannerMvc.perform(patch("/season-plans/{id}", plan.id()).contentType(MediaType.APPLICATION_JSON).content("""
                 {"seasonType":"SUMMER","targetTerritories":["north-grove"],
                  "timeWindows":[{"start":"2026-03-01T09:00:00","end":"2026-03-01T12:00:00"}],
-                 "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5}}
+                 "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5,"humidity":60.0,"pollen_density":1.0}}
                 """))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.status").isArray());
         org.assertj.core.api.Assertions.assertThat(plan.seasonType()).isEqualTo("SPRING");
@@ -186,7 +203,7 @@ class LifecycleControllerTest {
                         .content("""
                             {"createdBy":"attacker","seasonType":"SPRING","targetTerritories":["north-grove"],
                              "timeWindows":[{"start":"2026-03-01T09:00:00","end":"2026-03-01T12:00:00"}],
-                             "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5}}
+                             "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5,"humidity":60.0,"pollen_density":1.0}}
                             """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.createdBy").value("00000000-0000-0000-0000-000000000001"));

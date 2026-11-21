@@ -59,7 +59,7 @@ public class MonitoringService {
         if (existing.isPresent()) {
             ClimateMetric old = existing.get();
             if (!old.seasonPlanId().equals(planId) || old.definition() != definition || old.value().compareTo(input.value()) != 0
-                    || !old.observedAt().equals(input.observedAt())) throw new IllegalArgumentException("import key reused for different measurement");
+                    || !old.observedAt().equals(ExecutionTime.canonical(input.observedAt()))) throw new IllegalArgumentException("import key reused for different measurement");
             return old;
         }
         var rule = rules.forMetric(planId, definition);

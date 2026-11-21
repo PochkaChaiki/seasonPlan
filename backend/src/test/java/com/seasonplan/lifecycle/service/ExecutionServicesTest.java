@@ -56,6 +56,24 @@ class ExecutionServicesTest {
         assertThat(f.plans.findById(f.plan.id()).orElseThrow().status()).isEqualTo(SeasonPlanStatus.RITUAL_READY);
     }
 
+    @Test void participantConfirmationIsComparedAtDatabaseMicrosecondPrecision() {
+        f.participants = List.of(new RitualSession.Participant("fairy", "RITUAL_LEAD", Instant.parse("2026-03-01T10:00:00.123456789Z")));
+        RitualSession session = f.rituals.start(f.plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator");
+        f.participants = List.of(new RitualSession.Participant("fairy", "RITUAL_LEAD", Instant.parse("2026-03-01T10:00:00.123456Z")));
+        f.rituals.recordEvent(session.id(), "LAUNCH_VALIDATED", "ok", ActorRole.TALENT_COORDINATOR, "coordinator");
+        assertThat(f.rituals.finish(session.id(), null, null, ActorRole.TALENT_COORDINATOR, "coordinator").result())
+                .isEqualTo(RitualSession.Result.SUCCESS);
+    }
+
+    @Test void metricReplayAcceptsPostgresMicrosecondTimestamp() {
+        f.setStatus(SeasonPlanStatus.ACTIVE);
+        Instant input = Instant.parse("2026-03-01T10:00:00.123456789Z");
+        var measurement = new MonitoringService.Measurement("sensor", "precise", "temperature", "CELSIUS", new BigDecimal("20.00"), input);
+        ClimateMetric first = f.monitoring.record(f.plan.id(), measurement, ActorRole.CLIMATE_BALANCER, "balancer");
+        f.metrics.put(first.id(), new ClimateMetric(first.id(), first.seasonPlanId(), first.source(), first.sourceEventId(), first.definition(), first.value(), first.target(), first.tolerance(), null, Instant.parse("2026-03-01T10:00:00.123456Z")));
+        assertThat(f.monitoring.record(f.plan.id(), measurement, ActorRole.CLIMATE_BALANCER, "balancer").id()).isEqualTo(first.id());
+    }
+
     @Test void participantRevocationBetweenStartAndFinishPreventsActivation() {
         RitualSession session = f.rituals.start(f.plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator");
         f.rituals.recordEvent(session.id(), "LAUNCH_VALIDATED", "ok", ActorRole.TALENT_COORDINATOR, "coordinator");

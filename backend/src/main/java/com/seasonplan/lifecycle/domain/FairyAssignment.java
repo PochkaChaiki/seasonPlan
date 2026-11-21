@@ -9,11 +9,17 @@ public class FairyAssignment {
     private String role;
     private String talent;
     private AssignmentStatus status;
+    private java.time.Instant confirmedAt;
 
     public FairyAssignment() {
     }
 
     public FairyAssignment(UUID id, UUID magicTaskId, String fairyId, String role, String talent, AssignmentStatus status) {
+        this(id, magicTaskId, fairyId, role, talent, status, null);
+    }
+
+    public FairyAssignment(UUID id, UUID magicTaskId, String fairyId, String role, String talent, AssignmentStatus status, java.time.Instant confirmedAt) {
+        this.confirmedAt = ExecutionTime.canonical(confirmedAt);
         this.id = id;
         this.magicTaskId = magicTaskId;
         this.fairyId = fairyId;
@@ -41,6 +47,8 @@ public class FairyAssignment {
     public String talent() {
         return talent;
     }
+
+    public java.time.Instant confirmedAt() { return confirmedAt; }
 
     public AssignmentStatus status() {
         return status;

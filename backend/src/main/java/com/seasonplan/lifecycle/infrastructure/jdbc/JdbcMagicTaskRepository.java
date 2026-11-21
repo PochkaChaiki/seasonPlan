@@ -32,9 +32,10 @@ public class JdbcMagicTaskRepository implements MagicTaskRepository {
                        starts_at = ?,
                        ends_at = ?,
                        status = ?,
+                       category = ?,
                        updated_by = ?,
                        updated_at = now()
-                 where id = ?
+                 where id = ? and status not in ('COMPLETED', 'CANCELLED')
                 """,
                 task.title(),
                 task.description(),
@@ -42,14 +43,15 @@ public class JdbcMagicTaskRepository implements MagicTaskRepository {
                 Timestamp.valueOf(task.timeWindow().start()),
                 Timestamp.valueOf(task.timeWindow().end()),
                 task.status().name(),
+                task.category(),
                 actorId,
                 task.id());
         if (updated == 0) {
             jdbc.update("""
                     insert into magic_tasks (
                         id, season_plan_id, title, description, required_talent, starts_at, ends_at,
-                        status, created_by, updated_by
-                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        status, category, created_by, updated_by
+                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     task.id(),
                     task.seasonPlanId(),
@@ -59,6 +61,7 @@ public class JdbcMagicTaskRepository implements MagicTaskRepository {
                     Timestamp.valueOf(task.timeWindow().start()),
                     Timestamp.valueOf(task.timeWindow().end()),
                     task.status().name(),
+                    task.category(),
                     actorId,
                     actorId);
         }
@@ -72,7 +75,7 @@ public class JdbcMagicTaskRepository implements MagicTaskRepository {
 
     @Override
     public List<MagicTask> findBySeasonPlanId(UUID seasonPlanId) {
-        return jdbc.query("select * from magic_tasks where season_plan_id = ? order by starts_at, title", this::mapTask, seasonPlanId);
+        return jdbc.query("select * from magic_tasks where season_plan_id = ? order by starts_at, title, id", this::mapTask, seasonPlanId);
     }
 
     private MagicTask mapTask(ResultSet rs, int rowNum) throws SQLException {
@@ -81,7 +84,7 @@ public class JdbcMagicTaskRepository implements MagicTaskRepository {
                 rs.getString("description"),
                 rs.getString("required_talent"),
                 new TimeWindow(rs.getTimestamp("starts_at").toLocalDateTime(), rs.getTimestamp("ends_at").toLocalDateTime()),
-                MagicTaskStatus.valueOf(rs.getString("status"))
+                MagicTaskStatus.valueOf(rs.getString("status")), rs.getString("category")
         );
         task.setId(rs.getObject("id", UUID.class));
         task.setSeasonPlanId(rs.getObject("season_plan_id", UUID.class));
