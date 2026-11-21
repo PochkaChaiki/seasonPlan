@@ -1,26 +1,33 @@
 package com.seasonplan.lifecycle.config;
 
-import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
-import com.seasonplan.lifecycle.application.port.AuditLogRepository;
-import com.seasonplan.lifecycle.application.port.CommandTransaction;
-import com.seasonplan.lifecycle.persistence.JdbcCommandTransaction;
+import com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient;
+import com.seasonplan.lifecycle.repository.AuditLogRepository;
+import com.seasonplan.lifecycle.service.CommandTransaction;
+import com.seasonplan.lifecycle.infrastructure.jdbc.JdbcCommandTransaction;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
-import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
-import com.seasonplan.lifecycle.application.port.FairyAssignmentRepository;
-import com.seasonplan.lifecycle.application.preparation.FairySchedulePolicy;
-import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
-import com.seasonplan.lifecycle.application.port.MagicTaskRepository;
-import com.seasonplan.lifecycle.application.port.NaturalCalendarService;
-import com.seasonplan.lifecycle.adapter.fake.NotificationService;
-import com.seasonplan.lifecycle.application.port.PollenTreeClient;
-import com.seasonplan.lifecycle.application.port.NotificationOutbox;
-import com.seasonplan.lifecycle.application.pollen.PollenService;
+import com.seasonplan.lifecycle.service.AuditLogService;
+import com.seasonplan.lifecycle.repository.FairyAssignmentRepository;
+import com.seasonplan.lifecycle.service.MagicTaskService;
+import com.seasonplan.lifecycle.repository.MagicTaskRepository;
+import com.seasonplan.lifecycle.integration.calendar.NaturalCalendarClient;
+import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
+import com.seasonplan.lifecycle.notification.NotificationOutbox;
+import com.seasonplan.lifecycle.service.PollenService;
 import org.springframework.beans.factory.ObjectProvider;
-import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
-import com.seasonplan.lifecycle.application.port.SeasonPlanRepository;
+import com.seasonplan.lifecycle.repository.SeasonPlanRepository;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
+import com.seasonplan.lifecycle.service.PinnedMetricRuleProvider;
+import com.seasonplan.lifecycle.service.ComputedRitualReadinessChecker;
+import com.seasonplan.lifecycle.service.RitualReadinessChecker;
+import com.seasonplan.lifecycle.service.RitualService;
+import com.seasonplan.lifecycle.service.MonitoringService;
+import com.seasonplan.lifecycle.service.IncidentResponseService;
+import com.seasonplan.lifecycle.repository.MagicIncidentRepository;
+import com.seasonplan.lifecycle.repository.CorrectionActionRepository;
+import com.seasonplan.lifecycle.repository.ClimateMetricRepository;
+import com.seasonplan.lifecycle.repository.RitualSessionRepository;
+import com.seasonplan.lifecycle.infrastructure.jdbc.JdbcNotificationOutbox;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +35,21 @@ import java.time.Clock;
 
 @Configuration
 public class LifecycleConfiguration {
+    @Bean
+    ConfiguredExecutionRules executionRules(org.springframework.core.env.Environment environment) {
+        return new ConfiguredExecutionRules(environment);
+    }
+
+    @Bean
+    PinnedMetricRuleProvider metricRuleProvider(SeasonPlanRepository plans) {
+        return new PinnedMetricRuleProvider(plans);
+    }
+
+    @Bean
+    ConfiguredIncidentRuleProvider incidentRuleProvider(org.springframework.core.env.Environment environment) {
+        return new ConfiguredIncidentRuleProvider(environment);
+    }
+
     @Bean
     Clock clock() {
         return Clock.systemUTC();
@@ -39,24 +61,8 @@ public class LifecycleConfiguration {
     }
 
     @Bean
-    NotificationService notificationService() {
-        return new NotificationService();
-    }
-
-    @Bean
-    NaturalCalendarService naturalCalendarService() {
-        return new AllowingNaturalCalendarService();
-    }
-
-    @Bean
-    ReadinessChecklistService readinessChecklistService(
-            SeasonPlanRepository plans,
-            PollenService pollen,
-            MagicTaskRepository magicTasks,
-            FairyAssignmentRepository fairyAssignments,
-            Clock clock
-    ) {
-        return new ReadinessChecklistService(plans, pollen, magicTasks, fairyAssignments, clock);
+    NaturalCalendarClient naturalCalendarService() {
+        return new AllowingNaturalCalendarClient();
     }
 
     @Bean
@@ -64,13 +70,43 @@ public class LifecycleConfiguration {
             SeasonPlanRepository plans,
             PollenService pollen,
             AuditLogService auditLogService,
-            NotificationService notificationService,
-            NaturalCalendarService naturalCalendarService,
-            ReadinessChecklistService readinessChecklistService,
+            CommandTransaction transactions,
+            ObjectProvider<NotificationOutbox> outbox,
+            NaturalCalendarClient naturalCalendarService,
+            MagicTaskRepository magicTasks,
+            FairyAssignmentRepository fairyAssignments,
+            ConfiguredExecutionRules executionRules,
+            RitualReadinessChecker readiness,
             Clock clock
     ) {
-        return new SeasonPlanService(plans, pollen, auditLogService, notificationService,
-                naturalCalendarService, readinessChecklistService, clock);
+        return new SeasonPlanService(plans, pollen, magicTasks, fairyAssignments, auditLogService, transactions,
+                event -> outbox.getObject().enqueue(event), naturalCalendarService, clock, executionRules::snapshot, readiness);
+    }
+
+    @Bean
+    RitualReadinessChecker ritualReadinessChecker(SeasonPlanRepository plans, MagicTaskRepository tasks,
+            FairyAssignmentRepository assignments, PollenService pollen, MagicIncidentRepository incidents) {
+        return new ComputedRitualReadinessChecker(plans, tasks, assignments, pollen, incidents);
+    }
+
+    @Bean
+    RitualService ritualService(SeasonPlanRepository plans, RitualSessionRepository sessions, MagicIncidentRepository incidents,
+            RitualReadinessChecker readiness, CommandTransaction transactions, AuditLogService audit, Clock clock) {
+        return new RitualService(plans, sessions, incidents, readiness, transactions, audit, clock);
+    }
+
+    @Bean
+    MonitoringService monitoringService(SeasonPlanRepository plans, ClimateMetricRepository metrics, MagicIncidentRepository incidents,
+            CorrectionActionRepository actions, PinnedMetricRuleProvider rules, JdbcNotificationOutbox outbox,
+            CommandTransaction transactions, AuditLogService audit, Clock clock) {
+        return new MonitoringService(plans, metrics, incidents, actions, rules, outbox, transactions, audit, clock);
+    }
+
+    @Bean
+    IncidentResponseService incidentResponseService(SeasonPlanRepository plans, MagicIncidentRepository incidents,
+            CorrectionActionRepository actions, ConfiguredIncidentRuleProvider rules, JdbcNotificationOutbox outbox,
+            CommandTransaction transactions, AuditLogService audit, Clock clock) {
+        return new IncidentResponseService(plans, incidents, actions, rules, transactions, outbox, audit, clock);
     }
 
     @Bean
@@ -82,7 +118,7 @@ public class LifecycleConfiguration {
     PollenService pollenService(
             SeasonPlanRepository plans,
             PollenTreeClient client,
-            ObjectProvider<NotificationOutbox> outbox,
+            @org.springframework.beans.factory.annotation.Qualifier("pollenConsumptionOutbox") ObjectProvider<NotificationOutbox> outbox,
             CommandTransaction transactions,
             AuditLogService auditLogService,
             Clock clock
@@ -94,27 +130,12 @@ public class LifecycleConfiguration {
     @Bean
     MagicTaskService magicTaskService(
             MagicTaskRepository tasks,
+            FairyAssignmentRepository assignments,
             SeasonPlanRepository plans,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            CommandTransaction transactions,
+            Clock clock
     ) {
-        return new MagicTaskService(tasks, plans, auditLogService);
-    }
-
-    @Bean
-    FairySchedulePolicy fairySchedulePolicy(
-            FairyAssignmentRepository assignments,
-            MagicTaskRepository magicTasks
-    ) {
-        return new FairySchedulePolicy(assignments, magicTasks);
-    }
-
-    @Bean
-    FairyAssignmentService fairyAssignmentService(
-            FairyAssignmentRepository assignments,
-            MagicTaskRepository magicTasks,
-            FairySchedulePolicy fairySchedulePolicy,
-            AuditLogService auditLogService
-    ) {
-        return new FairyAssignmentService(assignments, magicTasks, fairySchedulePolicy, auditLogService);
+        return new MagicTaskService(tasks, assignments, plans, auditLogService, transactions, clock);
     }
 }

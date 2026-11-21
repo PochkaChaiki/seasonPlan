@@ -10,16 +10,22 @@ public class MagicTask {
     private String requiredTalent;
     private TimeWindow timeWindow;
     private MagicTaskStatus status;
+    private String category;
 
     public MagicTask() {
     }
 
     public MagicTask(String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status) {
+        this(title, description, requiredTalent, timeWindow, status, null);
+    }
+
+    public MagicTask(String title, String description, String requiredTalent, TimeWindow timeWindow, MagicTaskStatus status, String category) {
         this.title = title;
         this.description = description;
         this.requiredTalent = requiredTalent;
         this.timeWindow = timeWindow;
         this.status = status;
+        this.category = category;
     }
 
     public UUID id() {
@@ -58,7 +64,11 @@ public class MagicTask {
         return status;
     }
 
+    public String category() { return category; }
+
     public void updateFrom(MagicTask draft) {
+        if (this.status == MagicTaskStatus.COMPLETED || this.status == MagicTaskStatus.CANCELLED) throw new IllegalStateException("terminal task is immutable");
+        this.category = draft.category;
         this.title = draft.title;
         this.description = draft.description;
         this.requiredTalent = draft.requiredTalent;

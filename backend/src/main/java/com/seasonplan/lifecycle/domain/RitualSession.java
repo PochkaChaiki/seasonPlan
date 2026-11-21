@@ -13,6 +13,7 @@ public record RitualSession(UUID id, UUID seasonPlanId, int attempt, String star
     public record Participant(String fairyId, String role, Instant confirmedAt) {
         public Participant {
             requireText(fairyId); requireText(role); Objects.requireNonNull(confirmedAt);
+            confirmedAt = ExecutionTime.canonical(confirmedAt);
         }
     }
     public record Event(Instant occurredAt, String type, String payload) {

@@ -45,6 +45,44 @@ describe('persisted season plan access', () => {
     readinessChecklist: []
   };
 
+  it('shows own in-app notifications as escaped text with plan links and refreshes', async () => {
+    const planner = { id: '00000000-0000-0000-0000-000000000001', username: 'planner', displayName: 'Planner', roles: ['FAIRY_PLANNER'] };
+    let requests = 0;
+    const fetch = mockAuthenticatedSession(planner, (path) => {
+      if (path.endsWith('/notifications')) {
+        requests++;
+        return Response.json([{ eventId: 'event-1', seasonPlanId: persistedPlan.id, eventType: 'SEASON_PLAN_RETURNED',
+          message: requests === 1 ? '<img src=x onerror=alert(1)>' : 'revised', occurredAt: '2026-01-01T00:00:00Z' }]);
+      }
+      if (path.endsWith('/season-plans')) return Response.json([]);
+      return new Response('', { status: 404 });
+    });
+    const user = userEvent.setup();
+    renderApp();
+    expect(await screen.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+    expect(document.querySelector('img')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: `Открыть план ${persistedPlan.id}` })).toHaveAttribute('href', `/season-plans/${persistedPlan.id}`);
+    await user.click(screen.getByRole('button', { name: 'Обновить уведомления' }));
+    expect(await screen.findByText('revised')).toBeInTheDocument();
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/notifications'))).toHaveLength(2);
+  });
+
+  it('reports notification fetch failures and allows refresh', async () => {
+    const planner = { id: 'planner', username: 'planner', displayName: 'Planner', roles: ['FAIRY_PLANNER'] };
+    let requests = 0;
+    mockAuthenticatedSession(planner, (path) => {
+      if (path.endsWith('/notifications')) return ++requests === 1
+        ? Response.json({ message: 'Notifications unavailable' }, { status: 503 }) : Response.json([]);
+      return Response.json([]);
+    });
+    const user = userEvent.setup();
+    renderApp();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Notifications unavailable');
+    await user.click(screen.getByRole('button', { name: 'Обновить уведомления' }));
+    expect(await screen.findByText('Уведомлений пока нет.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('lets a chief guardian open a submitted plan returned by the backend with an empty browser cache', async () => {
     const guardian = {
       id: '22222222-2222-2222-2222-222222222222', username: 'guardian', displayName: 'Guardian',
@@ -55,6 +93,7 @@ describe('persisted season plan access', () => {
       if (path.endsWith('/season-plans')) return Response.json([plan]);
       if (path.endsWith(`/season-plans/${plan.id}`)) return Response.json(plan);
       if (path.endsWith(`/season-plans/${plan.id}/readiness`)) return Response.json({ ready: false, errors: {} });
+      if (path.endsWith(`/season-plans/${plan.id}/review-history`)) return Response.json([]);
       return new Response('', { status: 404 });
     });
     const user = userEvent.setup();
@@ -64,7 +103,8 @@ describe('persisted season plan access', () => {
     expect(openReview).toHaveAttribute('href', `/season-plans/${plan.id}/review`);
     await user.click(openReview);
 
-    expect(await screen.findByRole('button', { name: 'Утвердить план' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Проверить план' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Утвердить план' })).toBeDisabled();
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/season-plans'))).toBe(true);
   });
 
@@ -78,6 +118,7 @@ describe('persisted season plan access', () => {
       if (path.endsWith('/season-plans')) return Response.json([plan]);
       if (path.endsWith(`/season-plans/${plan.id}`)) return Response.json(plan);
       if (path.endsWith(`/season-plans/${plan.id}/readiness`)) return Response.json({ ready: false, errors: {} });
+      if (path.endsWith(`/season-plans/${plan.id}/review-history`)) return Response.json([]);
       if (path.endsWith(`/season-plans/${plan.id}/tasks`)) return Response.json([]);
       return new Response('', { status: 404 });
     });

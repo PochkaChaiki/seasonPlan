@@ -1,17 +1,16 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.domain.ActorRole;
-import com.seasonplan.lifecycle.domain.CurrentActor;
+import com.seasonplan.lifecycle.authorization.LifecycleAccessPolicy;
+import com.seasonplan.lifecycle.authorization.LifecyclePermission;
+import com.seasonplan.security.identity.CurrentActor;
 import com.seasonplan.lifecycle.domain.FairyAssignment;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.PollenReservation;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
-import com.seasonplan.lifecycle.application.preparation.FairyAssignmentService;
-import com.seasonplan.lifecycle.application.preparation.MagicTaskService;
-import com.seasonplan.lifecycle.application.pollen.PollenService;
-import com.seasonplan.lifecycle.application.preparation.ReadinessChecklistService;
+import com.seasonplan.lifecycle.service.MagicTaskService;
+import com.seasonplan.lifecycle.service.PollenService;
 import com.seasonplan.lifecycle.service.SeasonPlanService;
-import com.seasonplan.lifecycle.application.port.CurrentActorProvider;
+import com.seasonplan.security.identity.CurrentActorProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,31 +29,24 @@ public class LifecycleController {
     private final SeasonPlanService seasonPlanService;
     private final PollenService pollenService;
     private final MagicTaskService magicTaskService;
-    private final FairyAssignmentService fairyAssignmentService;
-    private final ReadinessChecklistService readinessChecklistService;
     private final CurrentActorProvider currentActorProvider;
 
     public LifecycleController(
             SeasonPlanService seasonPlanService,
             PollenService pollenService,
             MagicTaskService magicTaskService,
-            FairyAssignmentService fairyAssignmentService,
-            ReadinessChecklistService readinessChecklistService,
             CurrentActorProvider currentActorProvider
     ) {
         this.seasonPlanService = seasonPlanService;
         this.pollenService = pollenService;
         this.magicTaskService = magicTaskService;
-        this.fairyAssignmentService = fairyAssignmentService;
-        this.readinessChecklistService = readinessChecklistService;
         this.currentActorProvider = currentActorProvider;
     }
 
     @PostMapping("/season-plans")
-    @PreAuthorize("hasRole('FAIRY_PLANNER')")
     public SeasonPlanResponse createPlan(@RequestBody SeasonPlanRequest request) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.createDraft(request.toDraft(), actor.requiredRole(ActorRole.FAIRY_PLANNER), actor.userId().toString()));
+        return toResponse(seasonPlanService.createDraft(request.toDraft(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.CREATE_DRAFT), actor.userId().toString()));
     }
 
     @PatchMapping("/season-plans/{id}")
@@ -63,7 +55,7 @@ public class LifecycleController {
             @RequestBody SeasonPlanRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.updateDraft(id, request.toDraft(), actor.requiredRole(ActorRole.FAIRY_PLANNER), actor.userId().toString()));
+        return toResponse(seasonPlanService.updateDraft(id, request.toDraft(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.UPDATE_DRAFT), actor.userId().toString()));
     }
 
     @GetMapping("/season-plans")
@@ -72,10 +64,15 @@ public class LifecycleController {
     }
 
     @PostMapping("/season-plans/{id}/submit")
-    @PreAuthorize("hasRole('FAIRY_PLANNER')")
     public SeasonPlanResponse submit(@PathVariable UUID id) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.submitForApproval(id, actor.requiredRole(ActorRole.FAIRY_PLANNER), actor.userId().toString()));
+        return toResponse(seasonPlanService.submitForApproval(id, LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.SUBMIT_PLAN), actor.userId().toString()));
+    }
+
+    @PostMapping("/season-plans/{id}/verify")
+    public SeasonPlanResponse verify(@PathVariable UUID id) {
+        CurrentActor actor = actor();
+        return toResponse(seasonPlanService.verify(id, LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.VERIFY_PLAN), actor.userId().toString()));
     }
 
     @PostMapping("/season-plans/{id}/approve")
@@ -84,7 +81,7 @@ public class LifecycleController {
             @RequestBody DecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.approve(id, request.comment(), actor.requiredRole(ActorRole.CHIEF_GUARDIAN), actor.userId().toString()));
+        return toResponse(seasonPlanService.approve(id, request.comment(), request.conditions(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.APPROVE_PLAN), actor.userId().toString()));
     }
 
     @PostMapping("/season-plans/{id}/return")
@@ -93,7 +90,7 @@ public class LifecycleController {
             @RequestBody DecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.returnForRevision(id, request.comment(), actor.requiredRole(ActorRole.CHIEF_GUARDIAN), actor.userId().toString()));
+        return toResponse(seasonPlanService.returnForRevision(id, request.comment(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.RETURN_PLAN), actor.userId().toString()));
     }
 
     @GetMapping("/season-plans/{id}")
@@ -101,9 +98,14 @@ public class LifecycleController {
         return toResponse(seasonPlanService.get(id));
     }
 
+    @GetMapping("/season-plans/{id}/review-history")
+    public List<com.seasonplan.lifecycle.domain.AuditLogEntry> reviewHistory(@PathVariable UUID id) {
+        return seasonPlanService.reviewHistory(id, actor());
+    }
+
     @GetMapping("/season-plans/{id}/readiness")
     public ReadinessResponse readiness(@PathVariable UUID id) {
-        Map<String, List<String>> errors = readinessChecklistService.calculateChecklist(id);
+        Map<String, List<String>> errors = seasonPlanService.calculateChecklist(id);
         return toReadinessResponse(errors);
     }
 
@@ -113,7 +115,7 @@ public class LifecycleController {
             @PathVariable String key
     ) {
         CurrentActor actor = actor();
-        readinessChecklistService.completeItem(id, key, actor.requiredRole(ActorRole.TALENT_COORDINATOR, ActorRole.POLLEN_GUARDIAN), actor.userId().toString());
+        seasonPlanService.completeItem(id, key, LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.COMPLETE_CHECKLIST), actor.userId().toString());
         return toResponse(seasonPlanService.get(id));
     }
 
@@ -125,7 +127,7 @@ public class LifecycleController {
         CurrentActor actor = actor();
         return toResponse(pollenService.requestReservation(id,
                 request.requestId() == null ? UUID.randomUUID() : request.requestId(),
-                request.requestedAmount(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+                request.requestedAmount(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.REQUEST_POLLEN), actor.userId().toString()));
     }
 
     @PostMapping("/pollen-reservations/{id}/confirm")
@@ -134,7 +136,7 @@ public class LifecycleController {
             @RequestBody ReservationDecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(pollenService.confirmReservation(id, request.confirmedAmount(), request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+        return toResponse(pollenService.confirmReservation(id, request.confirmedAmount(), request.comment(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.CONFIRM_POLLEN), actor.userId().toString()));
     }
 
     @PostMapping("/pollen-reservations/{id}/reject")
@@ -143,7 +145,7 @@ public class LifecycleController {
             @RequestBody DecisionRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(pollenService.rejectReservation(id, request.comment(), actor.requiredRole(ActorRole.POLLEN_GUARDIAN), actor.userId().toString()));
+        return toResponse(pollenService.rejectReservation(id, request.comment(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.REJECT_POLLEN), actor.userId().toString()));
     }
 
     @PostMapping("/season-plans/{id}/tasks")
@@ -152,7 +154,7 @@ public class LifecycleController {
             @RequestBody MagicTaskRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(magicTaskService.createTask(id, request.toDraft(), actor.requiredRole(ActorRole.TALENT_COORDINATOR), actor.userId().toString()));
+        return toResponse(magicTaskService.createTask(id, request.toDraft(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.CREATE_TASK), actor.userId().toString()));
     }
 
     @GetMapping("/season-plans/{id}/tasks")
@@ -166,7 +168,7 @@ public class LifecycleController {
             @RequestBody MagicTaskRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(magicTaskService.updateTask(id, request.toDraft(), actor.requiredRole(ActorRole.TALENT_COORDINATOR), actor.userId().toString()));
+        return toResponse(magicTaskService.updateTask(id, request.toDraft(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.UPDATE_TASK), actor.userId().toString()));
     }
 
     @PostMapping("/tasks/{id}/assignments")
@@ -175,19 +177,18 @@ public class LifecycleController {
             @RequestBody AssignmentRequest request
     ) {
         CurrentActor actor = actor();
-        return toResponse(fairyAssignmentService.assignFairy(id, request.fairyId(), request.role(), request.talent(), request.status(), actor.requiredRole(ActorRole.TALENT_COORDINATOR), actor.userId().toString()));
+        return toResponse(magicTaskService.assignFairy(id, request.fairyId(), request.role(), request.talent(), request.status(), LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.ASSIGN_FAIRY), actor.userId().toString()));
     }
 
     @GetMapping("/tasks/{id}/assignments")
     public List<FairyAssignmentResponse> listAssignments(@PathVariable UUID id) {
-        return fairyAssignmentService.assignmentsForTask(id).stream().map(this::toResponse).toList();
+        return magicTaskService.assignmentsForTask(id).stream().map(this::toResponse).toList();
     }
 
     @PostMapping("/season-plans/{id}/mark-ritual-ready")
-    @PreAuthorize("hasRole('TALENT_COORDINATOR')")
     public SeasonPlanResponse markRitualReady(@PathVariable UUID id) {
         CurrentActor actor = actor();
-        return toResponse(seasonPlanService.markRitualReady(id, actor.requiredRole(ActorRole.TALENT_COORDINATOR), actor.userId().toString()));
+        return toResponse(seasonPlanService.markRitualReady(id, LifecycleAccessPolicy.roleFor(actor, LifecyclePermission.MARK_RITUAL_READY), actor.userId().toString()));
     }
 
     private SeasonPlanResponse toResponse(SeasonPlan plan) {

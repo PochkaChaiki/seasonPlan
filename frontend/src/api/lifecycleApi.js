@@ -25,9 +25,12 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
 }
 
 export const lifecycleApi = {
+  listNotifications: () => apiRequest('/notifications'),
   createPlan: (payload) => apiRequest('/season-plans', { method: 'POST', body: payload }),
   updatePlan: (id, payload) => apiRequest(`/season-plans/${id}`, { method: 'PATCH', body: payload }),
   submitPlan: (id) => apiRequest(`/season-plans/${id}/submit`, { method: 'POST' }),
+  getReviewHistory: (id) => apiRequest(`/season-plans/${id}/review-history`),
+  verifyPlan: (id) => apiRequest(`/season-plans/${id}/verify`, { method: 'POST' }),
   approvePlan: (id, payload) => apiRequest(`/season-plans/${id}/approve`, { method: 'POST', body: payload }),
   returnPlan: (id, payload) => apiRequest(`/season-plans/${id}/return`, { method: 'POST', body: payload }),
   listPlans: () => apiRequest('/season-plans'), getPlan: (id) => apiRequest(`/season-plans/${id}`),

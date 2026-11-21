@@ -1,17 +1,15 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.application.preparation.*;
-import com.seasonplan.lifecycle.application.port.*;
-import com.seasonplan.lifecycle.application.shared.AuditLogService;
-import com.seasonplan.lifecycle.adapter.fake.AllowingNaturalCalendarService;
-import com.seasonplan.lifecycle.adapter.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.application.pollen.PollenService;
-import com.seasonplan.lifecycle.adapter.fake.NotificationService;
+import com.seasonplan.lifecycle.notification.NotificationOutbox;
+import com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient;
+import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryFairyAssignmentRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemoryMagicTaskRepository;
+import com.seasonplan.lifecycle.infrastructure.fake.InMemorySeasonPlanRepository;
 
-import com.seasonplan.lifecycle.adapter.fake.InMemoryAuditLogRepository;
-import com.seasonplan.lifecycle.adapter.fake.InMemoryFairyAssignmentRepository;
-import com.seasonplan.lifecycle.adapter.fake.InMemoryMagicTaskRepository;
-import com.seasonplan.lifecycle.adapter.fake.InMemorySeasonPlanRepository;
+
+import com.seasonplan.lifecycle.infrastructure.fake.*;
 import com.seasonplan.lifecycle.domain.MagicTask;
 import com.seasonplan.lifecycle.domain.MagicTaskStatus;
 import com.seasonplan.lifecycle.domain.SeasonPlan;
@@ -28,27 +26,17 @@ public class SeasonPlanTestFixture {
     private final SeasonPlanService seasonPlanService;
     private final PollenService pollenService;
     private final MagicTaskService magicTaskService;
-    private final FairyAssignmentService fairyAssignmentService;
-    private final ReadinessChecklistService readinessChecklistService;
     private final AuditLogService auditLogService;
-    private final NotificationService notificationService;
+    private final List<NotificationOutbox.Event> reviewEvents;
 
-    private SeasonPlanTestFixture(
-            SeasonPlanService seasonPlanService,
-            PollenService pollenService,
-            MagicTaskService magicTaskService,
-            FairyAssignmentService fairyAssignmentService,
-            ReadinessChecklistService readinessChecklistService,
-            AuditLogService auditLogService,
-            NotificationService notificationService
-    ) {
+    private SeasonPlanTestFixture(SeasonPlanService seasonPlanService, PollenService pollenService,
+                                  MagicTaskService magicTaskService, AuditLogService auditLogService,
+                                  List<NotificationOutbox.Event> reviewEvents) {
         this.seasonPlanService = seasonPlanService;
         this.pollenService = pollenService;
         this.magicTaskService = magicTaskService;
-        this.fairyAssignmentService = fairyAssignmentService;
-        this.readinessChecklistService = readinessChecklistService;
         this.auditLogService = auditLogService;
-        this.notificationService = notificationService;
+        this.reviewEvents = reviewEvents;
     }
 
     public static SeasonPlanTestFixture create() {
@@ -58,20 +46,15 @@ public class SeasonPlanTestFixture {
         InMemoryMagicTaskRepository magicTasks = new InMemoryMagicTaskRepository();
         InMemoryFairyAssignmentRepository fairyAssignments = new InMemoryFairyAssignmentRepository();
         AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
-        NotificationService notificationService = new NotificationService();
+        List<NotificationOutbox.Event> reviewEvents = new java.util.ArrayList<>();
         Map<String, NotificationOutbox.Event> pollenEvents = new java.util.LinkedHashMap<>();
         PollenService pollenService = new PollenService(plans, tree,
                 () -> event -> pollenEvents.putIfAbsent(event.deduplicationKey(), event), new DirectTestTransaction(), auditLogService, clock);
-        ReadinessChecklistService readinessChecklistService = new ReadinessChecklistService(plans, pollenService,
-                magicTasks, fairyAssignments, clock);
-        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, auditLogService,
-                notificationService, new AllowingNaturalCalendarService(), readinessChecklistService, clock);
-        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, plans, auditLogService);
-        FairySchedulePolicy fairySchedulePolicy = new FairySchedulePolicy(fairyAssignments, magicTasks);
-        FairyAssignmentService fairyAssignmentService = new FairyAssignmentService(fairyAssignments, magicTasks,
-                fairySchedulePolicy, auditLogService);
-        return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService,
-                fairyAssignmentService, readinessChecklistService, auditLogService, notificationService);
+        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, magicTasks, fairyAssignments,
+                auditLogService, new DirectTestTransaction(), reviewEvents::add, new AllowingNaturalCalendarClient(), clock, TestExecutionRules::snapshot,
+                new ComputedRitualReadinessChecker(plans, magicTasks, fairyAssignments, pollenService, org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.MagicIncidentRepository.class)));
+        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, fairyAssignments, plans, auditLogService, new DirectTestTransaction(), clock);
+        return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService, auditLogService, reviewEvents);
     }
 
     public static SeasonPlan validPlanDraft(String createdBy) {
@@ -80,7 +63,7 @@ public class SeasonPlanTestFixture {
         plan.setTargetTerritories(List.of("north-grove"));
         plan.setTimeWindows(List.of(new TimeWindow(LocalDateTime.parse("2026-03-01T09:00:00"), LocalDateTime.parse("2026-03-01T12:00:00"))));
         plan.setNaturalPhenomenonParameters(Map.of("bloom", "early"));
-        plan.setTargetClimateMetrics(Map.of("temperature", 17.5));
+        plan.setTargetClimateMetrics(Map.of("temperature", 17.5, "humidity", 60.0, "pollen_density", 1.0));
         plan.setCreatedBy(createdBy);
         return plan;
     }
@@ -99,31 +82,9 @@ public class SeasonPlanTestFixture {
         );
     }
 
-    public SeasonPlanService seasonPlanService() {
-        return seasonPlanService;
-    }
-
-    public PollenService pollenService() {
-        return pollenService;
-    }
-
-    public MagicTaskService magicTaskService() {
-        return magicTaskService;
-    }
-
-    public FairyAssignmentService fairyAssignmentService() {
-        return fairyAssignmentService;
-    }
-
-    public ReadinessChecklistService readinessChecklistService() {
-        return readinessChecklistService;
-    }
-
-    public AuditLogService auditLogService() {
-        return auditLogService;
-    }
-
-    public NotificationService notificationService() {
-        return notificationService;
-    }
+    public SeasonPlanService seasonPlanService() { return seasonPlanService; }
+    public PollenService pollenService() { return pollenService; }
+    public MagicTaskService magicTaskService() { return magicTaskService; }
+    public AuditLogService auditLogService() { return auditLogService; }
+    public List<NotificationOutbox.Event> reviewEvents() { return List.copyOf(reviewEvents); }
 }

@@ -61,6 +61,24 @@ paths:
           description: System administrator authority required
         '409':
           description: Normalized username already exists
+  /notifications:
+    get:
+      summary: List the authenticated user's recent in-app notifications
+      description: Returns at most 50 entries ordered by occurredAt descending, then eventId descending. The recipient is taken only from the server session; no recipient selector is accepted.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Current user's notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 50
+                items:
+                  $ref: '#/components/schemas/NotificationInboxItem'
+        '401':
+          description: Authentication required
   /season-plans:
     get:
       summary: List season plans
@@ -74,12 +92,50 @@ paths:
   /season-plans/{id}/submit:
     post:
       summary: Submit a draft season plan for approval
+  /season-plans/{id}/verify:
+    post:
+      summary: Verify a submitted season plan as Chief Guardian
+      description: Validates the plan and changes SUBMITTED to VERIFIED.
   /season-plans/{id}/approve:
     post:
-      summary: Approve a submitted season plan
+      summary: Approve a verified season plan
+      description: Requires Chief Guardian and an authoritative confirmed pollen reservation. A rejected latest reservation without confirmed authority returns the plan to DRAFT with the rejection reason. Empty or omitted conditions produce ordinary approval. Conditions remain unmet for readiness until evidence verification is implemented.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  nullable: true
+                conditions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ApprovalCondition'
+      responses:
+        '200':
+          description: Approved plan including approvalConditions, or DRAFT returned with a pollen rejection reason
+        '400':
+          description: Invalid conditions, status or review validation
+        '403':
+          description: Chief Guardian role required
+        '503':
+          description: Pollen Tree or its authoritative reservation contract unavailable
+  /season-plans/{id}/review-history:
+    get:
+      summary: Read immutable audit history for a season plan
+      description: Chief Guardians and the plan creator with the Fairy Planner role may read; other roles are denied.
+      responses:
+        '200':
+          description: Audit entries containing id, seasonPlanId, action, actorId, createdAt and comment
+        '403':
+          description: Actor cannot read this plan's review history
   /season-plans/{id}/return:
     post:
-      summary: Return a submitted season plan for revision
+      summary: Return a submitted or verified season plan for revision
+      description: Requires Chief Guardian and a nonblank comment.
   /season-plans/{id}/readiness:
     get:
       summary: Read readiness validation status
@@ -118,6 +174,38 @@ components:
       in: cookie
       name: SESSION
   schemas:
+    NotificationInboxItem:
+      type: object
+      required: [eventId, seasonPlanId, eventType, message, occurredAt]
+      properties:
+        eventId:
+          type: string
+        seasonPlanId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        message:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    ApprovalCondition:
+      type: object
+      required: [key, displayText, evidenceRequirement, ownerRole]
+      properties:
+        key:
+          type: string
+          minLength: 1
+        displayText:
+          type: string
+          minLength: 1
+        evidenceRequirement:
+          type: string
+          minLength: 1
+        ownerRole:
+          type: string
+          enum: [FAIRY_PLANNER, CHIEF_GUARDIAN, TALENT_COORDINATOR, POLLEN_GUARDIAN, CLIMATE_BALANCER, MAGIC_ANOMALY_CONTROLLER, FAIRY_PARTICIPANT]
     ActorRole:
       type: string
       enum:

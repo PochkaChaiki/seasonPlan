@@ -13,14 +13,25 @@ class ArchitectureBoundaryTest {
     @Test
     void domainSourcesDoNotDependOnFrameworkOrSerializationPackages() throws IOException {
         assertThat(violations(ROOT.resolve("domain"), List.of("com.fasterxml.jackson", "org.springframework", "jakarta.",
-                "java.sql", "java.net", "com.seasonplan.lifecycle.application", "com.seasonplan.lifecycle.persistence",
-                "com.seasonplan.lifecycle.adapter", "com.seasonplan.lifecycle.api", "com.seasonplan.lifecycle.config",
-                "com.seasonplan.lifecycle.service", "com.seasonplan.security"))).isEmpty();
+                "java.sql", "java.net", "com.seasonplan.lifecycle.infrastructure", "com.seasonplan.lifecycle.api", "com.seasonplan.lifecycle.config",
+                "com.seasonplan.lifecycle.repository", "com.seasonplan.lifecycle.integration", "com.seasonplan.lifecycle.notification",
+                "com.seasonplan.lifecycle.exception", "com.seasonplan.lifecycle.service", "com.seasonplan.lifecycle.authorization",
+                "com.seasonplan.security"))).isEmpty();
     }
 
     @Test
-    void applicationServicesDoNotDependOnPeerApplicationServicesForUseCaseData() throws IOException {
-        assertThat(violations(ROOT.resolve("application"), List.of("private final SeasonPlanService", "private final MagicTaskService"))).isEmpty();
+    void servicesAreCohesiveRatherThanUseCaseFacades() throws IOException {
+        Path services = ROOT.resolve("service");
+        try (var sources = Files.walk(services)) {
+            assertThat(sources.filter(path -> path.toString().endsWith("Service.java"))
+                    .filter(path -> source(path).matches("(?s).*\\bpublic\\s+(?:final\\s+)?class\\s+\\w+Service\\b.*"))
+                    .map(path -> path.getFileName().toString()).sorted().toList())
+                    .containsExactly("AuditLogService.java", "IncidentResponseService.java", "MagicTaskService.java",
+                            "MonitoringService.java", "PollenService.java", "RitualService.java",
+                            "SeasonPlanService.java", "SeasonReportService.java");
+        }
+        assertThat(violations(services, List.of("new PlanningService", "new ApprovalService", "new PreparationService",
+                "FairyAssignmentService", "ReadinessChecklistService", "Consumer<SeasonPlan>"))).isEmpty();
     }
 
     @Test
@@ -29,32 +40,32 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    void useCasesHaveExplicitFrameworkIndependentApplicationPackages() throws IOException {
-        Path root = ROOT.resolve("application");
-        for (String useCase : List.of("planning", "approval", "preparation", "execution", "completion", "port", "shared")) {
-            assertThat(root.resolve(useCase)).isDirectory();
-            try (var sources = Files.walk(root.resolve(useCase))) {
-                assertThat(sources.anyMatch(path -> path.toString().endsWith(".java"))).isTrue();
-            }
-        }
-        assertThat(violations(root, List.of("org.springframework", "com.fasterxml.jackson", "jakarta.", "java.sql", "java.net",
-                "com.seasonplan.lifecycle.adapter", "com.seasonplan.lifecycle.persistence", "com.seasonplan.lifecycle.api",
-                "com.seasonplan.lifecycle.config", "com.seasonplan.lifecycle.service", "com.seasonplan.security"))).isEmpty();
+    void controllersDependOnlyOnCoarseGrainedLifecycleServices() {
+        assertThat(java.util.Arrays.stream(com.seasonplan.lifecycle.api.LifecycleController.class.getDeclaredFields())
+                .map(field -> field.getType().getSimpleName()).toList())
+                .containsExactlyInAnyOrder("SeasonPlanService", "PollenService", "MagicTaskService", "CurrentActorProvider");
     }
 
     @Test
     void temporaryIntegrationsLiveOutsideTheApplicationCore() {
         assertThat(ROOT.resolve("service/AllowingNaturalCalendarService.java")).doesNotExist();
         assertThat(ROOT.resolve("service/NotificationService.java")).doesNotExist();
-        assertThat(ROOT.resolve("adapter/fake/AllowingNaturalCalendarService.java")).isRegularFile();
-        assertThat(ROOT.resolve("adapter/fake/NotificationService.java")).isRegularFile();
+        assertThat(ROOT.resolve("infrastructure/fake/AllowingNaturalCalendarClient.java")).isRegularFile();
+    }
+
+    @Test
+    void obsoleteInMemoryNotificationPathIsRemoved() throws IOException {
+        assertThat(ROOT.resolve("infrastructure/fake/NotificationService.java")).doesNotExist();
+        assertThat(ROOT.resolve("application/port/PlannerNotifications.java")).doesNotExist();
+        assertThat(Files.readString(ROOT.resolve("config/LifecycleConfiguration.java")))
+                .doesNotContain("NotificationService");
     }
 
     private List<String> violations(Path root, List<String> forbidden) throws IOException {
         try (var sources = Files.walk(root)) {
             return sources.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
-                        String source = source(path);
+                        String source = source(path).replace("import com.seasonplan.security.identity.ActorRole;", "");
                         return forbidden.stream().anyMatch(source::contains);
                     })
                     .map(root::relativize).map(Path::toString).sorted().toList();

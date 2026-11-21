@@ -1,6 +1,187 @@
 # Backend changelog
 
-## Unreleased — Use-case-oriented clean architecture
+## Unreleased — Execution implementations and PostgreSQL runtime
+
+- Implemented all seven requested contracts: `PinnedMetricRuleProvider`,
+  `ConfiguredIncidentRuleProvider`, `ComputedRitualReadinessChecker`, and JDBC
+  incident, correction-action, ritual-session and climate-metric repositories.
+  Real beans now compose `RitualService`, `MonitoringService` and `IncidentResponseService`.
+- Followed current SRS/UC and ST-00 conflict resolution. The operator selected
+  validated versioned configuration **without defaults** and the existing
+  temperature/humidity/pollen-density catalog. No lifecycle statuses were added.
+- New plan creation requires complete configured execution/incident rules and
+  finite targets for all three metrics. An immutable rules snapshot, plan and
+  creation audit commit atomically; database protection prevents replacing the
+  pinned snapshot. Copies and draft edits preserve selection; metric evaluation
+  uses the displayed plan target and pinned tolerance/response settings.
+- Computed readiness checks required categories/completed work, per-task confirmed
+  compatible assignments with actual timestamps, required roles, authoritative
+  pollen, manual flags and current critical incidents. Unverified approval
+  conditions remain blockers. READY is not treated as completed work.
+- Added category metadata to existing task DTOs, actual confirmation timestamps,
+  shared per-plan transactions, and atomic `MAGIC_TASK_UPDATED` audit appends.
+  Completion requires assignment evidence and cannot be selected at creation.
+  Terminal tasks reject edits as structured validation; ongoing optional task
+  work remains possible after readiness/activation, including during critical incidents.
+- Forward migrations 012/013 preserve legacy data while adding global import and
+  correction keys, same-plan incident links, exclusive ritual attempts/success,
+  sealed participants, append-only ordered events and immutable terminal records.
+  Incomplete history fails closed pending verified operator remediation—no
+  guessed backfill, automatic deletion or audit-history rewrite.
+- Fixed real-database replay defects: nanosecond sensor input is normalized before
+  import comparison; an unchanged failed ritual remains replayable after a later
+  success. Measurement decimal precision is retained.
+- No new dependencies, execution REST routes, frontend flows, sensors, reporting
+  or schedulers were added. Pollen remains external and the separate consumption
+  outbox remains unconfigured. See the [configuration/rollout guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
+  and [ADR 0005](../docs/decisions/0005-configured-execution-and-durable-repositories.md).
+
+### Verification
+
+- JDK **17.0.21**, Maven 3.9.11, PostgreSQL 14 via Testcontainers:
+  `mvn.cmd -f .\backend\pom.xml '-Dapi.version=1.44' clean verify`
+  with process-local `DOCKER_API_VERSION=1.44` for Docker 29 compatibility.
+- **352 backend tests passed**, including **34 real PostgreSQL tests**;
+  zero failures/errors/skips. Docker Desktop was started with operator approval,
+  resolving the previous environment blocker. No production database was used.
+- RED/GREEN regressions cover missing implementations/configuration, pinned
+  snapshots/copying, creation rollback, readiness/assignment/completion guards,
+  task audit/locking, terminal PATCH validation, semantic precision/replay,
+  failed-attempt history, constraints and concurrent unique-key/ritual races.
+- A real Spring/PostgreSQL acceptance test exercises preparation, successful
+  ritual activation, critical measurement/incident/correction persistence and
+  ongoing optional task completion. Core and persistence source reviews passed
+  after their actionable findings were fixed and independently re-reviewed.
+- Frontend remains unchanged; its **43 tests**, lint and production build pass.
+
+## Earlier — Security feature and lifecycle authorization
+
+- Kept account/authentication security as a sibling feature; it no longer imports
+  lifecycle. Shared actor/role/provider contracts now live in `security/identity`.
+  The separate administrator flag never becomes an eighth business role or grants
+  implicit lifecycle privileges.
+- Divided security into `api`, `domain`, `service`, `repository`, `exception`,
+  `identity`, `infrastructure/jdbc`, `infrastructure/spring` and `config`.
+  Moved the misplaced lifecycle SecurityConfiguration into security; security
+  tests now mirror these responsibilities.
+- Extracted account SQL, password hashing and real transaction adapters from the
+  core account service. Commands belong to its interface and validate before use;
+  neither public contracts nor the core depend on Spring principals/JDBC.
+- Administrator creation is guarded at both service and HTTP boundaries.
+  Self-credential updates bind the authenticated UUID, lock and verify the current
+  stored hash (not a stale session hash), then atomically update username/hash.
+  Session invalidation remains success-only; failed verification changes nothing.
+- Added one framework-free lifecycle permission matrix for API role selection
+  and service enforcement, plus resource-owner policy helpers. Removed independent
+  controller role lists and role checks from field ValidationSupport.
+- Fixed documented authorization gaps with red-first regressions: marking
+  ritual-ready is coordinator-only (ST-00:31), and only a draft's creator-planner
+  may edit/submit it (ST-00:179). Missing API roles consistently return 403.
+- Preserved URLs/JSON shapes, CSRF/login/logout/session mechanics, dev-only
+  initial administrator behavior, seven role values, business state transitions,
+  pollen authority and audit/outbox transaction boundaries. No dependencies or
+  database migrations changed.
+- Existing lifecycle role/actor-ID parameters remain trusted internal-call
+  contracts; the API binds them to the authenticated actor. They are not proof
+  that arbitrary in-process input is authenticated.
+- **Rollout requires a one-time sign-in**, as explicitly selected by the operator:
+  old serialized principal/role class names moved. There is no legacy shim or
+  automatic session deletion. Follow the coordinated session-only revocation
+  procedure in [ST-01](../docs/architecture/ST-01-authentication-and-rbac.md#security-package-refactor-rollout).
+- Architecture/merge rationale: [ADR 0004](../docs/decisions/0004-security-feature-and-lifecycle-authorization.md).
+
+### Verification
+
+- JDK **17.0.21**, Maven 3.9.11: `mvn.cmd -f .\backend\pom.xml '-Dtest=!Postgres*Test' clean verify`
+  — **293 passed**, zero failures/errors/skips; backend JAR packaged.
+- New tests cover framework/identity boundaries, administrator/business isolation,
+  current stored password verification, credential ownership/session invalidation,
+  SQL/hash/transaction adapters and composition, new-principal serialization,
+  complete permission matrix, denied HTTP calls and foreign-planner mutations.
+- Full `clean verify` was attempted: all 293 runnable tests passed, but both
+  PostgreSQL test classes failed container initialization because the Docker
+  daemon was unavailable (295 reported tests, zero assertion failures, two
+  environment errors). The explicit non-PostgreSQL clean verify above then passed.
+  New account integration tests cover duplicate/stale credentials and atomic
+  user/credential/role rollback; those remain unexecuted alongside the retained
+  lifecycle persistence checks. Unit transaction mocks are not database proof.
+- Frontend: **43 tests passed**; lint and production build passed, with no frontend changes.
+- Independent account/security and final authorization source reviews found no issues.
+
+## Earlier — Responsibility-owned contracts and infrastructure
+
+- Removed `lifecycle/application/port` and `application/shared`. Repository
+  interfaces now live in `repository`, external client contracts in `integration`,
+  notification contracts in `notification`, and lookup/access failures in `exception`.
+- Kept service-owned transaction, actor-context, readiness/rule and report
+  extension contracts in `service`. Moved `ValidationSupport` alongside its
+  callers and made it package-private.
+- Split `ExecutionPorts` and `CompletionPorts` into descriptive repository and
+  service interfaces. Preserved all method semantics, immutable report/audit
+  contracts and the nested records' defensive copying and configuration validation.
+- Renamed the Natural Calendar contract/fake to `NaturalCalendarClient` and
+  `AllowingNaturalCalendarClient`. The existing fake remains an educational stub.
+- Moved concrete adapters into `infrastructure/jdbc`, `http`, `mail` and `fake`;
+  updated Spring wiring, imports and matching test packages. No compatibility
+  wrappers, new runtime services, dependencies or migrations were introduced.
+- Preserved REST contracts, roles, statuses, domain behavior, pollen authority,
+  command serialization and audit/outbox transaction boundaries.
+- Added red-first package ownership tests and regression checks for nested
+  readiness/rule records. Dependency checks protect domain isolation,
+  framework-independent services/contracts and exclusive PollenService client access.
+- Updated the package map and recorded placement rationale in
+  [ADR 0003](../docs/decisions/0003-responsibility-owned-contracts-and-infrastructure.md).
+  Existing native UML artifacts remain historical snapshots.
+
+### Verification
+
+- JDK **17.0.21**, Maven 3.9.11: non-PostgreSQL `clean verify` — **270 passed**,
+  zero failures/errors/skips, backend JAR packaged.
+- Full `clean verify` attempted: the same 270 tests passed, but the preserved
+  `PostgresLifecyclePersistenceTest` could not initialize because the Docker
+  daemon was unavailable. Real PostgreSQL rollback/concurrency validation remains
+  outstanding; tests were not disabled or replaced with a permissive fake.
+- Frontend: **43 tests passed**; lint and production build passed, with no frontend changes.
+- Independent review found no migration-induced issues; `git diff --check` passed.
+
+## Earlier — Cohesive lifecycle services
+
+- Consolidated 13 lifecycle application services into 8 under `lifecycle/service`.
+  `SeasonPlanService` now directly owns planning, review, checklist and readiness;
+  `MagicTaskService` owns both tasks and fairy assignments. Removed the forwarding
+  facade and planning-validation callback rather than retaining compatibility wrappers.
+- Moved pollen, ritual, monitoring and incident services into the same package;
+  renamed `CompletionService` to `SeasonReportService`, retaining report approval,
+  completion and archival transaction boundaries.
+- Removed application use-case subpackages. Kept ports/support, domain objects,
+  persistence/integration adapters and authentication boundaries separate.
+- Removed the unused `PlannerNotifications`/fake `NotificationService` path;
+  review notifications continue through the durable outbox.
+- Simplified Spring composition and REST controller dependencies from five
+  application services to three. HTTP contracts, RBAC, lifecycle statuses,
+  transactions, immutable audit history and pollen integration behavior remain unchanged.
+- Migrated service tests, replaced stale architecture assertions with the new
+  boundaries, and added task/assignment and REST preparation regression coverage.
+- The original non-PostgreSQL baseline had one already-failing architecture test
+  requiring application services not to import their existing audit service.
+  The new architecture contract was verified red before consolidation.
+- See [ADR 0002](../docs/decisions/0002-cohesive-lifecycle-services.md) for the
+  evaluated merge options, rejected over-merges and dependency direction.
+
+### Verification
+
+- Eclipse Temurin **17.0.21**, Maven 3.9.11: `mvn.cmd -f .\backend\pom.xml '-Dtest=!PostgresLifecyclePersistenceTest' clean verify` — **266 passed**, backend JAR packaged.
+- Full `clean verify` attempted: all 266 runnable tests passed, but
+  `PostgresLifecyclePersistenceTest` could not start because no Docker environment
+  was available. Database rollback/concurrency verification remains outstanding.
+- Frontend: **43 tests passed**; lint and production build passed, with no frontend changes.
+- Independent source review: no issues found. `git diff --check` passed.
+
+## Earlier — Use-case-oriented clean architecture
+
+Historical implementation notes below describe the previous layout and earlier
+integration state. The service consolidation above and current `README.md`
+supersede its package map and compatibility-facade descriptions.
 
 ### Scope and review summary
 
