@@ -1,55 +1,36 @@
 package com.seasonplan.architecture;
 
-import com.seasonplan.lifecycle.service.PollenService;
+import com.seasonplan.pollen.application.PollenService;
 import org.junit.jupiter.api.Test;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+import java.nio.file.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PollenBoundarySimplificationTest {
-    private static final Path ROOT = Path.of("src/main/java/com/seasonplan/lifecycle");
+    private static final Path ROOT = Path.of("src/main/java/com/seasonplan");
 
-    @Test void otherUseCasesCannotBypassPollenServiceToAccessTheExternalClient() throws IOException {
-        try (var sources = Files.walk(ROOT)) {
-            var violations = sources.filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> {
-                        String relative = ROOT.relativize(path).toString().replace('\\', '/');
-                        return !relative.startsWith("infrastructure/") && !relative.startsWith("config/")
-                                && !relative.equals("integration/pollen/PollenTreeClient.java")
-                                && !relative.equals("service/PollenService.java");
-                    })
-                    .filter(path -> {
-                        try { return Files.readString(path).matches("(?s).*\\b(?:PollenTreeClient|RestPollenTreeClient|FakePollenTreeClient)\\b.*"); }
-                        catch (IOException error) { throw new IllegalStateException(error); }
-                    })
-                    .map(ROOT::relativize).toList();
-            assertThat(violations).as("all pollen access must go through PollenService").isEmpty();
-        }
-    }
-
-    @Test void pollenServiceDoesNotExposeExternalClientTypesToItsCallers() {
-        for (var method : PollenService.class.getDeclaredMethods()) {
-            if (java.lang.reflect.Modifier.isPublic(method.getModifiers())) {
-                assertThat(method.getGenericReturnType().getTypeName()).as("return type of %s", method.getName())
-                        .doesNotContain("PollenTreeClient");
+    @Test void otherModulesCannotBypassPollenToCallItsExternalClient() throws Exception {
+        try (var files = Files.walk(ROOT)) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String path = ROOT.relativize(file).toString().replace('\\', '/');
+                if (path.startsWith("pollen/") || path.startsWith("bootstrap/")) continue;
+                assertThat(Files.readString(file)).as(path).doesNotContain("import com.seasonplan.pollen.application.port.PollenTreeClient", "RestPollenTreeClient", "FakePollenTreeClient");
             }
         }
     }
 
-    @Test void pollenHasOneApplicationServiceOneExternalClientAndNoLocalReservationRepository() {
-        assertThat(ROOT.resolve("service/PollenService.java")).isRegularFile();
-        assertThat(ROOT.resolve("integration/pollen/PollenTreeClient.java")).isRegularFile();
-        for (String obsolete : List.of(
-                "application/preparation/PollenReservationService.java",
-                "application/execution/PollenConsumptionService.java",
-                "application/port/PollenTree.java",
-                "application/port/PollenTreeReservations.java",
-                "application/port/PollenReservationRepository.java",
-                "persistence/JdbcPollenReservationRepository.java",
-                "adapter/fake/InMemoryPollenReservationRepository.java")) {
-            assertThat(ROOT.resolve(obsolete)).as("obsolete abstraction %s", obsolete).doesNotExist();
+    @Test void publicPollenResultsDoNotExposeExternalClientTypes() {
+        for (var method : PollenService.class.getDeclaredMethods()) {
+            if (java.lang.reflect.Modifier.isPublic(method.getModifiers())) {
+                assertThat(method.getGenericReturnType().getTypeName()).as(method.getName()).doesNotContain("PollenTreeClient");
+            }
+        }
+    }
+
+    @Test void pollenHasOneExternalBoundaryAndNoLocalStockRepository() throws Exception {
+        assertThat(ROOT.resolve("pollen/api/PollenOperations.java")).isRegularFile();
+        assertThat(ROOT.resolve("pollen/application/port/PollenTreeClient.java")).isRegularFile();
+        try (var files = Files.walk(ROOT.resolve("pollen"))) {
+            assertThat(files.filter(p -> p.getFileName().toString().contains("ReservationRepository")).toList()).isEmpty();
         }
     }
 }

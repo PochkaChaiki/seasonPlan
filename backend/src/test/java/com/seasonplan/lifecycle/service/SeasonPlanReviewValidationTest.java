@@ -1,8 +1,14 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient;
-import com.seasonplan.lifecycle.repository.SeasonPlanRepository;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.ritual.api.RitualReadinessChecker;
+import com.seasonplan.season.application.SeasonPlanService;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
+import com.seasonplan.shared.domain.TimeWindow;
+
+import com.seasonplan.reference.adapter.out.fake.AllowingNaturalCalendarClient;
+import com.seasonplan.season.application.port.SeasonPlanRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -19,9 +25,9 @@ import static org.mockito.Mockito.*;
 
 class SeasonPlanReviewValidationTest {
     private final SeasonPlanRepository plans = mock(SeasonPlanRepository.class);
-    private final SeasonPlanService planning = new SeasonPlanService(plans, null, null, null, null,
-            new DirectTestTransaction(), null, new AllowingNaturalCalendarClient(), Clock.systemUTC(), TestExecutionRules::snapshot,
-            id -> new RitualReadinessChecker.Readiness(java.util.List.of(), java.util.List.of(), java.util.Set.of("TEST")));
+    private final SeasonPlanService planning = new SeasonPlanService(plans, null, null,
+            new DirectTestTransaction(), null, new com.seasonplan.reference.application.CalendarValidationService(new AllowingNaturalCalendarClient()), Clock.systemUTC(), TestExecutionRules::snapshot,
+            id -> java.util.List.of());
     private final LocalDateTime start = LocalDateTime.parse("2026-03-01T09:00:00");
     private final SeasonPlan plan = plan(UUID.randomUUID(), SeasonPlanStatus.SUBMITTED, "North", start, start.plusHours(3));
 
@@ -50,6 +56,6 @@ class SeasonPlanReviewValidationTest {
     private SeasonPlan plan(UUID id, SeasonPlanStatus status, String territory, LocalDateTime from, LocalDateTime to) {
         return SeasonPlan.rehydrate(id, "SPRING", List.of(territory), List.of(new TimeWindow(from, to)),
                 Map.of("bloom", "early"), Map.of("temperature", 20.0, "humidity", 60.0, "pollen_density", 1.0), status, null, List.of(),
-                "planner", "planner", Instant.EPOCH, Instant.EPOCH);
+                "planner", "planner", Instant.EPOCH, Instant.EPOCH, new com.seasonplan.season.domain.MaterialRevisionStamp(0, "system:migration", java.time.Instant.EPOCH, com.seasonplan.season.domain.MaterialRevisionStamp.Reason.LEGACY_BASELINE));
     }
 }

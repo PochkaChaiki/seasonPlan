@@ -1,11 +1,11 @@
 package com.seasonplan.security.infrastructure.jdbc;
 
-import com.seasonplan.security.exception.UserAdministrationException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.security.repository.UserAccountRepository;
-import com.seasonplan.security.service.AccountTransaction;
-import com.seasonplan.security.service.LocalUserAdministration;
+import com.seasonplan.identity.api.UserAdministrationException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.identity.application.port.UserAccountRepository;
+import com.seasonplan.identity.application.port.AccountTransaction;
+import com.seasonplan.identity.api.LocalUserAdministration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,20 +21,43 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @Testcontainers
 class PostgresAccountAdministrationTest {
+    /** Close workers and datasource before the Testcontainers afterAll callback stops PostgreSQL. */
+    @org.junit.jupiter.api.AfterAll
+    static void closeApplicationBeforeContainerStops(org.springframework.context.ConfigurableApplicationContext context) {
+        assertThat(postgres.isRunning()).isTrue();
+        // Evict through Spring so later test listeners do not access a closed cached context.
+        new org.springframework.test.context.TestContextManager(PostgresAccountAdministrationTest.class).getTestContext()
+                .markApplicationContextDirty(org.springframework.test.annotation.DirtiesContext.HierarchyMode.EXHAUSTIVE);
+        assertThat(context.isActive()).isFalse();
+    }
+
     @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14")
-            .withDatabaseName("seasonplan_test").withUsername("seasonplan").withPassword("seasonplan_test");
+            .withDatabaseName("seasonplan_test").withUsername("seasonplan").withPassword("seasonplan_test")
+            .withEnv("DB_RUNTIME_USER", "seasonplan_app").withEnv("DB_RUNTIME_PASSWORD", "runtime-test-only")
+            .withCopyFileToContainer(org.testcontainers.utility.MountableFile.forHostPath(
+                    java.nio.file.Path.of("..", "infrastructure", "postgres", "010-runtime-role.sh").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/010-runtime-role.sh");
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.username", () -> "seasonplan_app");
+        registry.add("spring.datasource.password", () -> "runtime-test-only");
+        registry.add("spring.liquibase.user", postgres::getUsername);
+        registry.add("spring.liquibase.password", postgres::getPassword);
     }
     @Autowired LocalUserAdministration service;
     @Autowired UserAccountRepository accounts;
     @Autowired AccountTransaction transaction;
     @Autowired JdbcTemplate jdbc;
+
+    @Test void applicationUsesRestrictedRuntimeAndSeparateLiquibaseOwner() {
+        assertThat(jdbc.queryForObject("select current_user", String.class)).isEqualTo("seasonplan_app");
+        assertThat(jdbc.queryForObject("select pg_has_role(current_user, 'seasonplan', 'MEMBER')", Boolean.class)).isFalse();
+        assertThat(jdbc.queryForObject("select tableowner from pg_tables where schemaname = 'public' and tablename = 'audit_log_entries'", String.class)).isEqualTo("seasonplan");
+    }
 
     @Test void duplicateAndStalePasswordsLeaveExistingCredentialsUnchanged() {
         var admin = new CurrentActor(UUID.randomUUID(), "admin", Set.of(), true);

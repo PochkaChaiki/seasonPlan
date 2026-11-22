@@ -1,6 +1,8 @@
 package com.seasonplan.lifecycle.infrastructure.jdbc;
 
-import com.seasonplan.lifecycle.exception.NotFoundException;
+import com.seasonplan.season.adapter.out.persistence.JdbcCommandTransaction;
+
+import com.seasonplan.shared.application.NotFoundException;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,7 +66,7 @@ class JdbcCommandTransactionTest {
                 .thenThrow(new org.springframework.dao.EmptyResultDataAccessException(1));
         var transaction = new JdbcCommandTransaction(jdbc, new RecordingManager(events));
         assertThatThrownBy(() -> transaction.execute(id, () -> { events.add("command"); return null; }))
-                .isInstanceOf(com.seasonplan.lifecycle.exception.NotFoundException.class);
+                .isInstanceOf(com.seasonplan.shared.application.NotFoundException.class);
         assertThat(events).containsExactly("begin", "rollback");
     }
 

@@ -1,6 +1,6 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.service.CommandTransaction;
+import com.seasonplan.season.api.CommandTransaction;
 import java.util.UUID;
 import java.util.function.Supplier;
 

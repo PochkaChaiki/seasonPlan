@@ -1,6 +1,10 @@
 package com.seasonplan.lifecycle.infrastructure.fake;
 
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.pollen.adapter.out.fake.FakePollenTreeClient;
+import com.seasonplan.pollen.domain.PollenReservation;
+import com.seasonplan.pollen.domain.PollenReservationStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
+
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -85,7 +89,7 @@ class FakePollenTreeClientTest {
         assertThat(read.status()).isEqualTo(PollenReservationStatus.PENDING);
         read.reject("forged", "attacker");
         PollenReservation confirmed = tree.confirmReservation(first.id(), 100, "ok", "guardian");
-        confirmed.reject("forged", "attacker");
+        assertThatThrownBy(() -> confirmed.reject("forged", "attacker")).isInstanceOf(DomainValidationException.class);
         assertThat(tree.findById(first.id()).orElseThrow().status()).isEqualTo(PollenReservationStatus.CONFIRMED);
         assertThatThrownBy(() -> tree.rejectReservation(first.id(), "reason", "guardian")).isInstanceOf(DomainValidationException.class);
         assertThatThrownBy(() -> tree.confirmReservation(first.id(), 200, "reason", "guardian")).isInstanceOf(DomainValidationException.class);

@@ -1,18 +1,23 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.ritual.api.RitualReadinessChecker;
+import com.seasonplan.season.application.SeasonPlanService;
+import com.seasonplan.work.application.MagicTaskService;
 
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.lifecycle.domain.AssignmentStatus;
-import com.seasonplan.lifecycle.domain.AuditAction;
-import com.seasonplan.lifecycle.domain.DomainValidationException;
-import com.seasonplan.lifecycle.domain.MagicTask;
-import com.seasonplan.lifecycle.domain.PollenReservation;
-import com.seasonplan.lifecycle.domain.PollenReservationStatus;
-import com.seasonplan.lifecycle.domain.SeasonPlan;
-import com.seasonplan.lifecycle.domain.SeasonPlanStatus;
-import com.seasonplan.lifecycle.domain.TimeWindow;
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
+import com.seasonplan.notification.api.NotificationOutbox;
+
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.work.domain.AssignmentStatus;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.shared.domain.DomainValidationException;
+import com.seasonplan.work.domain.MagicTask;
+import com.seasonplan.pollen.domain.PollenReservation;
+import com.seasonplan.pollen.domain.PollenReservationStatus;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.TimeWindow;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,11 +44,11 @@ class SeasonPlanServiceTest {
 
     @Test
     void missingDeploymentRulesBlockCreationBeforePersistenceWithFieldError() {
-        var plans = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.SeasonPlanRepository.class);
-        var service = new SeasonPlanService(plans, null, null, null, null, new DirectTestTransaction(), null,
-                new com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient(), java.time.Clock.systemUTC(),
+        var plans = org.mockito.Mockito.mock(com.seasonplan.season.application.port.SeasonPlanRepository.class);
+        var service = new SeasonPlanService(plans, null, null, new DirectTestTransaction(), null,
+                new com.seasonplan.reference.application.CalendarValidationService(new com.seasonplan.reference.adapter.out.fake.AllowingNaturalCalendarClient()), java.time.Clock.systemUTC(),
                 () -> { throw new IllegalStateException("secret config value"); },
-                id -> new RitualReadinessChecker.Readiness(List.of(), List.of(), java.util.Set.of("TEST")));
+                id -> List.of());
         assertThatThrownBy(() -> service.createDraft(SeasonPlanTestFixture.validPlanDraft("planner"), ActorRole.FAIRY_PLANNER, "planner"))
                 .isInstanceOfSatisfying(DomainValidationException.class, ex -> {
                     assertThat(ex.fieldErrors()).containsKey("executionRules");
@@ -128,7 +133,7 @@ class SeasonPlanServiceTest {
 
         SeasonPlan submitted = seasonPlans.submitForApproval(draft.id(), ActorRole.FAIRY_PLANNER, "planner-1");
 
-        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+        assertThat(seasonPlans.get(submitted.id()).status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
         assertThat(fixture.auditLogService().entriesFor(draft.id()))
                 .extracting("action")
                 .contains(AuditAction.SEASON_PLAN_SUBMITTED);
@@ -138,13 +143,19 @@ class SeasonPlanServiceTest {
     void reviewRejectsOverlappingTerritoryInAnotherApplicablePlan() {
         SeasonPlan first = submittedPlan();
         SeasonPlan secondDraft = SeasonPlanTestFixture.validPlanDraft("planner-2");
-        secondDraft.setTargetTerritories(List.of(" NORTH-GROVE "));
+        secondDraft.setTargetTerritories(List.of("south-grove"));
         SeasonPlan second = seasonPlans.createDraft(secondDraft, ActorRole.FAIRY_PLANNER, "planner-2");
         seasonPlans.submitForApproval(second.id(), ActorRole.FAIRY_PLANNER, "planner-2");
+        // Simulate conflicting legacy/imported data; review must still recheck it.
+        var imported = fixture.seasonRepository().findById(second.id()).orElseThrow();
+        imported.returnForRevision("import", "operator", java.time.Instant.now());
+        var material = SeasonPlanTestFixture.validPlanDraft("planner-2"); material.setTargetTerritories(List.of(" NORTH-GROVE "));
+        imported.updateDraftFieldsFrom(material, "operator", java.time.Instant.now()); imported.submit("operator", java.time.Instant.now());
+        fixture.seasonRepository().save(imported);
         assertThatThrownBy(() -> seasonPlans.verify(first.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class)
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors()).containsKey("targetTerritories"));
-        assertThat(first.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+        assertThat(seasonPlans.get(first.id()).status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
     }
 
     @Test
@@ -152,11 +163,20 @@ class SeasonPlanServiceTest {
         SeasonPlan first = submittedPlan();
         confirmPollen(first);
         seasonPlans.verify(first.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
-        submittedPlan();
+        var otherDraft = SeasonPlanTestFixture.validPlanDraft("planner-2");
+        otherDraft.setTargetTerritories(List.of("south-grove"));
+        var other = seasonPlans.createDraft(otherDraft, ActorRole.FAIRY_PLANNER, "planner-2");
+        seasonPlans.submitForApproval(other.id(), ActorRole.FAIRY_PLANNER, "planner-2");
+        // Simulate legacy/imported conflict after verification.
+        var imported = fixture.seasonRepository().findById(other.id()).orElseThrow();
+        imported.returnForRevision("import", "operator", java.time.Instant.now());
+        var material = SeasonPlanTestFixture.validPlanDraft("planner-2"); material.setTargetTerritories(first.targetTerritories());
+        imported.updateDraftFieldsFrom(material, "operator", java.time.Instant.now()); imported.submit("operator", java.time.Instant.now());
+        fixture.seasonRepository().save(imported);
         assertThatThrownBy(() -> seasonPlans.approve(first.id(), "ok", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class)
                 .satisfies(error -> assertThat(((DomainValidationException) error).fieldErrors()).containsKey("targetTerritories"));
-        assertThat(first.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+        assertThat(seasonPlans.get(first.id()).status()).isEqualTo(SeasonPlanStatus.VERIFIED);
     }
 
     @Test
@@ -172,8 +192,8 @@ class SeasonPlanServiceTest {
             assertThat(event.type()).isEqualTo("SEASON_PLAN_VERIFIED");
             assertThat(event.recipients()).containsExactly("planner-1");
             assertThat(event.channels()).containsExactlyInAnyOrder(
-                    com.seasonplan.lifecycle.notification.NotificationOutbox.Channel.IN_APP,
-                    com.seasonplan.lifecycle.notification.NotificationOutbox.Channel.EMAIL);
+                    com.seasonplan.notification.api.NotificationOutbox.Channel.IN_APP,
+                    com.seasonplan.notification.api.NotificationOutbox.Channel.EMAIL);
         });
     }
 
@@ -193,7 +213,7 @@ class SeasonPlanServiceTest {
         confirmPollen(submitted);
         assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class);
-        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
+        assertThat(seasonPlans.get(submitted.id()).status()).isEqualTo(SeasonPlanStatus.SUBMITTED);
         assertThat(fixture.reviewEvents()).isEmpty();
         assertThat(fixture.auditLogService().entriesFor(submitted.id())).extracting("action")
                 .doesNotContain(AuditAction.SEASON_PLAN_APPROVED);
@@ -222,7 +242,7 @@ class SeasonPlanServiceTest {
 
         assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class);
-        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+        assertThat(seasonPlans.get(submitted.id()).status()).isEqualTo(SeasonPlanStatus.VERIFIED);
         assertThat(fixture.auditLogService().entriesFor(submitted.id()))
                 .extracting("action").doesNotContain(AuditAction.SEASON_PLAN_APPROVED);
     }
@@ -235,7 +255,7 @@ class SeasonPlanServiceTest {
 
         assertThatThrownBy(() -> seasonPlans.approve(submitted.id(), "approved", ActorRole.CHIEF_GUARDIAN, "guardian-1"))
                 .isInstanceOf(DomainValidationException.class);
-        assertThat(submitted.status()).isEqualTo(SeasonPlanStatus.VERIFIED);
+        assertThat(seasonPlans.get(submitted.id()).status()).isEqualTo(SeasonPlanStatus.VERIFIED);
     }
 
     @Test
@@ -306,7 +326,7 @@ class SeasonPlanServiceTest {
         SeasonPlan plan = submittedPlan();
         confirmPollen(plan);
         seasonPlans.verify(plan.id(), ActorRole.CHIEF_GUARDIAN, "guardian-1");
-        var condition = new com.seasonplan.lifecycle.domain.ApprovalCondition("weather-evidence", "Weather", "Calibration", ActorRole.TALENT_COORDINATOR);
+        var condition = new com.seasonplan.season.domain.ApprovalCondition("weather-evidence", "Weather", "Calibration", ActorRole.TALENT_COORDINATOR);
         seasonPlans.approve(plan.id(), "conditional", List.of(condition), ActorRole.CHIEF_GUARDIAN, "guardian-1");
         prepareRequiredTasks(plan);
         seasonPlans.completeItem(plan.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
@@ -315,13 +335,13 @@ class SeasonPlanServiceTest {
         assertThat(seasonPlans.calculateChecklist(plan.id())).containsOnlyKeys("weather-evidence");
         assertThatThrownBy(() -> seasonPlans.markRitualReady(plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1"))
                 .isInstanceOf(DomainValidationException.class);
-        assertThat(plan.status()).isEqualTo(SeasonPlanStatus.APPROVED);
+        assertThat(seasonPlans.get(plan.id()).status()).isEqualTo(SeasonPlanStatus.APPROVED);
     }
 
     @Test
     void ritualReadyIsBlockedUntilChecklistReservationTasksAndAssignmentsAreComplete() {
         SeasonPlan approved = approvedPlan();
-        pollenReservations.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        pollenReservations.requestReservation(approved.id(), java.util.UUID.randomUUID(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
 
         assertThatThrownBy(() -> seasonPlans.markRitualReady(approved.id(), ActorRole.TALENT_COORDINATOR, "coordinator-1"))
                 .isInstanceOf(DomainValidationException.class)
@@ -332,7 +352,7 @@ class SeasonPlanServiceTest {
     @Test
     void ritualReadyIsAllowedWhenReadinessChecksPass() {
         SeasonPlan approved = approvedPlan();
-        PollenReservation reservation = pollenReservations.requestReservation(approved.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
+        PollenReservation reservation = pollenReservations.requestReservation(approved.id(), java.util.UUID.randomUUID(), 100, ActorRole.POLLEN_GUARDIAN, "pollen-1");
         pollenReservations.confirmReservation(reservation.id(), 100, "within limit", ActorRole.POLLEN_GUARDIAN, "pollen-1");
         prepareRequiredTasks(approved);
         seasonPlans.completeItem(approved.id(), "calendar-reviewed", ActorRole.TALENT_COORDINATOR, "coordinator-1");
@@ -370,10 +390,10 @@ class SeasonPlanServiceTest {
         String[] categories = {"WEATHER", "POLLEN"}; String[] roles = {"RITUAL_LEAD", "WEATHER_WEAVER"};
         for (int i = 0; i < categories.length; i++) {
             MagicTask base = SeasonPlanTestFixture.validTaskDraft();
-            MagicTask draft = new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.READY, categories[i]);
+            MagicTask draft = new MagicTask(base.title(), base.description(), base.requiredTalent(), base.timeWindow(), com.seasonplan.work.domain.MagicTaskStatus.READY, categories[i]);
             MagicTask task = magicTasks.createTask(plan.id(), draft, ActorRole.TALENT_COORDINATOR, "coordinator-1");
             magicTasks.assignFairy(task.id(), "fairy-" + i, roles[i], "SPRING_WEATHER", AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator-1");
-            magicTasks.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED, categories[i]), ActorRole.TALENT_COORDINATOR, "coordinator-1");
+            magicTasks.updateTask(task.id(), new MagicTask(task.title(), task.description(), task.requiredTalent(), task.timeWindow(), com.seasonplan.work.domain.MagicTaskStatus.COMPLETED, categories[i]), ActorRole.TALENT_COORDINATOR, "coordinator-1");
         }
     }
 

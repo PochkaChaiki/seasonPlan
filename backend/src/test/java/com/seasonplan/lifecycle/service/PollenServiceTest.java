@@ -1,12 +1,19 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.identity.ActorRole;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.pollen.domain.PollenReservationStatus;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
 
-import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.audit.api.AuditLogEntry;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.audit.application.AuditLogService;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.ActorRole;
+
+import com.seasonplan.pollen.adapter.out.fake.FakePollenTreeClient;
+import com.seasonplan.audit.adapter.out.persistence.InMemoryAuditLogRepository;
+import com.seasonplan.pollen.application.port.PollenTreeClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -22,7 +29,7 @@ class PollenServiceTest {
     @Test void oneServiceCoordinatesReservationsConsumptionAndWarningsWithoutLocalReservationStorage() {
         var f = new ExecutionTestFixture(SeasonPlanStatus.ACTIVE);
         var client = new FakePollenTreeClient(new BigDecimal("3000"));
-        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> f.outbox, f.transactions, f.audit, f.clock);
         UUID requestId = UUID.randomUUID();
         var reservation = service.requestReservation(f.plan.id(), requestId, 1500, ActorRole.POLLEN_GUARDIAN, "guardian");
         assertThat(service.capacity().availableGrams()).isEqualByComparingTo("3000");
@@ -49,7 +56,7 @@ class PollenServiceTest {
         var f = new ExecutionTestFixture(SeasonPlanStatus.SUBMITTED);
         var client = new FakePollenTreeClient(new BigDecimal("500"));
         var audits = spy(new InMemoryAuditLogRepository());
-        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, new AuditLogService(audits, f.clock), f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> f.outbox, f.transactions, new AuditLogService(audits, f.clock), f.clock);
         var reservation = service.requestReservation(f.plan.id(), 100, ActorRole.POLLEN_GUARDIAN, "guardian");
         var failure = new IllegalStateException("audit unavailable");
         doThrow(failure).doCallRealMethod().when(audits).append(any(AuditLogEntry.class));
@@ -66,7 +73,7 @@ class PollenServiceTest {
     @Test void invalidAndUnauthorizedCommandsNeverReachTheExternalClient() {
         var f = new ExecutionTestFixture(SeasonPlanStatus.ACTIVE);
         var client = mock(PollenTreeClient.class);
-        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> f.outbox, f.transactions, f.audit, f.clock);
         assertThatThrownBy(() -> service.requestReservation(f.plan.id(), 0, ActorRole.POLLEN_GUARDIAN, "guardian"))
                 .isInstanceOf(DomainValidationException.class);
         assertThatThrownBy(() -> service.confirmReservation(UUID.randomUUID(), 1, "ok", ActorRole.FAIRY_PLANNER, "planner"))

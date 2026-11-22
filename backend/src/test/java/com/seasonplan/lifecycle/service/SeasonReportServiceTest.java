@@ -1,11 +1,16 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.reporting.application.SeasonReportService;
+import com.seasonplan.reporting.domain.SeasonReport;
+import com.seasonplan.response.domain.MagicIncident;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
+
+import com.seasonplan.pollen.application.port.PollenTreeClient;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.pollen.api.PollenTreeUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -53,7 +58,7 @@ class SeasonReportServiceTest {
     }
 
     @Test void pollenOutageDoesNotPersistAReportOrAppendASuccessAudit() {
-        var failure = new com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException("offline");
+        var failure = new com.seasonplan.pollen.api.PollenTreeUnavailableException("offline");
         org.mockito.Mockito.when(f.pollenPort.summary(f.plan.id())).thenThrow(failure);
         assertThatThrownBy(() -> f.completion.generate(f.plan.id(), "Offline", ActorRole.FAIRY_PLANNER, "planner"))
                 .isSameAs(failure);
@@ -63,7 +68,7 @@ class SeasonReportServiceTest {
 
     @Test void staleSourcesRequireRegenerationAndOldDraftCannotBeApproved() {
         SeasonReport first = f.completion.generate(f.plan.id(), "Первая версия", ActorRole.FAIRY_PLANNER, "planner");
-        f.pollenSummary = new com.seasonplan.lifecycle.integration.pollen.PollenTreeClient.Summary(f.pollenSummary.reservationId(), new BigDecimal("100"), new BigDecimal("90"), "v2");
+        f.pollenSummary = new com.seasonplan.pollen.application.port.PollenTreeClient.Summary(f.pollenSummary.reservationId(), new BigDecimal("100"), new BigDecimal("90"), "v2");
         assertThatThrownBy(() -> f.completion.approveAndComplete(f.plan.id(), first.id(), ActorRole.CHIEF_GUARDIAN, "guardian"))
                 .isInstanceOf(DomainValidationException.class);
         SeasonReport second = f.completion.generate(f.plan.id(), "Вторая версия", ActorRole.FAIRY_PLANNER, "planner");

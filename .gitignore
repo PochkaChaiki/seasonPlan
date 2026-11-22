@@ -28,3 +28,4 @@ application*.yml
 layout/
 
 /*.md
+!/ARCH.md

@@ -1,5 +1,8 @@
 package com.seasonplan.lifecycle.domain;
 
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -18,7 +21,7 @@ class SeasonPlanStatusTest {
     private static final Map<SeasonPlanStatus, Set<SeasonPlanStatus>> ALLOWED_TARGETS = transitionTable();
 
     @Test
-    void exposesOnlyTheEightApprovedLifecycleStatuses() {
+    void exposesTheFixedSrsLifecycleStatuses() {
         assertThat(SeasonPlanStatus.values()).containsExactly(
                 SeasonPlanStatus.DRAFT,
                 SeasonPlanStatus.SUBMITTED,
@@ -26,8 +29,11 @@ class SeasonPlanStatusTest {
                 SeasonPlanStatus.APPROVED,
                 SeasonPlanStatus.RITUAL_READY,
                 SeasonPlanStatus.ACTIVE,
+                SeasonPlanStatus.CORRECTION,
+                SeasonPlanStatus.EMERGENCY,
                 SeasonPlanStatus.COMPLETED,
-                SeasonPlanStatus.ARCHIVED
+                SeasonPlanStatus.ARCHIVED,
+                SeasonPlanStatus.CANCELLED
         );
     }
 
@@ -58,8 +64,11 @@ class SeasonPlanStatusTest {
         table.put(SeasonPlanStatus.SUBMITTED, EnumSet.of(SeasonPlanStatus.VERIFIED, SeasonPlanStatus.DRAFT));
         table.put(SeasonPlanStatus.VERIFIED, EnumSet.of(SeasonPlanStatus.APPROVED, SeasonPlanStatus.DRAFT));
         table.put(SeasonPlanStatus.APPROVED, EnumSet.of(SeasonPlanStatus.RITUAL_READY));
-        table.put(SeasonPlanStatus.RITUAL_READY, EnumSet.of(SeasonPlanStatus.ACTIVE));
-        table.put(SeasonPlanStatus.ACTIVE, EnumSet.of(SeasonPlanStatus.COMPLETED));
+        table.put(SeasonPlanStatus.RITUAL_READY, EnumSet.of(SeasonPlanStatus.ACTIVE, SeasonPlanStatus.EMERGENCY));
+        table.put(SeasonPlanStatus.ACTIVE, EnumSet.of(SeasonPlanStatus.COMPLETED, SeasonPlanStatus.EMERGENCY));
+        table.put(SeasonPlanStatus.CORRECTION, EnumSet.of(SeasonPlanStatus.COMPLETED, SeasonPlanStatus.EMERGENCY));
+        table.put(SeasonPlanStatus.EMERGENCY, EnumSet.noneOf(SeasonPlanStatus.class));
+        table.put(SeasonPlanStatus.CANCELLED, EnumSet.noneOf(SeasonPlanStatus.class));
         table.put(SeasonPlanStatus.COMPLETED, EnumSet.of(SeasonPlanStatus.ARCHIVED));
         table.put(SeasonPlanStatus.ARCHIVED, EnumSet.noneOf(SeasonPlanStatus.class));
         return table;

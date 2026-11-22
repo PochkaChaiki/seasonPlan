@@ -1,18 +1,18 @@
 package com.seasonplan.architecture;
 
-import com.seasonplan.lifecycle.authorization.LifecycleAccessPolicy;
-import com.seasonplan.lifecycle.authorization.LifecyclePermission;
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
+import com.seasonplan.identity.api.LifecycleAccessPolicy;
+import com.seasonplan.identity.api.LifecyclePermission;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
 import org.junit.jupiter.api.Test;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import static com.seasonplan.lifecycle.authorization.LifecyclePermission.*;
-import static com.seasonplan.security.identity.ActorRole.*;
+import static com.seasonplan.identity.api.LifecyclePermission.*;
+import static com.seasonplan.identity.api.ActorRole.*;
 import static org.assertj.core.api.Assertions.*;
 
 class LifecyclePermissionMatrixTest {

@@ -1,0 +1,2 @@
+# PostgreSQL runs this bootstrap in a Linux container, including on Windows hosts.
+infrastructure/postgres/*.sh text eol=lf

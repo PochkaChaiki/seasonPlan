@@ -1,15 +1,15 @@
 package com.seasonplan.security.service;
 
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.exception.UserAdministrationException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.security.repository.UserAccountRepository;
-import com.seasonplan.security.service.AccountTransaction;
-import com.seasonplan.security.service.LocalUserAdministration.CredentialChangeCommand;
-import com.seasonplan.security.service.LocalUserAdministration.CreateUserCommand;
-import com.seasonplan.security.service.LocalUserAdministrationService;
-import com.seasonplan.security.service.PasswordHasher;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.UserAdministrationException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.identity.application.port.UserAccountRepository;
+import com.seasonplan.identity.application.port.AccountTransaction;
+import com.seasonplan.identity.api.LocalUserAdministration.CredentialChangeCommand;
+import com.seasonplan.identity.api.LocalUserAdministration.CreateUserCommand;
+import com.seasonplan.identity.application.LocalUserAdministrationService;
+import com.seasonplan.identity.application.port.PasswordHasher;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
 import java.util.Set;

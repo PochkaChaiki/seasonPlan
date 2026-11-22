@@ -1,10 +1,13 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.security.identity.ActorRole;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
 
-import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.identity.api.ActorRole;
+
+import com.seasonplan.pollen.adapter.out.fake.FakePollenTreeClient;
+import com.seasonplan.notification.api.NotificationOutbox;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -14,7 +17,7 @@ class PollenConsumptionTest {
     @Test void consumptionUsesTheSameExternalClientAndRetriesDoNotDuplicateSpendWarningsOrAudit() {
         var f = new ExecutionTestFixture(SeasonPlanStatus.ACTIVE);
         var client = confirmedClient(f);
-        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> f.outbox, f.transactions, f.audit, f.clock);
         UUID event = UUID.randomUUID();
         service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
         service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian");
@@ -34,7 +37,7 @@ class PollenConsumptionTest {
             if (fail[0]) { fail[0] = false; throw new IllegalStateException("outbox unavailable"); }
             f.outbox.enqueue(event);
         };
-        var service = new PollenService(f.plans, client, () -> outbox, f.transactions, f.audit, f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> outbox, f.transactions, f.audit, f.clock);
         UUID event = UUID.randomUUID();
         assertThatThrownBy(() -> service.recordConsumption(f.plan.id(), event, new BigDecimal("80"), ActorRole.POLLEN_GUARDIAN, "guardian"))
                 .isInstanceOf(IllegalStateException.class);
@@ -46,7 +49,7 @@ class PollenConsumptionTest {
     @Test void nonActiveSeasonCannotConsumePollen() {
         var f = new ExecutionTestFixture(SeasonPlanStatus.SUBMITTED);
         var client = confirmedClient(f);
-        var service = new PollenService(f.plans, client, () -> f.outbox, f.transactions, f.audit, f.clock);
+        var service = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(f.plans), client, () -> f.outbox, f.transactions, f.audit, f.clock);
         assertThatThrownBy(() -> service.recordConsumption(f.plan.id(), UUID.randomUUID(), BigDecimal.ONE,
                 ActorRole.POLLEN_GUARDIAN, "guardian")).isInstanceOf(DomainValidationException.class);
         assertThat(client.summary(f.plan.id()).orElseThrow().actualGrams()).isEqualByComparingTo("0");

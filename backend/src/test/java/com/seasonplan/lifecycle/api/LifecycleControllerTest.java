@@ -1,8 +1,11 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.security.api.UserAdministrationExceptionHandler;
+import com.seasonplan.workflows.adapter.in.web.LifecycleController;
+import com.seasonplan.workflows.adapter.in.web.LifecycleExceptionHandler;
+
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.identity.adapter.in.web.UserAdministrationExceptionHandler;
 import com.seasonplan.lifecycle.service.SeasonPlanTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +56,7 @@ class LifecycleControllerTest {
         String first = guardianMvc.perform(post("/season-plans/{id}/pollen-reservations", plan.id())
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.requestedAmount").value(1500)).andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.requestedAmount").value(1500)).andExpect(jsonPath("$.length()").value(7)).andReturn().getResponse().getContentAsString();
         String id = new com.fasterxml.jackson.databind.ObjectMapper().readTree(first).get("id").asText();
         guardianMvc.perform(post("/season-plans/{id}/pollen-reservations", plan.id())
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
@@ -108,7 +111,7 @@ class LifecycleControllerTest {
 
     private MockMvc historyMvc(SeasonPlanTestFixture fixture, CurrentActor actor) {
         return MockMvcBuilders.standaloneSetup(new LifecycleController(
-                fixture.seasonPlanService(), fixture.pollenService(), fixture.magicTaskService(), () -> actor))
+                fixture.seasonPlanning(), fixture.pollenOperations(), fixture.workPreparation(), () -> actor))
                 .setControllerAdvice(new LifecycleExceptionHandler(), new UserAdministrationExceptionHandler()).build();
     }
 
@@ -153,7 +156,7 @@ class LifecycleControllerTest {
                 {"title":"Prepare weather", "description":"Align winds", "requiredTalent":"SPRING_WEATHER", "timeWindow":{"start":"2026-03-01T09:00:00", "end":"2026-03-01T10:00:00"}, "status":"READY", "category":"WEATHER"}
                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.task").isArray());
         org.assertj.core.api.Assertions.assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(auditCount);
-        org.assertj.core.api.Assertions.assertThat(fixture.magicTaskService().get(UUID.fromString(taskId)).status()).isEqualTo(com.seasonplan.lifecycle.domain.MagicTaskStatus.COMPLETED);
+        org.assertj.core.api.Assertions.assertThat(fixture.magicTaskService().get(UUID.fromString(taskId)).status()).isEqualTo(com.seasonplan.work.domain.MagicTaskStatus.COMPLETED);
         coordinatorMvc.perform(get("/season-plans/{id}/readiness", plan.id()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(false));
         for (String key : List.of("calendar-reviewed", "roles-reviewed")) {
@@ -206,6 +209,10 @@ class LifecycleControllerTest {
                              "naturalPhenomenonParameters":{"bloom":"early"},"targetClimateMetrics":{"temperature":17.5,"humidity":60.0,"pollen_density":1.0}}
                             """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.createdBy").value("00000000-0000-0000-0000-000000000001"));
+                .andExpect(jsonPath("$.createdBy").value("00000000-0000-0000-0000-000000000001"))
+                .andExpect(jsonPath("$.length()").value(12))
+                .andExpect(jsonPath("$.readinessChecklist[0].length()").value(2))
+                .andExpect(jsonPath("$.executionRules").doesNotExist())
+                .andExpect(jsonPath("$.createdAt").doesNotExist());
     }
 }

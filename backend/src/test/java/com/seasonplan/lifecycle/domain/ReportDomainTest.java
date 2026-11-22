@@ -1,5 +1,10 @@
 package com.seasonplan.lifecycle.domain;
 
+import com.seasonplan.reporting.domain.SeasonReport;
+import com.seasonplan.ritual.domain.RitualSession;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
@@ -18,10 +23,10 @@ class ReportDomainTest {
 
     @Test void activationRequiresSuccessfulSessionForTheSamePlan() {
         SeasonPlan plan = SeasonPlan.rehydrate(UUID.randomUUID(), "SPRING", List.of(), List.of(), Map.of(), Map.of(),
-                SeasonPlanStatus.RITUAL_READY, null, List.of(), "planner", "planner", Instant.EPOCH, Instant.EPOCH);
+                SeasonPlanStatus.RITUAL_READY, null, List.of(), "planner", "planner", Instant.EPOCH, Instant.EPOCH, new com.seasonplan.season.domain.MaterialRevisionStamp(0, "system:migration", java.time.Instant.EPOCH, com.seasonplan.season.domain.MaterialRevisionStamp.Reason.LEGACY_BASELINE));
         RitualSession other = RitualSession.start(UUID.randomUUID(), UUID.randomUUID(), 1, "coordinator", Instant.EPOCH,
                 List.of(new RitualSession.Participant("fairy", "LEAD", Instant.EPOCH))).succeed(Instant.EPOCH);
-        assertThatThrownBy(() -> plan.activate(other, "coordinator", Instant.EPOCH)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> plan.activate(new com.seasonplan.season.api.SeasonLifecycle.RitualEvidence(other.id(), other.seasonPlanId(), other.result() == RitualSession.Result.SUCCESS), "coordinator", Instant.EPOCH)).isInstanceOf(IllegalArgumentException.class);
         assertThat(plan.status()).isEqualTo(SeasonPlanStatus.RITUAL_READY);
     }
 }

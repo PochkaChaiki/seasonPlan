@@ -1,13 +1,15 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.lifecycle.exception.NotFoundException;
-import com.seasonplan.lifecycle.service.MagicTaskService;
-import com.seasonplan.lifecycle.service.PollenService;
-import com.seasonplan.lifecycle.service.SeasonPlanService;
-import com.seasonplan.security.config.SecurityConfiguration;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.infrastructure.spring.LocalUserDetails;
-import com.seasonplan.security.infrastructure.spring.SecurityCurrentActorProvider;
+import com.seasonplan.workflows.adapter.in.web.LifecycleController;
+
+import com.seasonplan.shared.application.NotFoundException;
+import com.seasonplan.work.api.WorkPreparation;
+import com.seasonplan.pollen.api.PollenOperations;
+import com.seasonplan.season.api.SeasonPlanning;
+import com.seasonplan.bootstrap.SecurityConfiguration;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.adapter.out.spring.LocalUserDetails;
+import com.seasonplan.identity.adapter.out.spring.SecurityCurrentActorProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,13 +31,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LifecycleAuthorizationSecurityTest {
     @Autowired MockMvc mvc;
     @MockBean UserDetailsService userDetailsService;
-    @MockBean SeasonPlanService plans;
-    @MockBean PollenService pollen;
-    @MockBean MagicTaskService tasks;
+    @MockBean SeasonPlanning plans;
+    @MockBean PollenOperations pollen;
+    @MockBean WorkPreparation tasks;
     private static final UUID ID = UUID.randomUUID();
 
     private LocalUserDetails principal(boolean admin, ActorRole... roles) {
         return new LocalUserDetails(UUID.randomUUID(), "test", "Test", "hash", true, admin, Set.of(roles));
+    }
+
+    @Test void reconcileRequiresGuardianAndUsesTrustedActorWithStableUnknownReference() throws Exception {
+        String route = "/pollen-operations/{id}/reconcile";
+        mvc.perform(post(route, ID).with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(post(route, ID).with(user(principal(false, ActorRole.FAIRY_PLANNER))).with(csrf())).andExpect(status().isForbidden());
+        var guardian = principal(false, ActorRole.POLLEN_GUARDIAN);
+        mvc.perform(post(route, ID).with(user(guardian))).andExpect(status().isForbidden());
+        when(pollen.reconcileOperation(eq(ID), eq(ActorRole.POLLEN_GUARDIAN), eq(guardian.userId().toString())))
+                .thenThrow(new com.seasonplan.pollen.api.PollenCommandPendingException(ID));
+        mvc.perform(post(route, ID).with(user(guardian)).with(csrf()).header("X-Actor-Id", "forged"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.operationId").value(ID.toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("POLLEN_OPERATION_PENDING"));
+        verify(pollen).reconcileOperation(ID, ActorRole.POLLEN_GUARDIAN, guardian.userId().toString());
+        verifyNoMoreInteractions(pollen);
     }
 
     @Test void deniedCommandsCannotBeElevatedByHeadersOrBody() throws Exception {

@@ -1,9 +1,20 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.lifecycle.exception.NotFoundException;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.season.application.SeasonPlanService;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.shared.domain.DomainValidationException;
+import com.seasonplan.shared.domain.TimeWindow;
+import com.seasonplan.work.application.MagicTaskService;
+import com.seasonplan.work.domain.AssignmentStatus;
+import com.seasonplan.work.domain.FairyAssignment;
+import com.seasonplan.work.domain.MagicTask;
+import com.seasonplan.work.domain.MagicTaskStatus;
+
+import com.seasonplan.audit.api.AuditLogEntry;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.shared.application.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -138,11 +149,11 @@ class MagicTaskServiceTest {
 
     @Test
     void legacyConfirmedAssignmentWithoutRealTimestampCannotCompleteTask() {
-        var repository = new com.seasonplan.lifecycle.infrastructure.fake.InMemoryMagicTaskRepository();
-        var assignments = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.FairyAssignmentRepository.class);
-        var planRepository = org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.SeasonPlanRepository.class);
-        org.mockito.Mockito.when(planRepository.findById(plan.id())).thenReturn(java.util.Optional.of(plan));
-        var service = new MagicTaskService(repository, assignments, planRepository, fixture.auditLogService(), new DirectTestTransaction(), java.time.Clock.systemUTC());
+        var repository = new com.seasonplan.work.adapter.out.fake.InMemoryMagicTaskRepository();
+        var assignments = org.mockito.Mockito.mock(com.seasonplan.work.application.port.FairyAssignmentRepository.class);
+        var planRepository = org.mockito.Mockito.mock(com.seasonplan.season.application.port.SeasonPlanRepository.class);
+        org.mockito.Mockito.when(planRepository.findById(plan.id())).thenReturn(java.util.Optional.of(fixture.seasonPlanService().get(plan.id())));
+        var service = new MagicTaskService(repository, assignments, new com.seasonplan.season.application.SeasonQueryService(planRepository), fixture.auditLogService(), new DirectTestTransaction(), java.time.Clock.systemUTC());
         MagicTask task = SeasonPlanTestFixture.validTaskDraft(); task.setId(UUID.randomUUID()); task.setSeasonPlanId(plan.id()); repository.save(task, "actor");
         var legacy = new FairyAssignment(UUID.randomUUID(), task.id(), "fairy", "LEAD", task.requiredTalent(), AssignmentStatus.CONFIRMED);
         org.mockito.Mockito.when(assignments.findByMagicTaskId(task.id())).thenReturn(java.util.List.of(legacy));
@@ -189,6 +200,43 @@ class MagicTaskServiceTest {
                 AssignmentStatus.CONFIRMED, ActorRole.TALENT_COORDINATOR, "coordinator"))
                 .isInstanceOf(NotFoundException.class);
         assertThat(tasks.assignmentsForTask(task.id())).isEmpty();
+    }
+
+    @Test
+    void aParticipantCannotBeConfirmedInOverlappingTasksAcrossSeasons() {
+        MagicTask first = createTask();
+        assign(first, "shared-fairy", AssignmentStatus.CONFIRMED);
+        SeasonPlan draft = SeasonPlanTestFixture.validPlanDraft("planner");
+        draft.setTargetTerritories(java.util.List.of("south-grove"));
+        SeasonPlan other = plans.createDraft(draft, ActorRole.FAIRY_PLANNER, "planner");
+        plans.submitForApproval(other.id(), ActorRole.FAIRY_PLANNER, "planner");
+        var reserve = fixture.pollenService().requestReservation(other.id(), 100, ActorRole.POLLEN_GUARDIAN, "pollen");
+        fixture.pollenService().confirmReservation(reserve.id(), 100, "ok", ActorRole.POLLEN_GUARDIAN, "pollen");
+        plans.verify(other.id(), ActorRole.CHIEF_GUARDIAN, "chief");
+        plans.approve(other.id(), "ok", ActorRole.CHIEF_GUARDIAN, "chief");
+        MagicTask second = tasks.createTask(other.id(), SeasonPlanTestFixture.validTaskDraft(), ActorRole.TALENT_COORDINATOR, "coordinator");
+        int auditCount = fixture.auditLogService().entriesFor(other.id()).size();
+        assertThatThrownBy(() -> assign(second, "shared-fairy", AssignmentStatus.CONFIRMED))
+                .isInstanceOf(DomainValidationException.class);
+        assertThat(tasks.assignmentsForTask(second.id())).isEmpty();
+        assertThat(fixture.auditLogService().entriesFor(other.id())).hasSize(auditCount);
+    }
+
+    @Test
+    void movingAnAssignedTaskCannotBypassScheduleValidation() {
+        MagicTask first = createTask();
+        var laterWindow = new TimeWindow(LocalDateTime.parse("2026-03-01T10:00:00"), LocalDateTime.parse("2026-03-01T11:00:00"));
+        MagicTask later = tasks.createTask(plan.id(), new MagicTask("Later", "", "SPRING_WEATHER", laterWindow, MagicTaskStatus.READY),
+                ActorRole.TALENT_COORDINATOR, "coordinator");
+        assign(first, "shared-fairy", AssignmentStatus.CONFIRMED);
+        assign(later, "shared-fairy", AssignmentStatus.CONFIRMED);
+        int auditCount = fixture.auditLogService().entriesFor(plan.id()).size();
+        assertThatThrownBy(() -> tasks.updateTask(later.id(), new MagicTask("Later", "", "SPRING_WEATHER", first.timeWindow(), MagicTaskStatus.READY),
+                ActorRole.TALENT_COORDINATOR, "coordinator")).isInstanceOf(DomainValidationException.class);
+        assertThat(tasks.get(later.id()).timeWindow()).isEqualTo(laterWindow);
+        assertThat(fixture.auditLogService().entriesFor(plan.id())).hasSize(auditCount);
+        assertThat(tasks.updateTask(later.id(), new MagicTask("Renamed", "", "SPRING_WEATHER", laterWindow, MagicTaskStatus.READY),
+                ActorRole.TALENT_COORDINATOR, "coordinator").title()).isEqualTo("Renamed");
     }
 
     private MagicTask createTask() {

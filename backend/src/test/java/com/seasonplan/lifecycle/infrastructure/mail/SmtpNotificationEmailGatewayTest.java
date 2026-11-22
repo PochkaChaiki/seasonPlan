@@ -1,7 +1,10 @@
 package com.seasonplan.lifecycle.infrastructure.mail;
 
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.lifecycle.config.NotificationDeliveryConfiguration;
+import com.seasonplan.notification.adapter.out.mail.ConfiguredNotificationRecipientResolver;
+import com.seasonplan.notification.adapter.out.mail.SmtpNotificationEmailGateway;
+
+import com.seasonplan.notification.api.NotificationOutbox;
+import com.seasonplan.bootstrap.NotificationDeliveryConfiguration;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Test;

@@ -1,9 +1,11 @@
 package com.seasonplan.lifecycle.infrastructure.http;
 
-import com.seasonplan.lifecycle.exception.NotFoundException;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException;
-import com.seasonplan.lifecycle.domain.DomainValidationException;
-import com.seasonplan.lifecycle.domain.PollenReservationStatus;
+import com.seasonplan.pollen.adapter.out.http.RestPollenTreeClient;
+
+import com.seasonplan.shared.application.NotFoundException;
+import com.seasonplan.pollen.api.PollenTreeUnavailableException;
+import com.seasonplan.shared.domain.DomainValidationException;
+import com.seasonplan.pollen.domain.PollenReservationStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,7 +69,7 @@ class RestPollenTreeClientTest {
         server.expect(requestTo(BASE + "/season-plans/" + PLAN + "/reservations/latest"))
                 .andRespond(withSuccess(reservation("CONFIRMED", "1200"), MediaType.APPLICATION_JSON));
         var first = tree.findById(ID).orElseThrow();
-        first.reject("local mutation", "local");
+        assertThatThrownBy(() -> first.reject("local mutation", "local")).isInstanceOf(com.seasonplan.shared.domain.DomainValidationException.class);
         var second = tree.findLatestBySeasonPlanId(PLAN).orElseThrow();
         assertThat(second.status()).isEqualTo(PollenReservationStatus.CONFIRMED);
         assertThat(second.confirmedAmount()).isEqualTo(1200);
@@ -251,32 +253,20 @@ class RestPollenTreeClientTest {
         assertThatThrownBy(() -> tree.confirmReservation(ID, 1200, "ok", "guardian")).isInstanceOf(PollenTreeUnavailableException.class);
     }
 
-    @Test
-    void identicalConfirmationReplaySendsCompleteStableDecisionPayload() {
-        server.expect(requestTo(BASE + "/reservations/" + ID))
-                .andRespond(withSuccess(reservation("CONFIRMED", "1200"), MediaType.APPLICATION_JSON));
-        server.expect(requestTo(BASE + "/reservations/" + ID + "/confirm")).andExpect(method(HttpMethod.POST))
-                .andExpect(content().json("{\"confirmedAmount\":1200,\"comment\":\"ok\",\"actorId\":\"guardian\"}", true))
+    @Test void identicalConfirmationReplayUsesOnlyGet() {
+        server.expect(requestTo(BASE + "/reservations/" + ID)).andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(reservation("CONFIRMED", "1200"), MediaType.APPLICATION_JSON));
         assertThat(tree.confirmReservation(ID, 1200, "ok", "guardian").confirmedAmount()).isEqualTo(1200);
         server.verify();
     }
-
-    @Test
-    void identicalRejectionReplaySendsCompleteStableDecisionPayload() {
-        server.expect(requestTo(BASE + "/reservations/" + ID))
-                .andRespond(withSuccess(reservation("REJECTED", "null"), MediaType.APPLICATION_JSON));
-        server.expect(requestTo(BASE + "/reservations/" + ID + "/reject")).andExpect(method(HttpMethod.POST))
-                .andExpect(content().json("{\"comment\":\"ok\",\"actorId\":\"guardian\"}", true))
+    @Test void identicalRejectionReplayUsesOnlyGet() {
+        server.expect(requestTo(BASE + "/reservations/" + ID)).andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(reservation("REJECTED", "null"), MediaType.APPLICATION_JSON));
         assertThat(tree.rejectReservation(ID, "ok", "guardian").status()).isEqualTo(PollenReservationStatus.REJECTED);
         server.verify();
     }
-
-    @Test
-    void confirmationReplayWithNullCommentPreservesPayloadAndDoesNotAutomaticallyRetryTimeout() {
-        server.expect(requestTo(BASE + "/reservations/" + ID))
-                .andRespond(withSuccess(reservation("CONFIRMED", "1200").replace("\"ok\"", "null"), MediaType.APPLICATION_JSON));
+    @Test void firstConfirmationWithNullCommentDoesNotAutomaticallyRetryTimeout() {
+        pending();
         server.expect(requestTo(BASE + "/reservations/" + ID + "/confirm")).andExpect(method(HttpMethod.POST))
                 .andExpect(content().json("{\"confirmedAmount\":1200,\"comment\":null,\"actorId\":\"guardian\"}", true))
                 .andRespond(withException(new SocketTimeoutException("secret")));

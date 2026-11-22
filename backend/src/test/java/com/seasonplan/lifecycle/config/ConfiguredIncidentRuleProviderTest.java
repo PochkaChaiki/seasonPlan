@@ -1,6 +1,9 @@
-package com.seasonplan.lifecycle.config;
+package com.seasonplan.bootstrap;
 
-import com.seasonplan.lifecycle.domain.MagicIncident;
+import com.seasonplan.bootstrap.LifecycleConfiguration;
+import com.seasonplan.response.adapter.out.configuration.ConfiguredIncidentRuleProvider;
+
+import com.seasonplan.response.domain.MagicIncident;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 

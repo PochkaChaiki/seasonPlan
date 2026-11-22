@@ -1,6 +1,13 @@
 package com.seasonplan.lifecycle.domain;
 
-import com.seasonplan.security.identity.ActorRole;
+import com.seasonplan.season.domain.ApprovalCondition;
+import com.seasonplan.season.domain.ChecklistItem;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
+import com.seasonplan.shared.domain.TimeWindow;
+
+import com.seasonplan.identity.api.ActorRole;
 
 import org.junit.jupiter.api.Test;
 

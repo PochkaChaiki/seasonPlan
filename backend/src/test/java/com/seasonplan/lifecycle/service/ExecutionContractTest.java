@@ -1,6 +1,9 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.domain.RitualSession;
+import com.seasonplan.monitoring.application.port.MetricRuleProvider;
+import com.seasonplan.ritual.api.RitualReadinessChecker;
+
+import com.seasonplan.ritual.domain.RitualSession;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

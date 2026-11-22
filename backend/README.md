@@ -1,244 +1,143 @@
 # SeasonPlan backend
 
-Java 17 / Spring Boot 3.2 / Maven. The application core uses cohesive services
-rather than one package/service per use case. See the
-[service consolidation decision](../docs/decisions/0002-cohesive-lifecycle-services.md)
-for merge choices, the [package ownership decision](../docs/decisions/0003-responsibility-owned-contracts-and-infrastructure.md)
-for contract placement, the [security boundary decision](../docs/decisions/0004-security-feature-and-lifecycle-authorization.md)
-for identity and authorization ownership, the [execution implementation guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
-for required configuration and legacy-data rollout, and [`CHANGELOG.md`](CHANGELOG.md)
-for verification and remaining integration work.
+Java 17, Spring Boot 3.2, Maven and PostgreSQL 14. The backend remains one application and one Maven artifact. The target design is [ARCH.md](../ARCH.md). This refactor does not introduce microservices.
 
-## Package layout
+## Capability packages
 
-Under `src/main/java/com/seasonplan/lifecycle`:
+Production sources are under `src/main/java/com/seasonplan`:
 
-```text
-domain/                         Entities, immutable snapshots and domain rules
-service/
-  SeasonPlanService.java        Drafting, validation, review, checklist and ritual readiness
-  MagicTaskService.java         Task preparation, fairy assignments and schedule checks
-  PollenService.java            Sole pollen reservation/consumption integration boundary
-  RitualService.java            Ritual attempts/events and successful plan activation
-  MonitoringService.java        Measurements, deviation responses and critical warnings
-  IncidentResponseService.java  Incidents, corrective actions and overdue escalation
-  SeasonReportService.java      Report snapshots, approval/completion, export and archival
-  AuditLogService.java          Immutable audit append/read operations
-  ServiceSupport.java           Package-private command lookup/copy helpers
-  ValidationSupport.java        Package-private field validation helpers
-  ...                           Service-owned transaction, rule and report contracts
-authorization/                  Shared operation permission matrix and resource-access policy
-repository/                     Framework-independent persistence/query interfaces
-integration/pollen/             Pollen Tree client contract and availability failure
-integration/calendar/           Natural Calendar client contract
-notification/                   Outbox submission, delivery and recipient contracts
-exception/                      API-neutral lookup failures
-api/                            REST controllers and API models
-infrastructure/jdbc/            JDBC repositories, transactions, outbox/inbox and delivery worker
-infrastructure/http/            External Pollen Tree HTTPS implementation
-infrastructure/mail/            SMTP implementation and configured address resolver
-infrastructure/fake/            Explicit educational integration fakes
-config/                         Lifecycle/integration/notification Spring composition
-```
+| Package | Responsibility |
+|---|---|
+| `season` | Plans, lifecycle and plan validation policies |
+| `pollen` | Reservation values, resource rules and the external Pollen Tree boundary |
+| `work` | Tasks, assignments, talent compatibility and scheduling policies |
+| `ritual` | Sessions, launch/completion decisions and readiness policies |
+| `monitoring` | Metric values, replay checks, pinned-rule selection and reaction specifications |
+| `response` | Incidents, corrective actions, resolution and escalation rules |
+| `reporting` | Immutable report versions, KPI, source snapshots and approval/archive rules |
+| `reference` | Execution-rule snapshots, metric catalog and seasonal requirement catalog |
+| `identity` | Account domain, public actor contracts and authentication adapters |
+| `audit` | Public audit contract, replay identity and append-only persistence |
+| `notification` | Outbox/inbox contracts and JDBC/mail delivery adapters |
+| `workflows` | Cross-capability coordination and existing lifecycle REST endpoints |
+| `bootstrap` | Spring composition and security configuration |
+| `shared` | Common time/validation values and technical support |
 
-Security remains a sibling feature rather than being merged wholesale into
-lifecycle. Under `src/main/java/com/seasonplan/security`:
+The old production `lifecycle` and `security` packages are removed. Some test packages keep their old names during migration; these are not production forwarding wrappers.
+
+A capability uses these layers where needed:
 
 ```text
-identity/                       Public framework-neutral ActorRole, CurrentActor and provider
-api/                            Auth/admin controllers and account/access error mapping
-domain/                         Managed account values and username rules
-service/                        Core account service, validated commands, hash/transaction contracts
-repository/                     UserAccountRepository persistence contract
-exception/                      Neutral account and denied-access failures
-infrastructure/jdbc/            Account SQL and database-backed authentication lookup
-infrastructure/spring/          Principal/context, auth handlers, password and transaction adapters
-config/                         Filter chain, account composition and dev-only bootstrap
+<capability>/
+  api/                       Public Java contracts
+  domain/                    Entities, value objects and pure decision policies
+  application/               Command/query orchestration
+    port/                    Required persistence and integration contracts
+  adapter/
+    in/web/                  REST boundary
+    out/persistence/         JDBC implementation
+    out/http/                External HTTP implementation
+    out/fake/                Explicit educational adapters
 ```
 
-Security has no dependency on lifecycle. Lifecycle-specific permissions belong to
-`lifecycle/authorization`, not to the authentication filter chain. Lifecycle API
-role selection and service guards use that same policy. Ownership checks execute
-at the service boundary; business transitions still belong to domain/application
-logic. An administrator flag is separate from the seven business roles and never
-grants implicit lifecycle permissions.
+Do not create empty packages for unimplemented features. Not every capability currently has a complete public API. **Capability isolation passed review 8 for the inspected boundary:** owner query/command contracts now hide foreign repositories and mutable aggregates. Public facades copy immutable input/output facts. Workflow implementations collect resource/readiness evidence through public ports; season does not import pollen or ritual. Package separation alone is not release acceptance. See the [refactor decision](../docs/decisions/0006-capability-domains-and-use-case-orchestration.md).
 
-Account commands receive the trusted current actor, not a Spring principal or a
-user-selected target UUID. The core uses repository/password/transaction contracts;
-credential changes lock and verify the current stored hash before atomic updates.
-The controller invalidates its session only after success. Existing lifecycle
-role/actor-ID signatures remain trusted internal application contracts; the API
-binds both to its authenticated actor, not request-body/header claims.
+## Domain decisions and application orchestration
 
-**Deployment requires a one-time sign-in for old sessions** because serialized
-principal/role class names moved. Follow the coordinated, operator-controlled
-[session rollout procedure](../docs/architecture/ST-01-authentication-and-rbac.md#security-package-refactor-rollout).
-No session/account data is deleted automatically.
+Business decisions now have explicit domain owners:
 
-Dependency direction is **API/configuration → services → domain/contracts**;
-infrastructure implements repository, integration and notification contracts.
-Services and contracts are framework-independent; neither imports concrete
-infrastructure. Domain code uses the JDK and the public neutral identity role
-catalog; it does not depend on service, policy or infrastructure implementations. Architecture tests protect these boundaries without a new framework or
-Maven module.
+- `SeasonPlanPolicy`: required data, calendar findings, seasonal-window conflicts, catalog membership, resource-review decisions and readiness errors.
+- `TaskPreparationPolicy`: task validity and immutability, categories, participation/talent evidence, confirmed participants and schedule conflicts.
+- `RitualReadinessPolicy`: required categories and roles, completed work, confirmed participants, resources, checklist conditions and critical blockers.
+- `RitualPolicy`: attempt selection, readiness/event evidence, completion outcomes and emergency diagnostics/failure rules.
+- `ClimateMetric` and `MetricRulePolicy`: deviations, metric units, observation replay identity and pinned target/rule selection.
+- `MetricReactionPolicy`: incident/correction specifications, response deadlines and alert recipients.
+- `IncidentResponsePolicy`: incident scope, resolution guards, escalation level and recipient-role selection.
+- `ReportPolicy` and `SeasonReport`: canonical snapshots, source changes, version selection, completion blockers and KPI.
+- `AccountValidation` and `AccountAdministrationPolicy`: account fields, administrator authority and credential evidence.
+- `PollenReservation`, `PollenCapacityPolicy` and `PollenConsumptionPolicy`: transition/replay invariants, positive quantities, capacity checks and consumption warnings.
+- `AuditReplayIdentity`: exact replay versus conflicting audit identity.
 
-Interfaces live with their responsibility, not in a global interface directory.
-For example, `repository/SeasonPlanRepository` is implemented by
-`infrastructure/jdbc/JdbcSeasonPlanRepository`; `integration/pollen/PollenTreeClient`
-is implemented by `infrastructure/http/RestPollenTreeClient`.
-`CommandTransaction`, `RitualReadinessChecker`,
-`MetricRuleProvider`, `IncidentRuleProvider`, `RequiredTaskResults`,
-`CatalogVersionProvider` and `SeasonReportExporter` are service-owned contracts in
-`service`. The related `Readiness` and `MetricRule` records remain nested in their
-owning interfaces. There are no `application`, `port`, `shared`, `adapter` or
-top-level `persistence` source packages.
+Policies take supplied facts. They do not query repositories, call HTTP, access Spring or write records. Application methods obtain the actor, start the transaction, load current facts, call the domain, persist the result and request side effects. Transport validation, SQL mapping, cryptographic hashing and delivery retry mechanics stay outside the business domain.
 
-## Current runtime versus new core
+The seasonal requirement table was moved unchanged from the old configuration adapter to the explicitly labelled educational `SeasonalRequirementsCatalog`. It is not a newly approved business catalog. Plan creation still requires complete configured rule versions, tolerances, owners, response times, event requirements and incident rules. Each plan stores its selected execution snapshot. Missing legacy metadata fails closed; it is not backfilled with guessed values.
 
-Review uses `POST /season-plans/{id}/verify` (Chief Guardian) before approval.
-Verify, approve and return save the plan, audit entry and notification event in a
-single JDBC command transaction. A scheduled worker delivers committed events
-independently per recipient/channel. IN_APP writes an idempotent durable inbox row.
-EMAIL uses configurable SMTP and otherwise fails closed for retry. Delivery uses
-exponential retry until 24 hours after the event, then records EXPIRED. Approval accepts immutable typed conditions. Until a verified-evidence
-implementation exists, every condition is an unmet readiness blocker; manually
-completing a checklist item cannot satisfy it. Review history is readable by the
-Chief Guardian or the plan creator with the Fairy Planner role; other roles are
-denied until a source-backed visibility policy exists. Review validation rechecks
-the calendar and overlapping applicable plans by normalized territory and window.
+## Public interfaces and compatibility
 
-### Review notification delivery
+- Controllers use `SeasonPlanning`, `PollenOperations`, `WorkPreparation` and public identity contracts.
+- Audit consumers use `audit.api.AuditTrail`, not an audit repository or concrete implementation.
+- Existing REST paths, JSON shapes and frontend API calls remain compatible. The `/api/v1` paths in ARCH.md remain a proposed API outline, not a breaking route migration in this change.
+- The Pollen Tree is the resource authority. The application does not write a local stock balance. The educational fake simulates provider state behind the same external port.
+- Reservation request/confirmation/rejection save immutable pollen intent before remote mutation and a receipt before local audit/application. Provider correlation is generated independently of the caller's requestId. Missing requestId uses a stable application key scoped to actor, plan material revision and amount; send an explicit new UUID for a deliberate new identical request.
+- An uncertain reservation operation returns HTTP 503 with `code=POLLEN_OPERATION_PENDING` and `operationId`. A `POLLEN_GUARDIAN` can call `POST /api/pollen-operations/{operationId}/reconcile` with the normal session and CSRF token after restart or client-key loss. This command only performs safe provider reads and local completion; it never repeats a provider POST or changes the original actor/payload. Exact terminal decision GETs can reconcile decisions. Request lookup is optional: the educational fake supports it, but the unverified REST provider contract does not, so such unknown requests remain blocked. No manual success override is provided.
+- Consumption also uses a durable intent and independently committed receipt (migration 018). It resolves the notification outbox before provider access, rejects ambient transactions, and performs spending without a season lock or database transaction. Local audit, warnings and completion commit together. Known receipts survive local failure; retry returns the original event snapshot without another provider mutation. New spending still requires ACTIVE status and a confirmed agreement. Consumption evidence never creates a reservation funding binding.
+- Consumption preserves the provider's existing `(planId, clientEventId)` identity. Exact historical event lookup can prevent a second spend under a pre-journal key; a changed historical amount is rejected. Existing audit identity and provenance are not rewritten. Conflicting historical actor/audit evidence fails closed. The educational fake supports exact event lookup and authoritative pre-dispatch absence; the proposed REST adapter does not. Therefore the owner does not POST consumption through that unverified adapter. No provider lookup route or exactly-once guarantee is assumed. Absence after a dispatch claim never permits redispatch.
+- `PollenOperations.reconcileConsumption(operationId, role, actorId)` recovers using exact event reads or local completion and preserves the original intent actor. It uses the existing consumption permission. Consumption remains a core-only Java capability; no execution HTTP route or browser recovery screen is claimed. Unknown or quarantined consumption blocks new resource mutations, settled report usage and funding evidence. Accepted mismatched/ineligible receipts remain durable and quarantined; no manual success override or unspecified season recovery is provided.
+- [Independent review 9](../docs/reviews/architecture-review-pass-9.md) closes AR-03/AR-04 for the integrated implementation: zero HIGH and zero CRITICAL findings in the reviewed safety scope. This is not full feature completion or production-readiness approval.
+- Default/production calendar validation fails closed. The permissive calendar fake is allowed only under `dev`/`test`, with `prod` absent. No real calendar adapter is claimed.
+- A critical incident enters `EMERGENCY` in the incident/metric transaction, with its audit record. Diagnostics and mitigation remain available. An existing running ritual can record diagnostic events and explicit failure, but cannot activate a season in emergency. Recovery is not inferred from severity reduction or incident closure.
 
-`NotificationDeliveryGateway` is replaceable. The default `JdbcNotificationDeliveryGateway`
-writes IN_APP to `notification_inbox` (one row per event id and recipient).
-Authenticated `GET /notifications` reads only the current server-session user's
-inbox, at most 50 entries ordered newest first, with event ID as a stable tie-breaker.
-The Dashboard displays these messages and provides a refresh control; no mark-read
-workflow is implemented. EMAIL uses `SmtpNotificationEmailGateway`, with mandatory
-STARTTLS (TLS 1.2/1.3), hostname verification and 3-second connect/read/write timeouts. SMTP is
-not live-verified. Without complete configuration or a valid recipient mapping,
-EMAIL fails closed and is retried; it is never marked delivered by a fake.
-SMTP itself cannot guarantee exactly-once delivery if a process fails after send.
-The gateway includes `X-SeasonPlan-Event-ID`; the downstream provider/consumer must
-deduplicate that event id per recipient. The temporary configured UUID-to-email
-resolver is replaceable by an identity directory; it does not derive an address
-from a username. Use secrets management for credentials and only deployment-owned
-addresses. For example, an application configuration may contain:
+## Transactions and persistence
 
-```yaml
-notifications:
-  smtp:
-    host: smtp.example.invalid
-    port: 587
-    username: ${SMTP_USERNAME}
-    password: ${SMTP_PASSWORD}
-    from: sender@example.invalid
-    recipients:
-      "11111111-1111-1111-1111-111111111111": planner@example.invalid
-```
+`CommandTransaction` serializes commands using the season row lock. Window-conflict decisions also use a shared transaction-scoped PostgreSQL advisory lock. Confirmed participant assignment and task moves acquire participant-scope locks in sorted order, then check all relevant seasons. Domain policies evaluate the facts after those locks are held.
 
-The worker starts after 60 seconds and polls every 30 seconds by default; override
-`notifications.initial-delay-ms` and `notifications.poll-delay-ms` as needed.
-Per-channel delivery state prevents a failed email from blocking IN_APP. The
-outbox is committed before the separate worker runs; a delivery failure cannot
-roll back the review decision.
+State, audit and outbox changes use the same local command transaction. Migration `014-emergency-and-audit-truncate.sql` adds the fixed SRS status set, emergency audit action and database TRUNCATE rejection for audit data. Existing migrations were not rewritten.
 
-Existing reservation REST routes use the unified `PollenService`. Its consumption
-logic remains executable and unit-tested but has no consumption REST route or
-complete audit/outbox persistence/delivery slice. Its separate consumption outbox
-is deliberately unconfigured, so it fails before external spending.
-Ritual, monitoring and incident response now have real runtime composition:
+Migration `015-runtime-database-privileges.sql` separates runtime permissions from migration ownership. Compose provisions a restricted login through a NOLOGIN grant role. Runtime can SELECT/INSERT audit records, but cannot change them, alter guards, assume owner roles or create shadow tables. Spring Liquibase uses separate credentials. See the [database identity rollout](../docs/operations/database-runtime-identity.md), especially the existing-volume steps. Do not delete a volume to apply this change.
 
-- `PinnedMetricRuleProvider` resolves plan targets and pinned metric settings.
-- `ConfiguredIncidentRuleProvider` resolves the explicitly selected incident catalog.
-- `ComputedRitualReadinessChecker` checks actual tasks, confirmed assignments,
-  required roles, authoritative pollen, manual flags and critical incidents.
-- `JdbcMagicIncidentRepository`, `JdbcCorrectionActionRepository`,
-  `JdbcRitualSessionRepository` and `JdbcClimateMetricRepository` persist their
-  domain state through forward migrations 012/013 and PostgreSQL constraints.
+This does **not** establish privileged administrator immutability or durable recovery of remote mutations. Protect migration credentials separately; a privileged DBA can still change schema and data.
 
-These are wired into their consuming services, not just supplied by test lambdas.
-**Configure versioned execution and incident rules before creating new plans.**
-No business defaults are supplied. New plans pin an immutable execution snapshot
-atomically with creation/audit. All three metric targets must be supplied on the
-plan. Existing incomplete metadata is preserved and fails closed, not guessed.
-See the [configuration and safe rollout guide](../docs/architecture/EXECUTION_RULES_AND_PERSISTENCE.md)
-and [ADR 0005](../docs/decisions/0005-configured-execution-and-durable-repositories.md).
+## Session rollout after the package move
 
-The existing task API accepts additive `category` metadata. Complete compatible,
-timestamped confirmed assignments before completing their task; READY is not
-COMPLETED. Readiness and ritual execution share the checker. Per-plan transactions
-also protect task updates/audit and assignments; permitted ongoing task work
-remains available after readiness/activation, including during critical incidents.
+The serialized Spring principal class moved from `com.seasonplan.security.infrastructure.spring.LocalUserDetails` to `com.seasonplan.identity.adapter.out.spring.LocalUserDetails`. Serialized role class names also changed.
 
-No new execution REST routes, UI, sensors or escalation scheduler are included.
-Reporting still remains core-only. Remaining integration constraints include:
+Before deployment:
 
-- `CommandTransaction` serializes plan commands and atomically commits state,
-  repositories, audit and outbox; its creation operation does not lock a nonexistent row.
-- Approval-condition evidence is still unverified and blocks readiness.
-- Metric rules use the persisted snapshot; future report catalog projection must
-  use the same plan selection rather than whichever catalog is currently newest.
-- `RequiredTaskResults` must project all **required** work and missing required
-  categories; it must not mistake the legacy preparation status `READY` for
-  completion.
-- All application pollen access follows **application service → `PollenService` →
-  `PollenTreeClient` → `RestPollenTreeClient`** (or explicit dev/test fake).
-  `SeasonPlanService` and `SeasonReportService` never use the external client directly. `PollenService` owns our read/command API and business
-  orchestration; `RestPollenTreeClient` is only the replaceable HTTPS adapter.
-  Public facade results are client-independent domain values. Architecture tests
-  protect this boundary. There is no local reservation repository or projection persistence. Only our
-  immutable audit and report data remain local; the old migration's unused table
-  is retained without writes to avoid silently deleting historical data.
-  Request, decision and consumption replays must be idempotent at the provider;
-  audit/outbox effects are deduplicated locally. External changes cannot be
-  rolled back by our database. See the [Pollen integration handoff](../docs/architecture/POLLEN_TREE_EXTERNAL_SERVICE.md)
-  for Vision/SRS requirements, the simplified design, proposed contract and limits.
-- Repositories must enforce the uniqueness/immutability contracts in their Javadoc.
-  Outbox delivery, retries and recipient resolution belong to adapters.
-- Exporters render only approved report snapshots. The core supplies the format,
-  versioned filename and content type; it does not fabricate PDF/HTML content.
+1. Stop old application instances. Do not mix old and new principal classes against the same session store.
+2. Use the operator-approved session invalidation/expiry procedure and require a new sign-in. The application does not automatically delete session or account data.
+3. Start the new application and verify login, logout, CSRF and role authorization.
 
-The schema now includes the requested execution persistence and extended audit
-actions. The legacy `season_reports` table is still **not** a compatible adapter
-for the new approved-report snapshots; reporting needs its own forward migration,
-implementation and integration tests. Role-labelled notifications also need
-appropriate identity-recipient expansion before individual inbox receipt can be
-claimed; writing an outbox event is not proof of delivery.
+Do not delete users, credentials, business records or audit data as a session migration step. If uninterrupted old-session compatibility is required, design and test an explicit serialization migration before deployment.
 
-## Tests on Windows PowerShell
+## Verification on Windows
 
-Select an installed **JDK 17** before invoking Maven; the host's default Java may
-be newer. This changes only the current PowerShell process:
+Select an actual JDK 17. Do not use the host default Java 24 as evidence of Java 17 runtime testing.
 
 ```powershell
 $env:JAVA_HOME = 'C:\path\to\jdk-17'
 mvn.cmd -version
 mvn.cmd -f .\backend\pom.xml clean verify
+npm.cmd --prefix .\frontend test -- --run
+npm.cmd --prefix .\frontend run lint
+npm.cmd --prefix .\frontend run build
 ```
 
-The full suite requires a running Docker daemon for
-`PostgresLifecyclePersistenceTest`, `PostgresAccountAdministrationTest` and
-`PostgresExecutionRepositoriesTest`. On this host's Docker 29, Testcontainers 1.20.4
-needs the following test-process-only API compatibility override:
+The PostgreSQL tests require Docker. For this host's Docker API compatibility with Testcontainers 1.20.4:
 
 ```powershell
 $env:DOCKER_API_VERSION = '1.44'
 mvn.cmd -f .\backend\pom.xml '-Dapi.version=1.44' clean verify
 ```
 
-To run the remaining tests explicitly when Docker is unavailable
-(not a substitute for the PostgreSQL suite):
+The agent also verified the backend using the cached `seasonplan-backend:latest` development image with Temurin 17.0.17, Maven, the Docker socket and PostgreSQL 14 test containers. Native FreeBSD deployment and live external APIs were not verified.
 
-```powershell
-mvn.cmd -f .\backend\pom.xml '-Dtest=!Postgres*Test' clean verify
-```
+Architecture tests check capability locations, framework-free cores, public controller contracts, audit isolation, pollen integration access and selected domain-decision placement. Global source guards reject foreign repository access. `CapabilityDependencyTest` parses Java syntax to check the complete capability graph, including API and fully qualified references, and rejects cycles and foreign implementation/policy access. Root application wiring belongs to bootstrap. Explicit immutable values declared by public contracts are allowed; mutable owner aggregates are not. Pure `DomainPoliciesTest` and `PollenReservationInvariantTest` exercise business rules without repositories or Spring. `RuntimeDatabasePrivilegesTest` checks actual PostgreSQL privilege denials, including temporary-table shadowing and owner-role escalation; account persistence also runs through the real Spring runtime datasource with separate Liquibase credentials. Existing API, RBAC, transaction and PostgreSQL tests remain in place.
 
-Service unit tests and deterministic execution/report port fakes live under
-`src/test/java/com/seasonplan/lifecycle/service`. The replaceable
-`infrastructure/fake/FakePollenTreeClient` is also available to explicitly configured
-dev/test runtimes, never production. `AllowingNaturalCalendarClient` remains the
-existing permissive educational stub, not a verified calendar integration or proof
-of launch readiness. Mock transport and unit tests do not establish live
-provider compatibility, database rollback or notification delivery; PostgreSQL
-audit-retry and no-local-reservation-write tests require Docker. CI selects Temurin 17 and runs the full suite.
+## Remaining scope and risks
+
+The [sixth review](../docs/reviews/architecture-review-pass-6.md) ended the initial phase with **BLOCK**. Three HIGH findings remained: AR-01 (capability ownership), AR-03 (revision-bound funding) and AR-04 (durable external operations). AR-08 and the reviewed AR-17 gaps were corrected. The user initially authorized six further review/fix passes (7–12), then limited the latest continuation to **one iteration maximum**. This continuation stopped after its single verification/review checkpoint. Review 9 met the zero-HIGH/CRITICAL gate for the reviewed integrated safety repairs.
+
+The [eighth review](../docs/reviews/architecture-review-pass-8.md) closed AR-01 for the reviewed ownership/API/dependency boundary. At that checkpoint, AR-03 and AR-04 remained HIGH and the verdict was BLOCK.
+
+The [ninth review](../docs/reviews/architecture-review-pass-9.md) independently closes AR-03 and AR-04 and retains AR-01/08/17 as closed. Its verdict is **ACCEPT for the reviewed safety scope**, with zero HIGH/CRITICAL findings. Final verification: **562 Java 17 backend tests**, **54 frontend tests**, both builds passed; lint has zero errors and one existing warning. Retained MEDIUM/LOW findings and integration/deployment limits remain; no further iteration was started.
+
+Known remaining work includes:
+
+- Preserve the independently reviewed owner-query/facade/cycle boundary and resource-safety guarantees during later authorized work.
+- Address retained MEDIUM/LOW findings separately; this review does not close their whole inventory.
+- Verify real-provider capabilities before replacing unsupported reconciliation; keep uncertain outcomes blocked without unsafe replay.
+- Verify the restricted runtime identity and controlled credential rollout on the deployed database; existing volumes are not automatically reprovisioned.
+- Preserve immutable parameter history and reject stale browser edits.
+- Complete authoritative reservation reload, task category/completion UI and role-to-user alert delivery.
+
+Reporting persistence/export composition, execution REST/UI routes, live sensors and the escalation scheduler remain incomplete vertical slices. Consumption remains core-only and fails before spending when its separate outbox is unconfigured. Do not claim these features are production-ready merely because their domain/application tests exist.

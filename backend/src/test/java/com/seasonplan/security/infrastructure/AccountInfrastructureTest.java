@@ -1,10 +1,10 @@
 package com.seasonplan.security.infrastructure;
 
-import com.seasonplan.security.exception.UserAdministrationException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.infrastructure.jdbc.JdbcUserAccountRepository;
-import com.seasonplan.security.infrastructure.spring.SpringAccountTransaction;
-import com.seasonplan.security.infrastructure.spring.SpringPasswordHasher;
+import com.seasonplan.identity.api.UserAdministrationException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.adapter.out.persistence.JdbcUserAccountRepository;
+import com.seasonplan.identity.adapter.out.spring.SpringAccountTransaction;
+import com.seasonplan.identity.adapter.out.spring.SpringPasswordHasher;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;

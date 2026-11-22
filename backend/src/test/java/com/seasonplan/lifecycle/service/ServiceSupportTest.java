@@ -1,8 +1,14 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.security.identity.ActorRole;
+import com.seasonplan.reference.api.MetricDefinition;
+import com.seasonplan.response.domain.MagicIncident;
+import com.seasonplan.season.application.ServiceSupport;
+import com.seasonplan.season.domain.ApprovalCondition;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
 
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.identity.api.ActorRole;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -23,14 +29,14 @@ class ServiceSupportTest {
             env.setProperty(key + "tolerance", "2"); env.setProperty(key + "owner", "owner"); env.setProperty(key + "response-seconds", "60");
         }
         var plan = SeasonPlan.createDraft(UUID.randomUUID(), "SPRING", List.of(), List.of(), Map.of(), Map.of(), List.of(), "actor", Instant.EPOCH);
-        plan.pinExecutionRules(new com.seasonplan.lifecycle.config.ConfiguredExecutionRules(env).snapshot());
+        plan.pinExecutionRules(new com.seasonplan.reference.adapter.out.configuration.ConfiguredExecutionRules(env).snapshot());
         assertThat(ServiceSupport.copy(plan).executionRules()).isEqualTo(plan.executionRules());
     }
 
     @Test void copyPreservesApprovalConditions() {
         var condition = new ApprovalCondition("weather", "Weather", "Evidence", ActorRole.TALENT_COORDINATOR);
         var plan = SeasonPlan.rehydrate(UUID.randomUUID(), "SPRING", List.of("north"), List.of(), Map.of(), Map.of(),
-                SeasonPlanStatus.APPROVED, "conditional", List.of(), "planner", "chief", Instant.EPOCH, Instant.EPOCH, List.of(condition));
+                SeasonPlanStatus.APPROVED, "conditional", List.of(), "planner", "chief", Instant.EPOCH, Instant.EPOCH, List.of(condition), new com.seasonplan.season.domain.MaterialRevisionStamp(0, "system:migration", java.time.Instant.EPOCH, com.seasonplan.season.domain.MaterialRevisionStamp.Reason.LEGACY_BASELINE));
         assertThat(ServiceSupport.copy(plan).approvalConditions()).containsExactly(condition);
     }
 }

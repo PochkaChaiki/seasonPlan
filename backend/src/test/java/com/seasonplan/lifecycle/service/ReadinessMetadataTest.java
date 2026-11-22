@@ -1,6 +1,10 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.work.domain.AssignmentStatus;
+import com.seasonplan.work.domain.FairyAssignment;
+import com.seasonplan.work.domain.MagicTask;
+import com.seasonplan.work.domain.MagicTaskStatus;
+
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.UUID;

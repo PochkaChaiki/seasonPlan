@@ -1,11 +1,13 @@
 package com.seasonplan.lifecycle.api;
 
-import com.seasonplan.security.identity.CurrentActorProvider;
-import com.seasonplan.lifecycle.repository.NotificationInboxRepository;
-import com.seasonplan.security.config.SecurityConfiguration;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.lifecycle.domain.NotificationInboxItem;
+import com.seasonplan.notification.adapter.in.web.NotificationController;
+
+import com.seasonplan.identity.api.CurrentActorProvider;
+import com.seasonplan.notification.application.port.NotificationInboxRepository;
+import com.seasonplan.bootstrap.SecurityConfiguration;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.notification.api.NotificationInboxItem;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

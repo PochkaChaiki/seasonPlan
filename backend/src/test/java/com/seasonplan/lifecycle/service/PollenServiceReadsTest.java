@@ -1,12 +1,16 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.repository.SeasonPlanRepository;
-import com.seasonplan.lifecycle.repository.AuditLogRepository;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.pollen.domain.PollenReservation;
+import com.seasonplan.pollen.domain.PollenUsage;
+import com.seasonplan.season.api.CommandTransaction;
 
-import com.seasonplan.lifecycle.service.AuditLogService;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeUnavailableException;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.season.application.port.SeasonPlanRepository;
+import com.seasonplan.audit.application.port.AuditLogRepository;
+import com.seasonplan.pollen.application.port.PollenTreeClient;
+
+import com.seasonplan.audit.application.AuditLogService;
+import com.seasonplan.pollen.api.PollenTreeUnavailableException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -23,7 +27,7 @@ class PollenServiceReadsTest {
     private final SeasonPlanRepository plans = mock(SeasonPlanRepository.class);
     private final AuditLogRepository audits = mock(AuditLogRepository.class);
     private final CommandTransaction transactions = mock(CommandTransaction.class);
-    private final PollenService pollen = new PollenService(plans, client,
+    private final PollenService pollen = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(plans), client,
             () -> { throw new AssertionError("reads must not resolve the consumption outbox"); },
             transactions, new AuditLogService(audits, Clock.systemUTC()), Clock.systemUTC());
 

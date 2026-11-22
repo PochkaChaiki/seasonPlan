@@ -1,19 +1,24 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.lifecycle.infrastructure.fake.AllowingNaturalCalendarClient;
-import com.seasonplan.lifecycle.infrastructure.fake.FakePollenTreeClient;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryFairyAssignmentRepository;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryMagicTaskRepository;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemorySeasonPlanRepository;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.season.application.SeasonPlanService;
+import com.seasonplan.work.application.MagicTaskService;
+import com.seasonplan.workflows.application.ComputedRitualReadinessChecker;
+
+import com.seasonplan.audit.application.AuditLogService;
+import com.seasonplan.notification.api.NotificationOutbox;
+import com.seasonplan.reference.adapter.out.fake.AllowingNaturalCalendarClient;
+import com.seasonplan.pollen.adapter.out.fake.FakePollenTreeClient;
+import com.seasonplan.audit.adapter.out.persistence.InMemoryAuditLogRepository;
+import com.seasonplan.work.adapter.out.fake.InMemoryFairyAssignmentRepository;
+import com.seasonplan.work.adapter.out.fake.InMemoryMagicTaskRepository;
+import com.seasonplan.season.adapter.out.fake.InMemorySeasonPlanRepository;
 
 
-import com.seasonplan.lifecycle.infrastructure.fake.*;
-import com.seasonplan.lifecycle.domain.MagicTask;
-import com.seasonplan.lifecycle.domain.MagicTaskStatus;
-import com.seasonplan.lifecycle.domain.SeasonPlan;
-import com.seasonplan.lifecycle.domain.TimeWindow;
+import com.seasonplan.work.domain.MagicTask;
+import com.seasonplan.work.domain.MagicTaskStatus;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.shared.domain.TimeWindow;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -23,6 +28,10 @@ import java.util.List;
 import java.util.Map;
 
 public class SeasonPlanTestFixture {
+    private final com.seasonplan.season.api.SeasonPlanning seasonPlanning;
+    private final com.seasonplan.work.api.WorkPreparation workPreparation;
+    private final com.seasonplan.pollen.api.PollenOperations pollenOperations;
+    private final com.seasonplan.season.application.port.SeasonPlanRepository seasonRepository;
     private final SeasonPlanService seasonPlanService;
     private final PollenService pollenService;
     private final MagicTaskService magicTaskService;
@@ -31,12 +40,16 @@ public class SeasonPlanTestFixture {
 
     private SeasonPlanTestFixture(SeasonPlanService seasonPlanService, PollenService pollenService,
                                   MagicTaskService magicTaskService, AuditLogService auditLogService,
-                                  List<NotificationOutbox.Event> reviewEvents) {
+                                  List<NotificationOutbox.Event> reviewEvents, com.seasonplan.season.api.SeasonQueries seasons, com.seasonplan.work.api.WorkQueries work, com.seasonplan.season.application.port.SeasonPlanRepository seasonRepository) {
+        this.seasonRepository = seasonRepository;
         this.seasonPlanService = seasonPlanService;
         this.pollenService = pollenService;
         this.magicTaskService = magicTaskService;
         this.auditLogService = auditLogService;
         this.reviewEvents = reviewEvents;
+        this.seasonPlanning = new com.seasonplan.season.application.SeasonPlanningFacade(seasonPlanService, seasons);
+        this.workPreparation = new com.seasonplan.work.application.WorkPreparationFacade(magicTaskService, work);
+        this.pollenOperations = new com.seasonplan.pollen.application.PollenOperationsFacade(pollenService);
     }
 
     public static SeasonPlanTestFixture create() {
@@ -48,14 +61,22 @@ public class SeasonPlanTestFixture {
         AuditLogService auditLogService = new AuditLogService(new InMemoryAuditLogRepository(), clock);
         List<NotificationOutbox.Event> reviewEvents = new java.util.ArrayList<>();
         Map<String, NotificationOutbox.Event> pollenEvents = new java.util.LinkedHashMap<>();
-        PollenService pollenService = new PollenService(plans, tree,
+        PollenService pollenService = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(plans), tree,
                 () -> event -> pollenEvents.putIfAbsent(event.deduplicationKey(), event), new DirectTestTransaction(), auditLogService, clock);
-        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, pollenService, magicTasks, fairyAssignments,
-                auditLogService, new DirectTestTransaction(), reviewEvents::add, new AllowingNaturalCalendarClient(), clock, TestExecutionRules::snapshot,
-                new ComputedRitualReadinessChecker(plans, magicTasks, fairyAssignments, pollenService, org.mockito.Mockito.mock(com.seasonplan.lifecycle.repository.MagicIncidentRepository.class)));
-        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, fairyAssignments, plans, auditLogService, new DirectTestTransaction(), clock);
-        return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService, auditLogService, reviewEvents);
+        var resources = new com.seasonplan.pollen.application.PollenOperationsFacade(pollenService);
+        var readiness = new ComputedRitualReadinessChecker(new com.seasonplan.season.application.SeasonQueryService(plans),
+                new com.seasonplan.work.application.WorkQueryService(magicTasks, fairyAssignments), resources,
+                org.mockito.Mockito.mock(com.seasonplan.response.api.ResponseQueries.class), new com.seasonplan.ritual.domain.RitualReadinessPolicy());
+        SeasonPlanService seasonPlanService = new SeasonPlanService(plans, new com.seasonplan.workflows.application.PollenResourceEvidenceSource(resources),
+                auditLogService, new DirectTestTransaction(), reviewEvents::add, new com.seasonplan.reference.application.CalendarValidationService(new AllowingNaturalCalendarClient()), clock, TestExecutionRules::snapshot, readiness);
+        MagicTaskService magicTaskService = new MagicTaskService(magicTasks, fairyAssignments, new com.seasonplan.season.application.SeasonQueryService(plans), auditLogService, new DirectTestTransaction(), clock);
+        return new SeasonPlanTestFixture(seasonPlanService, pollenService, magicTaskService, auditLogService, reviewEvents, new com.seasonplan.season.application.SeasonQueryService(plans), new com.seasonplan.work.application.WorkQueryService(magicTasks, fairyAssignments), plans);
     }
+
+    public com.seasonplan.season.application.port.SeasonPlanRepository seasonRepository() { return seasonRepository; }
+    public com.seasonplan.season.api.SeasonPlanning seasonPlanning() { return seasonPlanning; }
+    public com.seasonplan.work.api.WorkPreparation workPreparation() { return workPreparation; }
+    public com.seasonplan.pollen.api.PollenOperations pollenOperations() { return pollenOperations; }
 
     public static SeasonPlan validPlanDraft(String createdBy) {
         SeasonPlan plan = new SeasonPlan();

@@ -1,8 +1,9 @@
 package com.seasonplan.lifecycle.infrastructure.jdbc;
 
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
-import com.seasonplan.lifecycle.domain.AuditAction;
-import com.seasonplan.lifecycle.domain.AuditLogEntry;
+import com.seasonplan.audit.adapter.out.persistence.JdbcAuditLogRepository;
+import com.seasonplan.audit.adapter.out.persistence.InMemoryAuditLogRepository;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.audit.api.AuditLogEntry;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

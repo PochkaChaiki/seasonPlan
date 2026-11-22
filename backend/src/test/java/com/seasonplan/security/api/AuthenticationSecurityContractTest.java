@@ -1,10 +1,10 @@
 package com.seasonplan.security.api;
 
-import com.seasonplan.security.config.SecurityConfiguration;
-import com.seasonplan.security.identity.CurrentActorProvider;
-import com.seasonplan.security.api.AuthController;
-import com.seasonplan.security.infrastructure.spring.LocalUserDetails;
-import com.seasonplan.security.service.LocalUserAdministration;
+import com.seasonplan.bootstrap.SecurityConfiguration;
+import com.seasonplan.identity.api.CurrentActorProvider;
+import com.seasonplan.identity.adapter.in.web.AuthController;
+import com.seasonplan.identity.adapter.out.spring.LocalUserDetails;
+import com.seasonplan.identity.api.LocalUserAdministration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -50,7 +50,7 @@ class AuthenticationSecurityContractTest {
         given(userDetailsService.loadUserByUsername("planner"))
                 .willReturn(new LocalUserDetails(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),
                         "planner", "Planner", "{noop}secret", true,
-                        java.util.Set.of(com.seasonplan.security.identity.ActorRole.FAIRY_PLANNER)));
+                        java.util.Set.of(com.seasonplan.identity.api.ActorRole.FAIRY_PLANNER)));
 
         mvc.perform(get("/auth/csrf"))
                 .andExpect(status().isOk())

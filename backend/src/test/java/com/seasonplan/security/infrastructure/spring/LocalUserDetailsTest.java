@@ -1,10 +1,10 @@
 package com.seasonplan.security.infrastructure.spring;
 
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.infrastructure.spring.LocalUserDetails;
-import com.seasonplan.security.infrastructure.spring.SecurityCurrentActorProvider;
-import com.seasonplan.security.service.LocalUserAdministration;
-import com.seasonplan.security.exception.UserAdministrationException;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.adapter.out.spring.LocalUserDetails;
+import com.seasonplan.identity.adapter.out.spring.SecurityCurrentActorProvider;
+import com.seasonplan.identity.api.LocalUserAdministration;
+import com.seasonplan.identity.api.UserAdministrationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,10 +27,10 @@ class LocalUserDetailsTest {
 
     @Test
     void missingBusinessRoleUsesDeniedRoleException() {
-        var actor = new com.seasonplan.security.identity.CurrentActor(UUID.randomUUID(), "admin", java.util.Set.of());
-        assertThatThrownBy(() -> com.seasonplan.lifecycle.authorization.LifecycleAccessPolicy.roleFor(actor,
-                com.seasonplan.lifecycle.authorization.LifecyclePermission.CREATE_DRAFT))
-                .isInstanceOf(com.seasonplan.security.exception.AccessDeniedForRoleException.class);
+        var actor = new com.seasonplan.identity.api.CurrentActor(UUID.randomUUID(), "admin", java.util.Set.of());
+        assertThatThrownBy(() -> com.seasonplan.identity.api.LifecycleAccessPolicy.roleFor(actor,
+                com.seasonplan.identity.api.LifecyclePermission.CREATE_DRAFT))
+                .isInstanceOf(com.seasonplan.identity.api.AccessDeniedForRoleException.class);
     }
 
     @Test
@@ -44,14 +44,14 @@ class LocalUserDetailsTest {
     void identityAndPrincipalDefensivelyCopyRolesAndPreserveAdministratorFlag() {
         var roles = new java.util.HashSet<>(java.util.Set.of(ActorRole.FAIRY_PLANNER));
         var user = new LocalUserDetails(UUID.randomUUID(), "admin", "Admin", "hash", true, true, roles);
-        var actor = new com.seasonplan.security.identity.CurrentActor(user.userId(), user.username(), roles, true);
+        var actor = new com.seasonplan.identity.api.CurrentActor(user.userId(), user.username(), roles, true);
         roles.clear();
         assertThat(user.roles()).containsExactly(ActorRole.FAIRY_PLANNER);
         assertThat(actor.roles()).containsExactly(ActorRole.FAIRY_PLANNER);
         assertThatThrownBy(() -> user.roles().clear()).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> actor.roles().clear()).isInstanceOf(UnsupportedOperationException.class);
         assertThat(actor.systemAdministrator()).isTrue();
-        assertThat(new com.seasonplan.security.identity.CurrentActor(user.userId(), user.username(), java.util.Set.of()).systemAdministrator()).isFalse();
+        assertThat(new com.seasonplan.identity.api.CurrentActor(user.userId(), user.username(), java.util.Set.of()).systemAdministrator()).isFalse();
     }
 
     @Test

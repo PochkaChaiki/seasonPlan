@@ -3,8 +3,11 @@ spring:
     name: seasonplan
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:seasonplan}
-    username: ${POSTGRES_USER:seasonplan}
-    password: ${POSTGRES_PASSWORD:seasonplan_dev}
+    username: ${DB_RUNTIME_USER:seasonplan_app}
+    password: ${DB_RUNTIME_PASSWORD}
+  liquibase:
+    user: ${DB_MIGRATION_USER:${POSTGRES_USER:seasonplan_owner}}
+    password: ${DB_MIGRATION_PASSWORD:${POSTGRES_PASSWORD:}}
   jpa:
     hibernate:
       ddl-auto: validate

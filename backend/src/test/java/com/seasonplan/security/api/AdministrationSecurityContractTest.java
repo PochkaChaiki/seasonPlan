@@ -1,15 +1,15 @@
 package com.seasonplan.security.api;
 
-import com.seasonplan.security.config.SecurityConfiguration;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.identity.CurrentActor;
-import com.seasonplan.security.identity.CurrentActorProvider;
-import com.seasonplan.security.api.AuthController;
-import com.seasonplan.security.api.AdminUserController;
-import com.seasonplan.security.domain.ManagedUser;
-import com.seasonplan.security.infrastructure.spring.LocalUserDetails;
-import com.seasonplan.security.service.LocalUserAdministration;
-import com.seasonplan.security.exception.UserAdministrationException;
+import com.seasonplan.bootstrap.SecurityConfiguration;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.CurrentActor;
+import com.seasonplan.identity.api.CurrentActorProvider;
+import com.seasonplan.identity.adapter.in.web.AuthController;
+import com.seasonplan.identity.adapter.in.web.AdminUserController;
+import com.seasonplan.identity.domain.ManagedUser;
+import com.seasonplan.identity.adapter.out.spring.LocalUserDetails;
+import com.seasonplan.identity.api.LocalUserAdministration;
+import com.seasonplan.identity.api.UserAdministrationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

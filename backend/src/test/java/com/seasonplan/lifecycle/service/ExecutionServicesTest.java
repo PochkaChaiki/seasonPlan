@@ -1,9 +1,19 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.security.exception.AccessDeniedForRoleException;
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.monitoring.application.MonitoringService;
+import com.seasonplan.monitoring.domain.ClimateMetric;
+import com.seasonplan.response.application.IncidentResponseService;
+import com.seasonplan.response.domain.CorrectionAction;
+import com.seasonplan.response.domain.MagicIncident;
+import com.seasonplan.ritual.domain.RitualSession;
+import com.seasonplan.season.domain.SeasonPlanStatus;
+import com.seasonplan.shared.domain.DomainValidationException;
+
+import com.seasonplan.audit.api.AuditLogEntry;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.notification.api.NotificationOutbox;
+import com.seasonplan.identity.api.AccessDeniedForRoleException;
+import com.seasonplan.identity.api.ActorRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -101,7 +111,7 @@ class ExecutionServicesTest {
         assertThat(f.actions).hasSize(1);
         assertThat(f.events).hasSize(1);
         assertThat(f.response.hasCriticalCondition(f.plan.id())).isTrue();
-        assertThat(f.plans.findById(f.plan.id()).orElseThrow().status()).isEqualTo(SeasonPlanStatus.ACTIVE);
+        assertThat(f.plans.findById(f.plan.id()).orElseThrow().status()).isEqualTo(SeasonPlanStatus.EMERGENCY);
     }
 
     @Test void boundaryDeviationCreatesActionWithoutCriticalOperatingCondition() {
@@ -111,14 +121,14 @@ class ExecutionServicesTest {
         assertThat(metric.deviationScore()).isEqualByComparingTo("1.0000");
         assertThat(f.actions).hasSize(1);
         assertThat(f.incidents).isEmpty();
-        assertThat(f.events).extracting(com.seasonplan.lifecycle.notification.NotificationOutbox.Event::type).contains("CORRECTION_ASSIGNED");
+        assertThat(f.events).extracting(com.seasonplan.notification.api.NotificationOutbox.Event::type).contains("CORRECTION_ASSIGNED");
     }
 
     @Test void criticalNotificationsDeduplicateRecipientsWhenOwnerIsAlsoGuardian() {
         f.setStatus(SeasonPlanStatus.ACTIVE);
-        var monitoring = new MonitoringService(f.plans, f.metricPort, f.incidentPort, f.correctionPort,
-                (id, metric) -> new com.seasonplan.lifecycle.service.MetricRuleProvider.MetricRule(new BigDecimal("20"), new BigDecimal("2"),
-                        "v1", "CHIEF_GUARDIAN", java.time.Duration.ofHours(1)), f.outbox, f.transactions, f.audit, f.clock);
+        var monitoring = new MonitoringService(new com.seasonplan.season.application.SeasonQueryService(f.plans), f.metricPort,
+                (id, metric) -> new com.seasonplan.monitoring.application.port.MetricRuleProvider.MetricRule(new BigDecimal("20"), new BigDecimal("2"),
+                        "v1", "CHIEF_GUARDIAN", java.time.Duration.ofHours(1)), f.metricReactions, f.transactions, f.audit, f.clock);
         monitoring.record(f.plan.id(), new MonitoringService.Measurement("sensor", "owner-event", "temperature", "CELSIUS", new BigDecimal("24"), f.now),
                 ActorRole.CLIMATE_BALANCER, "balancer");
         assertThat(f.events.get(0).recipients()).containsExactlyInAnyOrder("CHIEF_GUARDIAN", "MAGIC_ANOMALY_CONTROLLER");
@@ -178,7 +188,9 @@ class ExecutionServicesTest {
                 .isInstanceOf(AccessDeniedForRoleException.class);
         f.response.overrideSeverity(incident.id(), MagicIncident.Severity.HIGH, "Проверено", ActorRole.CHIEF_GUARDIAN, "guardian");
         assertThat(f.response.hasCriticalCondition(f.plan.id())).isFalse();
-        assertThat(f.rituals.start(f.plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator").attempt()).isEqualTo(1);
+        // Reclassification is not an authorized emergency-recovery decision.
+        assertThatThrownBy(() -> f.rituals.start(f.plan.id(), ActorRole.TALENT_COORDINATOR, "coordinator"))
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test void incidentResolutionClearsCriticalConditionAndOverdueEscalationIsDeduplicated() {
@@ -190,7 +202,7 @@ class ExecutionServicesTest {
         f.response.escalateOverdue();
         f.response.escalateOverdue();
         assertThat(f.events.stream().filter(event -> event.type().equals("CORRECTION_OVERDUE"))).hasSize(1);
-        var nextDay = new IncidentResponseService(f.plans, f.incidentPort, f.correctionPort, type -> MagicIncident.Severity.CRITICAL,
+        var nextDay = new IncidentResponseService(new com.seasonplan.season.application.SeasonQueryService(f.plans), new com.seasonplan.season.application.SeasonLifecycleService(f.plans, f.transactions, f.audit, f.clock), f.incidentPort, f.correctionPort, type -> MagicIncident.Severity.CRITICAL,
                 f.transactions, f.outbox, f.audit, java.time.Clock.offset(f.clock, java.time.Duration.ofDays(1)));
         nextDay.escalateOverdue();
         assertThat(f.events.stream().filter(event -> event.type().equals("CORRECTION_OVERDUE"))).hasSize(2);

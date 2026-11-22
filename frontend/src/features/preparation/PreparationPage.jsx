@@ -5,6 +5,7 @@ import FieldErrors from '../../components/FieldErrors.jsx';
 import LoadingState from '../../components/LoadingState.jsx';
 import ReadinessSummary from '../../components/ReadinessSummary.jsx';
 import { lifecycleApi } from '../../api/lifecycleApi.js';
+import { preparePollenRequest, completePollenRequest } from '../../api/pollenRequestIntent.js';
 import {
   cacheAssignment,
   cacheAssignments,
@@ -135,6 +136,18 @@ export default function PreparationPage({ currentActor = null }) {
     }
   }
 
+  async function requestPollen() {
+    const intent = preparePollenRequest(pollenActor, id, Number(pollenForm.requestedAmount));
+    const result = await lifecycleApi.requestReservation(id, intent, pollenActor);
+    if (!result?.id || result.seasonPlanId !== id || result.requestedAmount !== intent.requestedAmount
+        || !['PENDING', 'CONFIRMED', 'REJECTED'].includes(result.status)) {
+      throw new Error('Ответ резерва не подтвержден. Повторите исходный запрос.');
+    }
+    cacheReservation(id, result);
+    completePollenRequest(pollenActor, id, intent.requestId);
+    return result;
+  }
+
   function taskPayload() {
     return {
       title: taskForm.title,
@@ -201,7 +214,7 @@ export default function PreparationPage({ currentActor = null }) {
                 className="primary"
                 disabled={busy}
                 onClick={() =>
-                  runCommand(() => lifecycleApi.requestReservation(id, { requestedAmount: Number(pollenForm.requestedAmount) }, pollenActor), async (result) => {
+                  runCommand(requestPollen, async (result) => {
                     setReservation(result);
                     cacheReservation(id, result);
                     setMessage(`Резерв пыльцы ${result.id} запрошен`);
@@ -466,11 +479,14 @@ export default function PreparationPage({ currentActor = null }) {
             Tasks and assignments are loaded from backend for the opened SeasonPlan.
           </p>
           <p className="note">Доступность фей API не раскрывает. Конфликты расписания показываются только из ошибок действия назначения.</p>
+
+        </aside>
+        )}
+        <div>
           {message && <p className="note">{message}</p>}
           {error && <p className="note rose">{error.message}</p>}
           <FieldErrors errors={error?.errors} />
-        </aside>
-        )}
+        </div>
       </div>
     </AppShell>
   );

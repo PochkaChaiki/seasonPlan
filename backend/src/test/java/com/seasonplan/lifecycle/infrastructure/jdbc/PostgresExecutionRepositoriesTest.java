@@ -1,10 +1,26 @@
 package com.seasonplan.lifecycle.infrastructure.jdbc;
 
-import com.seasonplan.lifecycle.domain.*;
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.lifecycle.repository.*;
-import com.seasonplan.lifecycle.service.AuditLogService;
-import com.seasonplan.lifecycle.service.CommandTransaction;
+import com.seasonplan.monitoring.adapter.out.persistence.JdbcClimateMetricRepository;
+import com.seasonplan.monitoring.application.port.ClimateMetricRepository;
+import com.seasonplan.monitoring.domain.ClimateMetric;
+import com.seasonplan.notification.adapter.out.persistence.JdbcNotificationOutbox;
+import com.seasonplan.reference.api.MetricDefinition;
+import com.seasonplan.response.adapter.out.persistence.JdbcCorrectionActionRepository;
+import com.seasonplan.response.adapter.out.persistence.JdbcMagicIncidentRepository;
+import com.seasonplan.response.application.port.CorrectionActionRepository;
+import com.seasonplan.response.application.port.MagicIncidentRepository;
+import com.seasonplan.response.domain.CorrectionAction;
+import com.seasonplan.response.domain.MagicIncident;
+import com.seasonplan.ritual.adapter.out.persistence.JdbcRitualSessionRepository;
+import com.seasonplan.ritual.application.port.RitualSessionRepository;
+import com.seasonplan.ritual.domain.RitualSession;
+import com.seasonplan.shared.domain.DomainValidationException;
+
+import com.seasonplan.audit.api.AuditLogEntry;
+import com.seasonplan.audit.api.AuditAction;
+import com.seasonplan.notification.api.NotificationOutbox;
+import com.seasonplan.audit.application.AuditLogService;
+import com.seasonplan.season.api.CommandTransaction;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,14 +42,27 @@ import java.util.concurrent.*;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @Testcontainers
 class PostgresExecutionRepositoriesTest {
+    /** Close workers and datasource before the Testcontainers afterAll callback stops PostgreSQL. */
+    @org.junit.jupiter.api.AfterAll
+    static void closeApplicationBeforeContainerStops(org.springframework.context.ConfigurableApplicationContext context) {
+        assertThat(postgres.isRunning()).isTrue();
+        // Evict through Spring so later test listeners do not access a closed cached context.
+        new org.springframework.test.context.TestContextManager(PostgresExecutionRepositoriesTest.class).getTestContext()
+                .markApplicationContextDirty(org.springframework.test.annotation.DirtiesContext.HierarchyMode.EXHAUSTIVE);
+        assertThat(context.isActive()).isFalse();
+    }
+
     @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14");
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.liquibase.user", postgres::getUsername);
+        registry.add("spring.liquibase.password", postgres::getPassword);
         registry.add("seasonplan.incident-rules.version", () -> "test-v1");
         for (var type : MagicIncident.Type.values()) registry.add("seasonplan.incident-rules.severity." + type.name(), () -> "HIGH");
         registry.add("seasonplan.execution-rules.version", () -> "test-v1");
@@ -52,12 +81,12 @@ class PostgresExecutionRepositoriesTest {
     @Autowired CommandTransaction transactions;
     @Autowired AuditLogService audit;
     @Autowired JdbcNotificationOutbox outbox;
-    @Autowired com.seasonplan.lifecycle.service.MonitoringService monitoring;
-    @Autowired com.seasonplan.lifecycle.service.RitualService ritualService;
-    @Autowired com.seasonplan.lifecycle.service.IncidentResponseService incidentService;
-    @Autowired com.seasonplan.lifecycle.service.RitualReadinessChecker readiness;
-    @Autowired com.seasonplan.lifecycle.service.SeasonPlanService seasonPlans;
-    @Autowired com.seasonplan.lifecycle.config.ConfiguredExecutionRules configuredRules;
+    @Autowired com.seasonplan.monitoring.application.MonitoringService monitoring;
+    @Autowired com.seasonplan.ritual.application.RitualService ritualService;
+    @Autowired com.seasonplan.response.application.IncidentResponseService incidentService;
+    @Autowired com.seasonplan.ritual.api.RitualReadinessChecker readiness;
+    @Autowired com.seasonplan.season.application.SeasonPlanService seasonPlans;
+    @Autowired com.seasonplan.reference.adapter.out.configuration.ConfiguredExecutionRules configuredRules;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     private static final Instant TIME = Instant.parse("2026-01-02T03:04:05.123456789Z");
 
@@ -76,14 +105,49 @@ class PostgresExecutionRepositoriesTest {
         return new MagicIncident(UUID.randomUUID(), plan, MagicIncident.Type.CLIMATE, MagicIncident.Severity.CRITICAL, MagicIncident.Status.OPEN, "cause", "consequences", "actor", TIME);
     }
 
+    @Autowired com.seasonplan.work.api.WorkQueries workQueries;
+    @Autowired com.seasonplan.response.api.ResponseQueries responseQueries;
+    @Autowired com.seasonplan.ritual.api.RitualQueries ritualQueries;
+    @Autowired com.seasonplan.monitoring.api.MetricQueries metricQueries;
+    @Autowired com.seasonplan.work.application.port.MagicTaskRepository taskRepository;
+    @Autowired com.seasonplan.work.application.port.FairyAssignmentRepository assignmentRepository;
+
+    @Test void publicOwnerQueriesRoundTripCurrentStateWithoutChangingEarlierSnapshots() {
+        UUID id = plan();
+        var window = new com.seasonplan.shared.domain.TimeWindow(java.time.LocalDateTime.of(2026, 1, 1, 10, 0), java.time.LocalDateTime.of(2026, 1, 1, 11, 0));
+        var task = new com.seasonplan.work.domain.MagicTask("task", "description", "talent", window, com.seasonplan.work.domain.MagicTaskStatus.READY, "WEATHER");
+        task.setId(UUID.randomUUID()); task.setSeasonPlanId(id); taskRepository.save(task, "actor");
+        var assignment = new com.seasonplan.work.domain.FairyAssignment(UUID.randomUUID(), task.id(), "fairy", "LEAD", "talent", com.seasonplan.work.domain.AssignmentStatus.CONFIRMED, TIME);
+        assignmentRepository.save(assignment, "actor");
+        var observed = metric(id, UUID.randomUUID().toString(), "24"); metrics.save(observed);
+        var incident = incident(id); incidents.save(incident);
+        var action = CorrectionAction.open(UUID.randomUUID(), id, incident.id(), UUID.randomUUID().toString(), "correct", "owner", com.seasonplan.shared.domain.ExecutionTime.canonical(TIME)); actions.save(action);
+        var session = ritual(id, 1); rituals.save(session);
+        var taskFacts = workQueries.tasksForPlan(id); var assignmentFacts = workQueries.assignmentsForTask(task.id());
+        var incidentFacts = responseQueries.incidentsForPlan(id); var ritualFacts = ritualQueries.forPlan(id);
+        assertThat(metricQueries.forPlan(id)).containsExactly(observed);
+        assertThat(responseQueries.correctionsForPlan(id)).containsExactly(action);
+        assertThat(assignmentFacts.get(0).confirmedAt()).isEqualTo(com.seasonplan.shared.domain.ExecutionTime.canonical(TIME));
+        task.updateFrom(new com.seasonplan.work.domain.MagicTask("updated", "description", "talent", window, com.seasonplan.work.domain.MagicTaskStatus.TODO, "WEATHER"));
+        taskRepository.save(task, "actor"); incidents.save(incident.resolve());
+        rituals.save(session.addEvent(new RitualSession.Event(TIME.plusSeconds(1), "LAUNCH", "ok")));
+        assertThat(taskFacts.get(0).title()).isEqualTo("task");
+        assertThat(workQueries.tasksForPlan(id).get(0).title()).isEqualTo("updated");
+        assertThat(incidentFacts.get(0).critical()).isTrue();
+        assertThat(responseQueries.incidentsForPlan(id).get(0).critical()).isFalse();
+        assertThat(ritualFacts.get(0).events()).isEmpty(); assertThat(ritualQueries.forPlan(id).get(0).events()).hasSize(1);
+        assertThatThrownBy(taskFacts::clear).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(assignmentFacts::clear).isInstanceOf(UnsupportedOperationException.class);
+    }
+
     @Test void runtimeCompositionUsesRealRepositoriesAndProviders() {
         assertThat(metrics).isInstanceOf(JdbcClimateMetricRepository.class);
         assertThat(actions).isInstanceOf(JdbcCorrectionActionRepository.class);
         assertThat(incidents).isInstanceOf(JdbcMagicIncidentRepository.class);
         assertThat(rituals).isInstanceOf(JdbcRitualSessionRepository.class);
-        assertThat(readiness).isInstanceOf(com.seasonplan.lifecycle.service.ComputedRitualReadinessChecker.class);
+        assertThat(readiness).isInstanceOf(com.seasonplan.workflows.application.ComputedRitualReadinessChecker.class);
         assertThat(org.springframework.test.util.ReflectionTestUtils.getField(monitoring, "metrics")).isSameAs(metrics);
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(monitoring, "rules")).isInstanceOf(com.seasonplan.lifecycle.service.PinnedMetricRuleProvider.class);
+        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(monitoring, "rules")).isInstanceOf(com.seasonplan.monitoring.application.PinnedMetricRuleProvider.class);
         assertThat(org.springframework.test.util.ReflectionTestUtils.getField(ritualService, "readiness")).isSameAs(readiness);
         assertThat(org.springframework.test.util.ReflectionTestUtils.getField(incidentService, "incidents")).isSameAs(incidents);
     }
@@ -154,9 +218,9 @@ class PostgresExecutionRepositoriesTest {
         UUID plan = plan();
         jdbc.update("update season_plans set status = 'ACTIVE', target_climate_metrics = '{\"temperature\":20}'::jsonb, execution_rules = cast(? as jsonb) where id = ?", mapper.writeValueAsString(configuredRules.snapshot()), plan);
         String key = UUID.randomUUID().toString();
-        var input = new com.seasonplan.lifecycle.service.MonitoringService.Measurement("sensor", key, "temperature", "CELSIUS", new BigDecimal("20.00"), TIME);
-        ClimateMetric first = monitoring.record(plan, input, com.seasonplan.security.identity.ActorRole.CLIMATE_BALANCER, "owner");
-        ClimateMetric replay = monitoring.record(plan, input, com.seasonplan.security.identity.ActorRole.CLIMATE_BALANCER, "owner");
+        var input = new com.seasonplan.monitoring.application.MonitoringService.Measurement("sensor", key, "temperature", "CELSIUS", new BigDecimal("20.00"), TIME);
+        ClimateMetric first = monitoring.record(plan, input, com.seasonplan.identity.api.ActorRole.CLIMATE_BALANCER, "owner");
+        ClimateMetric replay = monitoring.record(plan, input, com.seasonplan.identity.api.ActorRole.CLIMATE_BALANCER, "owner");
         assertThat(replay.id()).isEqualTo(first.id());
         assertThat(metrics.forPlan(plan)).hasSize(1);
         assertThat(audit.entriesFor(plan)).extracting(AuditLogEntry::action).containsExactly(AuditAction.CLIMATE_METRIC_RECORDED);
@@ -185,6 +249,72 @@ class PostgresExecutionRepositoriesTest {
         assertThat(metrics.forPlan(plan)).isEmpty();
         assertThat(audit.entriesFor(plan)).isEmpty();
         assertThat(jdbc.queryForObject("select count(*) from notification_outbox where event_id = ?", Integer.class, event)).isZero();
+    }
+
+    @Autowired com.seasonplan.season.api.SeasonLifecycle lifecycle;
+    @Autowired com.seasonplan.season.application.port.SeasonPlanRepository planRepository;
+
+    @Test void nestedLifecycleCommandsRollBackStateAuditRitualAndOutboxWithOuterFailure() {
+        for (String state : List.of("RITUAL_READY", "ACTIVE", "COMPLETED")) {
+            UUID id = plan();
+            jdbc.update("update season_plans set status = ? where id = ?", state, id);
+            var session = ritual(id, 1).succeed(TIME);
+            String event = UUID.randomUUID().toString();
+            assertThatThrownBy(() -> transactions.execute(id, () -> {
+                rituals.save(session);
+                var report = new com.seasonplan.season.api.SeasonLifecycle.ReportEvidence(UUID.randomUUID(), id, true, false);
+                if (state.equals("RITUAL_READY")) lifecycle.activate(id,
+                        new com.seasonplan.season.api.SeasonLifecycle.RitualEvidence(session.id(), id, true), "actor");
+                else if (state.equals("ACTIVE")) lifecycle.complete(id, report, "actor");
+                else lifecycle.archive(id, report, "actor");
+                outbox.enqueue(new NotificationOutbox.Event(event, id, "TEST", Set.of("owner"), Set.of(NotificationOutbox.Channel.IN_APP), "message", TIME));
+                throw new IllegalStateException("outer failure");
+            })).hasMessage("outer failure");
+            assertThat(planRepository.findById(id).orElseThrow().status().name()).isEqualTo(state);
+            assertThat(rituals.forPlan(id)).isEmpty();
+            assertThat(audit.entriesFor(id)).isEmpty();
+            assertThat(jdbc.queryForObject("select count(*) from notification_outbox where event_id = ?", Integer.class, event)).isZero();
+        }
+    }
+
+    @Test void lifecycleAuditFailureRollsBackEveryTransition() {
+        var failingAudit = org.mockito.Mockito.mock(com.seasonplan.audit.api.AuditTrail.class);
+        org.mockito.Mockito.doAnswer(call -> {
+            audit.append(call.getArgument(0), call.getArgument(1), call.getArgument(2), call.getArgument(3));
+            throw new IllegalStateException("owner audit failed");
+        }).when(failingAudit).append(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        var owner = new com.seasonplan.season.application.SeasonLifecycleService(planRepository, transactions, failingAudit, java.time.Clock.systemUTC());
+        for (String state : List.of("RITUAL_READY", "ACTIVE", "COMPLETED", "CORRECTION")) {
+            UUID id = plan();
+            jdbc.update("update season_plans set status = ? where id = ?", state, id);
+            var report = new com.seasonplan.season.api.SeasonLifecycle.ReportEvidence(UUID.randomUUID(), id, true, false);
+            assertThatThrownBy(() -> {
+                if (state.equals("RITUAL_READY")) owner.activate(id, new com.seasonplan.season.api.SeasonLifecycle.RitualEvidence(UUID.randomUUID(), id, true), "actor");
+                else if (state.equals("ACTIVE")) owner.complete(id, report, "actor");
+                else if (state.equals("COMPLETED")) owner.archive(id, report, "actor");
+                else owner.enterEmergency(id, "actor");
+            }).hasMessage("owner audit failed");
+            assertThat(planRepository.findById(id).orElseThrow().status().name()).isEqualTo(state);
+            assertThat(audit.entriesFor(id)).isEmpty();
+        }
+    }
+
+    @Autowired com.seasonplan.response.api.MetricReactions metricReactions;
+
+    @Test void responseOwnerReplayDeduplicatesPersistedIncidentCorrectionAuditAndNotification() {
+        UUID id = plan();
+        jdbc.update("update season_plans set status = 'ACTIVE' where id = ?", id);
+        var measurement = metric(id, UUID.randomUUID().toString(), "24");
+        var spec = com.seasonplan.monitoring.domain.MetricReactionPolicy.evaluate(measurement, "v1", "owner", java.time.Duration.ofMinutes(5), TIME);
+        var first = metricReactions.react(id, measurement.id(), spec, "balancer");
+        var replay = metricReactions.react(id, measurement.id(), spec, "balancer");
+        assertThat(replay).isEqualTo(first);
+        assertThat(incidents.forPlan(id)).hasSize(1);
+        assertThat(actions.forPlan(id)).hasSize(1);
+        assertThat(actions.forPlan(id).get(0).incidentId()).isEqualTo(first.incidentId());
+        assertThat(audit.entriesFor(id)).hasSize(3).allMatch(entry -> entry.actorId().equals("balancer"));
+        assertThat(planRepository.findById(id).orElseThrow().status().name()).isEqualTo("EMERGENCY");
+        assertThat(jdbc.queryForObject("select count(*) from notification_outbox where season_plan_id = ? and event_type = 'CRITICAL_METRIC'", Integer.class, id)).isEqualTo(1);
     }
 
     @Test void concurrentGlobalKeysAndRitualAttemptsHaveOnlyOneWinner() throws Exception {

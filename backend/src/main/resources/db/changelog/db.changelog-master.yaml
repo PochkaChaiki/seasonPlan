@@ -19,3 +19,14 @@ databaseChangeLog:
       file: db/changelog/changes/012-execution-repositories.sql
   - include:
       file: db/changelog/changes/013-execution-readiness.sql
+  - include:
+      file: db/changelog/changes/014-emergency-and-audit-truncate.sql
+  - include:
+      file: db/changelog/changes/015-runtime-database-privileges.sql
+  - include:
+      file: db/changelog/changes/016-season-material-revisions.sql
+  - include:
+      file: db/changelog/changes/017-pollen-operation-evidence.sql
+
+  - include:
+      file: db/changelog/changes/018-consumption-operation-evidence.sql

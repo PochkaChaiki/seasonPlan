@@ -75,6 +75,66 @@ describe('PreparationPage', () => {
     expect((await screen.findAllByText('CONFIRMED')).length).toBeGreaterThan(0);
   });
 
+  it.each(['network', '503'])('retains the original request key and payload after %s and reload', async (failure) => {
+    const user = userEvent.setup();
+    const bodies = [];
+    const fetchMock = mockInitialLoad().mockImplementation((_url, options) => {
+      bodies.push(JSON.parse(options.body));
+      if (failure === 'network') return Promise.reject(new TypeError('network lost'));
+      return Promise.resolve(Response.json({ message: 'outcome unknown' }, { status: 503 }));
+    });
+    const page = renderPageAs({ id: 'guardian-1', roles: ['POLLEN_GUARDIAN'] });
+    await user.click(await screen.findByRole('button', { name: 'Запросить резерв' }));
+    await screen.findByText(failure === 'network' ? 'Network error. Check that the backend API is reachable.' : 'outcome unknown');
+    expect(bodies[0].requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(sessionStorage.getItem('seasonPlan.pollenRequestIntents')).toContain(bodies[0].requestId);
+    page.unmount();
+    fetchMock.mockResolvedValueOnce(Response.json(plan))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockImplementation((_url, options) => {
+        bodies.push(JSON.parse(options.body));
+        return Promise.resolve(Response.json({ message: 'outcome unknown' }, { status: 503 }));
+      });
+    renderPageAs({ id: 'guardian-1', roles: ['POLLEN_GUARDIAN'] });
+    await user.click(await screen.findByRole('button', { name: 'Запросить резерв' }));
+    await screen.findByText('outcome unknown');
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toEqual(bodies[0]);
+    await user.clear(screen.getByLabelText('Запрошенный объем'));
+    await user.type(screen.getByLabelText('Запрошенный объем'), '200');
+    await user.click(screen.getByRole('button', { name: 'Запросить резерв' }));
+    expect(await screen.findByText(/Предыдущий запрос резерва не завершен/)).toBeInTheDocument();
+    expect(bodies).toHaveLength(2);
+  });
+
+  it('retains the intent after a malformed success response', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockInitialLoad().mockResolvedValueOnce(Response.json({}));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Запросить резерв' }));
+    expect(await screen.findByText('Ответ резерва не подтвержден. Повторите исходный запрос.')).toBeInTheDocument();
+    const firstBody = JSON.parse(fetchMock.mock.calls[3][1].body);
+    expect(sessionStorage.getItem('seasonPlan.pollenRequestIntents')).toContain(firstBody.requestId);
+    fetchMock.mockResolvedValueOnce(Response.json({ id: 'reservation-1', seasonPlanId: 'plan-1', requestedAmount: 100, status: 'PENDING' }))
+      .mockResolvedValueOnce(Response.json({ ready: false, errors: {} }));
+    await user.click(screen.getByRole('button', { name: 'Запросить резерв' }));
+    await screen.findAllByText('PENDING');
+    expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual(firstBody);
+    expect(sessionStorage.getItem('seasonPlan.pollenRequestIntents')).not.toContain(firstBody.requestId);
+  });
+
+  it('does not send a reservation when the intent cannot be saved before dispatch', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockInitialLoad();
+    renderPage();
+    const button = await screen.findByRole('button', { name: 'Запросить резерв' });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('storage unavailable'); });
+    await user.click(button);
+    expect(await screen.findByText('storage unavailable')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('loads persisted tasks and fairy assignments for the opened season plan', async () => {
     mockInitialLoadWithTasks(
       [

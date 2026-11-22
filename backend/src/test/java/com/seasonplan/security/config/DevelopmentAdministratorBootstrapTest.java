@@ -1,7 +1,7 @@
 package com.seasonplan.security.config;
 
-import com.seasonplan.security.config.DevelopmentAdministratorBootstrap;
-import com.seasonplan.security.service.LocalUserAdministration;
+import com.seasonplan.bootstrap.DevelopmentAdministratorBootstrap;
+import com.seasonplan.identity.api.LocalUserAdministration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultApplicationArguments;

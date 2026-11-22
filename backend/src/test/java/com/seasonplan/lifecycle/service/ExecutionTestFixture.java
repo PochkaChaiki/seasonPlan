@@ -1,18 +1,33 @@
 package com.seasonplan.lifecycle.service;
 
-import com.seasonplan.lifecycle.notification.NotificationOutbox;
-import com.seasonplan.lifecycle.integration.pollen.PollenTreeClient;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemoryAuditLogRepository;
-import com.seasonplan.lifecycle.infrastructure.fake.InMemorySeasonPlanRepository;
-import com.seasonplan.lifecycle.repository.RitualSessionRepository;
-import com.seasonplan.lifecycle.repository.ClimateMetricRepository;
-import com.seasonplan.lifecycle.repository.MagicIncidentRepository;
-import com.seasonplan.lifecycle.repository.CorrectionActionRepository;
-import com.seasonplan.lifecycle.repository.SeasonReportRepository;
+import com.seasonplan.monitoring.application.MonitoringService;
+import com.seasonplan.monitoring.application.port.MetricRuleProvider;
+import com.seasonplan.monitoring.domain.ClimateMetric;
+import com.seasonplan.pollen.application.PollenService;
+import com.seasonplan.reference.api.MetricDefinition;
+import com.seasonplan.reporting.application.port.RequiredTaskResults;
+import com.seasonplan.reporting.application.SeasonReportService;
+import com.seasonplan.reporting.domain.SeasonReport;
+import com.seasonplan.response.application.IncidentResponseService;
+import com.seasonplan.response.domain.CorrectionAction;
+import com.seasonplan.response.domain.MagicIncident;
+import com.seasonplan.ritual.api.RitualReadinessChecker;
+import com.seasonplan.ritual.application.RitualService;
+import com.seasonplan.ritual.domain.RitualSession;
+import com.seasonplan.season.api.CommandTransaction;
+import com.seasonplan.season.domain.SeasonPlan;
+import com.seasonplan.season.domain.SeasonPlanStatus;
 
-import com.seasonplan.lifecycle.infrastructure.fake.*;
-
-import com.seasonplan.lifecycle.domain.*;
+import com.seasonplan.audit.application.AuditLogService;
+import com.seasonplan.notification.api.NotificationOutbox;
+import com.seasonplan.pollen.application.port.PollenTreeClient;
+import com.seasonplan.audit.adapter.out.persistence.InMemoryAuditLogRepository;
+import com.seasonplan.season.adapter.out.fake.InMemorySeasonPlanRepository;
+import com.seasonplan.ritual.application.port.RitualSessionRepository;
+import com.seasonplan.monitoring.application.port.ClimateMetricRepository;
+import com.seasonplan.response.application.port.MagicIncidentRepository;
+import com.seasonplan.response.application.port.CorrectionActionRepository;
+import com.seasonplan.reporting.application.port.SeasonReportRepository;
 
 import java.math.BigDecimal;
 import java.time.*;
@@ -87,6 +102,7 @@ class ExecutionTestFixture {
     final RequiredTaskResults taskPort = id -> List.copyOf(tasks);
     final RitualService rituals;
     final MonitoringService monitoring;
+    final com.seasonplan.response.api.MetricReactions metricReactions;
     final IncidentResponseService response;
 
     ExecutionTestFixture(SeasonPlanStatus status) {
@@ -95,16 +111,20 @@ class ExecutionTestFixture {
         plan = SeasonPlan.createDraft(UUID.randomUUID(), "SPRING", List.of("north"), List.of(), Map.of("bloom", "early"),
                 Map.of("temperature", 20.0, "humidity", 60.0, "pollen_density", 1.0), List.of(), "planner", now);
         setStatus(status);
-        rituals = new RitualService(plans, ritualPort, incidentPort,
+        rituals = new RitualService(new com.seasonplan.season.application.SeasonQueryService(plans), new com.seasonplan.season.application.SeasonLifecycleService(plans, transactions, audit, clock), ritualPort, new com.seasonplan.response.application.ResponseQueryService(incidentPort, correctionPort),
                 id -> new RitualReadinessChecker.Readiness(readinessBlockers,
                         participants, Set.of("LAUNCH_VALIDATED")), transactions, audit, clock);
-        monitoring = new MonitoringService(plans, metricPort, incidentPort, correctionPort,
+        metricReactions = new com.seasonplan.response.application.MetricReactionService(incidentPort, correctionPort,
+                new com.seasonplan.season.application.SeasonLifecycleService(plans, transactions, audit, clock), transactions, outbox, audit, clock);
+        monitoring = new MonitoringService(new com.seasonplan.season.application.SeasonQueryService(plans), metricPort,
                 (id, metric) -> new MetricRuleProvider.MetricRule(new BigDecimal("20"), new BigDecimal("2"), "v1", "balancer", Duration.ofHours(1)),
-                outbox, transactions, audit, clock);
-        response = new IncidentResponseService(plans, incidentPort, correctionPort, type -> MagicIncident.Severity.CRITICAL,
+                metricReactions, transactions, audit, clock);
+        response = new IncidentResponseService(new com.seasonplan.season.application.SeasonQueryService(plans), new com.seasonplan.season.application.SeasonLifecycleService(plans, transactions, audit, clock), incidentPort, correctionPort, type -> MagicIncident.Severity.CRITICAL,
                 transactions, outbox, audit, clock);
-        var pollen = new PollenService(plans, pollenPort, () -> outbox, transactions, audit, clock);
-        completion = new SeasonReportService(plans, taskPort, ritualPort, metricPort, incidentPort, correctionPort, pollen,
+        var pollen = PollenTestServices.create(new com.seasonplan.season.application.SeasonQueryService(plans), pollenPort, () -> outbox, transactions, audit, clock);
+        completion = new SeasonReportService(new com.seasonplan.season.application.SeasonQueryService(plans), new com.seasonplan.season.application.SeasonLifecycleService(plans, transactions, audit, clock), taskPort, new com.seasonplan.ritual.application.RitualQueryService(ritualPort),
+                new com.seasonplan.monitoring.application.MetricQueryService(metricPort),
+                new com.seasonplan.response.application.ResponseQueryService(incidentPort, correctionPort), new com.seasonplan.pollen.application.PollenOperationsFacade(pollen),
                 reportPort, id -> "v1", (report, format) -> { exported = report; return new byte[] {1, 2, 3}; }, transactions, audit, clock);
     }
     void successfulSources() {
@@ -123,7 +143,7 @@ class ExecutionTestFixture {
     }
     void setStatus(SeasonPlanStatus status) {
         plan = SeasonPlan.rehydrate(plan.id(), plan.seasonType(), plan.targetTerritories(), plan.timeWindows(), plan.naturalPhenomenonParameters(),
-                plan.targetClimateMetrics(), status, null, plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt());
+                plan.targetClimateMetrics(), status, null, plan.readinessChecklist(), plan.createdBy(), plan.updatedBy(), plan.createdAt(), plan.updatedAt(), plan.materialRevisionStamp());
         plan.pinExecutionRules(TestExecutionRules.snapshot());
         plans.save(plan);
     }

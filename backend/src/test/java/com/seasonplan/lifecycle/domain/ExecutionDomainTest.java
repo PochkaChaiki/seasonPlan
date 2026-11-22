@@ -1,5 +1,10 @@
 package com.seasonplan.lifecycle.domain;
 
+import com.seasonplan.monitoring.domain.ClimateMetric;
+import com.seasonplan.reference.api.MetricDefinition;
+import com.seasonplan.response.domain.CorrectionAction;
+import com.seasonplan.ritual.domain.RitualSession;
+
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;

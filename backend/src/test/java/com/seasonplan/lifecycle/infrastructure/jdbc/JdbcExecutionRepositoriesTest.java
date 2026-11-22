@@ -1,11 +1,16 @@
 package com.seasonplan.lifecycle.infrastructure.jdbc;
 
-import com.seasonplan.lifecycle.domain.ClimateMetric;
-import com.seasonplan.lifecycle.domain.MetricDefinition;
-import com.seasonplan.lifecycle.repository.ClimateMetricRepository;
-import com.seasonplan.lifecycle.repository.CorrectionActionRepository;
-import com.seasonplan.lifecycle.repository.MagicIncidentRepository;
-import com.seasonplan.lifecycle.repository.RitualSessionRepository;
+import com.seasonplan.monitoring.adapter.out.persistence.JdbcClimateMetricRepository;
+import com.seasonplan.response.adapter.out.persistence.JdbcCorrectionActionRepository;
+import com.seasonplan.response.adapter.out.persistence.JdbcMagicIncidentRepository;
+import com.seasonplan.ritual.adapter.out.persistence.JdbcRitualSessionRepository;
+
+import com.seasonplan.monitoring.domain.ClimateMetric;
+import com.seasonplan.reference.api.MetricDefinition;
+import com.seasonplan.monitoring.application.port.ClimateMetricRepository;
+import com.seasonplan.response.application.port.CorrectionActionRepository;
+import com.seasonplan.response.application.port.MagicIncidentRepository;
+import com.seasonplan.ritual.application.port.RitualSessionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 

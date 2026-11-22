@@ -1,9 +1,9 @@
 package com.seasonplan.security.service;
 
-import com.seasonplan.security.identity.ActorRole;
-import com.seasonplan.security.exception.UserAdministrationException;
-import com.seasonplan.security.service.LocalUserAdministration.CreateUserCommand;
-import com.seasonplan.security.service.LocalUserAdministration.CredentialChangeCommand;
+import com.seasonplan.identity.api.ActorRole;
+import com.seasonplan.identity.api.UserAdministrationException;
+import com.seasonplan.identity.api.LocalUserAdministration.CreateUserCommand;
+import com.seasonplan.identity.api.LocalUserAdministration.CredentialChangeCommand;
 import org.junit.jupiter.api.Test;
 import java.util.HashSet;
 import java.util.Set;
